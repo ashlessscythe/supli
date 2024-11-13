@@ -10,8 +10,10 @@ import {
   ClipboardList,
   Settings,
   LogOut,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navigation = [
   {
@@ -32,18 +34,13 @@ const navigation = [
     icon: ClipboardList,
     adminOnly: false,
   },
-  {
-    name: "Settings",
-    href: "/dashboard/settings",
-    icon: Settings,
-    adminOnly: true,
-  },
 ];
 
 export function Header() {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const isInAdminSection = pathname.startsWith("/admin");
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -56,27 +53,40 @@ export function Header() {
             </span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
-            {navigation
-              .filter((item) => !item.adminOnly || isAdmin)
-              .map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
-                    pathname === item.href
-                      ? "text-foreground"
-                      : "text-foreground/60"
-                  )}
-                >
-                  <item.icon className="h-4 w-4" />
-                  <span>{item.name}</span>
-                </Link>
-              ))}
+            {navigation.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
+                  pathname === item.href
+                    ? "text-foreground"
+                    : "text-foreground/60"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                <span>{item.name}</span>
+              </Link>
+            ))}
+            {isAdmin && (
+              <Link
+                href={isInAdminSection ? "/dashboard" : "/admin"}
+                className={cn(
+                  "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
+                  pathname.startsWith("/admin")
+                    ? "text-foreground"
+                    : "text-foreground/60"
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                <span>{isInAdminSection ? "Regular View" : "Admin"}</span>
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <div className="flex items-center space-x-4">
+            <ThemeToggle />
             {session?.user && (
               <>
                 <span className="text-sm text-foreground/60">
