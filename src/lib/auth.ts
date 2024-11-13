@@ -1,29 +1,10 @@
-import { PrismaAdapter } from "@auth/prisma-adapter";
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import { User } from "@prisma/client";
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      username: string;
-      role: "ADMIN" | "STAFF";
-    };
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    username: string;
-    role: "ADMIN" | "STAFF";
-  }
-}
-
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   session: {
     strategy: "jwt",
   },
@@ -86,7 +67,7 @@ export const authOptions: NextAuthOptions = {
         user: {
           ...session.user,
           id: token.sub as string,
-          username: token.username,
+          username: token.username as string,
           role: token.role,
         },
       };
