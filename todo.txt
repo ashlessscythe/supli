@@ -37,7 +37,7 @@ For each tollgate:
    [✓] Create API endpoints:
      * Auth routes (login/logout)
      [✓] Supply routes (CRUD operations)
-     [ ] Request routes
+     [✓] Request routes
      [✓] Audit log routes
 
 [TOLLGATE 2]
@@ -52,6 +52,7 @@ For each tollgate:
    [✓] Set up session management
    [✓] Implement role-based access control (RBAC)
    [✓] Set up protected routes and API middleware
+   [✓] Fix auth configuration type issues
 
 [TOLLGATE 3 - COMPLETED]
 [✓] Authentication flow tests
@@ -68,6 +69,7 @@ For each tollgate:
      [✓] Navigation bar with RBAC
      [✓] Dashboard overview
      [✓] Supply inventory list
+     [✓] Request management interface
    [✓] Set up client-side components for interactive features
 
 [TOLLGATE 4]
@@ -78,7 +80,7 @@ For each tollgate:
 
 5. Frontend Development (Phase 2)
    - Implement additional components:
-     * Supply request form
+     [✓] Supply request form with dialog
      * Admin panel
      * Notifications component
    - Set up dynamic routing
@@ -97,9 +99,10 @@ For each tollgate:
      [✓] Add/Edit/Delete supplies (Admin)
      [✓] Quantity tracking with optimistic updates
    - Supply Requests:
-     [ ] Request creation
-     [ ] Request approval/denial
-     [ ] Request history
+     [✓] Request creation with form dialog
+     [✓] Request approval/denial with status updates
+     [✓] Request history with filtering
+     [✓] Automatic quantity updates on approval
 
 [TOLLGATE 6]
 [ ] Feature integration tests
@@ -110,7 +113,7 @@ For each tollgate:
 7. Advanced Features
    - Notifications:
      [✓] Low inventory alerts
-     [ ] Request status updates
+     [✓] Request status updates
      [ ] Real-time updates with WebSockets
    - Reporting:
      [ ] Usage trends
