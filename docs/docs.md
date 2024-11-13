@@ -28,8 +28,7 @@ The Office Supplies Tracker is a web application designed to manage and track of
   - [Neon.tech](https://neon.tech/) (PostgreSQL Database)
   - [Prisma](https://www.prisma.io/) ORM
 - **Frontend**:
-  - [Astro](https://astro.build/)
-  - [SolidJS](https://www.solidjs.com/)
+  Next Js
 - **Authentication**:
   - Local authentication using usernames and passwords
 - **Additional Tools**:
@@ -59,7 +58,7 @@ The Office Supplies Tracker is a web application designed to manage and track of
 
 The application follows a **client-server architecture**:
 
-- **Frontend**: Built with Astro and SolidJS for a reactive UI.
+- **Frontend**: Built with NextJs for a reactive UI.
 - **Backend**: Uses Prisma to interact with a PostgreSQL database hosted on Neon.tech.
 - **API Layer**: RESTful APIs for communication between frontend and backend.
   """,
@@ -140,8 +139,7 @@ The Office Supplies Tracker is a web application designed to manage and track of
   - [Neon.tech](https://neon.tech/) (PostgreSQL Database)
   - [Prisma](https://www.prisma.io/) ORM
 - **Frontend**:
-  - [Astro](https://astro.build/)
-  - [SolidJS](https://www.solidjs.com/)
+  NextJs
 - **Authentication**:
   - Local authentication using usernames and passwords
 - **Additional Tools**:
@@ -179,7 +177,7 @@ The Office Supplies Tracker is a web application designed to manage and track of
 
 The application follows a **client-server architecture**:
 
-- **Frontend**: Built with Astro and SolidJS for a reactive UI.
+- **Frontend**: Built with NextJs for a reactive UI.
 - **Backend**: Uses Prisma to interact with a PostgreSQL database hosted on Neon.tech.
 - **API Layer**: RESTful APIs for communication between frontend and backend.
 ```
@@ -289,28 +287,7 @@ npm install express
 ```markdown
 ## Frontend Setup
 
-### 1. Initialize Astro Project
-
-```bash
-npm create astro@latest
-````
-
-### 2. Install SolidJS Integration
-
-```bash
-npm install @astrojs/solid-js
-```
-
-### 3. Configure `astro.config.mjs`
-
-```javascript
-import { defineConfig } from "astro/config";
-import solidJs from "@astrojs/solid-js";
-
-export default defineConfig({
-  integrations: [solidJs()],
-});
-```
+  something here
 
 ### 4. Build UI Components
 
@@ -322,7 +299,7 @@ export default defineConfig({
 
 ### 5. State Management
 
-Use SolidJS's built-in reactive primitives for state management.
+
 
 ### 6. API Integration
 
@@ -346,7 +323,7 @@ Use `fetch` or `axios` to communicate with the backend APIs.
 
 - Middleware to check user roles before allowing access to certain endpoints.
 - Frontend route guards to prevent unauthorized access to pages.
-````
+```
 
 ---
 

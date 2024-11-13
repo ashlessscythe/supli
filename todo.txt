@@ -3,38 +3,38 @@ OFFICE SUPPLIES TRACKER - Development Plan
 TOLLGATE CHECKLIST:
 For each tollgate:
 [ ] Run all tests (unit, integration, E2E)
-[x] Code review
-[x] Documentation updates
+[ ] Code review
+[ ] Documentation updates
 [ ] Deploy to staging
 [ ] User acceptance testing
 [ ] Production deployment
 
 1. Project Setup
-   [x] Initialize Git repository
-   [x] Create .gitignore file
-   [x] Set up project structure for Astro + SolidJS frontend
-   [x] Set up backend structure with Prisma
-   [x] Configure ESLint and Prettier
-   [x] Set up environment variables
+   [ ] Initialize Git repository
+   [ ] Create .gitignore file
+   [ ] Set up project structure for Astro + SolidJS frontend
+   [ ] Set up backend structure with Prisma
+   [ ] Configure ESLint and Prettier
+   [ ] Set up environment variables
 
 [TOLLGATE 1]
-[x] Basic project structure test (Development server running)
+[ ] Basic project structure test (Development server running)
 [ ] Initial deployment verification
-[x] Development environment documentation
+[ ] Development environment documentation
 
 2. Database & Backend Setup
-   [x] Set up Neon.tech PostgreSQL database
-   [x] Initialize Prisma
-   [x] Create database schema:
+   [ ] Set up Neon.tech PostgreSQL database
+   [ ] Initialize Prisma
+   [ ] Create database schema:
      * User table
      * Supply table
      * Request table
      * AuditLog table
-   [x] Generate Prisma client
-   [x] Create initial database migration
-   [x] Implement backend server with Express.js
-   [x] Set up authentication middleware
-   [x] Create API endpoints:
+   [ ] Generate Prisma client
+   [ ] Create initial database migration
+   [ ] Implement backend server with Express.js
+   [ ] Set up authentication middleware
+   [ ] Create API endpoints:
      * Auth routes (login/logout)
      [ ] Supply routes (CRUD operations)
      [ ] Request routes
@@ -53,11 +53,11 @@ Next Steps:
 [ ] API documentation
 
 3. Authentication System
-   [x] Implement password hashing with bcrypt
-   [x] Set up session management with JWT
-   [x] Create login/logout functionality
-   [x] Implement RBAC middleware
-   [x] Set up route protection
+   [ ] Implement password hashing with bcrypt
+   [ ] Set up session management with JWT
+   [ ] Create login/logout functionality
+   [ ] Implement RBAC middleware
+   [ ] Set up route protection
 
 [TOLLGATE 3]
 [ ] Authentication flow tests
@@ -66,7 +66,7 @@ Next Steps:
 [ ] Deploy auth system
 
 4. Frontend Development (Phase 1)
-   [x] Set up Astro project with SolidJS integration
+   [ ] Set up Astro project with SolidJS integration
    [ ] Create base layout and styling
    [ ] Implement core components:
      * Login form
