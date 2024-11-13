@@ -32,18 +32,19 @@ For each tollgate:
      * AuditLog table
    [x] Generate Prisma client
    [x] Create initial database migration
-   - Implement backend server with Express.js
-   - Set up authentication middleware
-   - Create API endpoints:
+   [x] Implement backend server with Express.js
+   [x] Set up authentication middleware
+   [x] Create API endpoints:
      * Auth routes (login/logout)
-     * Supply routes (CRUD operations)
-     * Request routes
-     * Audit log routes
+     [ ] Supply routes (CRUD operations)
+     [ ] Request routes
+     [ ] Audit log routes
 
 Next Steps:
-- Install Express.js and required dependencies
-- Set up API routes structure
-- Implement basic CRUD operations
+- Implement Supply routes (CRUD operations)
+- Implement Request routes
+- Implement Audit logging
+- Add API tests
 
 [TOLLGATE 2]
 [ ] Database schema tests
@@ -52,11 +53,11 @@ Next Steps:
 [ ] API documentation
 
 3. Authentication System
-   - Implement password hashing with bcrypt
-   - Set up session management
-   - Create login/logout functionality
-   - Implement RBAC middleware
-   - Set up route protection
+   [x] Implement password hashing with bcrypt
+   [x] Set up session management with JWT
+   [x] Create login/logout functionality
+   [x] Implement RBAC middleware
+   [x] Set up route protection
 
 [TOLLGATE 3]
 [ ] Authentication flow tests
@@ -65,9 +66,9 @@ Next Steps:
 [ ] Deploy auth system
 
 4. Frontend Development (Phase 1)
-   - Set up Astro project with SolidJS integration
-   - Create base layout and styling
-   - Implement core components:
+   [x] Set up Astro project with SolidJS integration
+   [ ] Create base layout and styling
+   [ ] Implement core components:
      * Login form
      * Navigation bar
      * Dashboard
