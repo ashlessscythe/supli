@@ -1,0 +1,63 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(uuid())
+  username  String     @unique
+  password  String
+  role      Role       @default(STAFF)
+  requests  Request[]
+  auditLogs AuditLog[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Supply {
+  id               String    @id @default(uuid())
+  name             String    @unique
+  description      String
+  quantity         Int
+  minimumThreshold Int
+  requests         Request[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model Request {
+  id        String        @id @default(uuid())
+  user      User         @relation(fields: [userId], references: [id])
+  userId    String
+  supply    Supply       @relation(fields: [supplyId], references: [id])
+  supplyId  String
+  quantity  Int
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  timestamp DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
