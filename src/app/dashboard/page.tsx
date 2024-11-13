@@ -1,79 +1,71 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Package, AlertTriangle, ClipboardList } from "lucide-react";
 
 export default async function DashboardPage() {
-  const supplies = await prisma.supply.findMany({
-    orderBy: {
-      quantity: "asc",
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  // Get dashboard stats
+  const totalSupplies = await prisma.supply.count();
+  const lowStockSupplies = await prisma.supply.count({
+    where: {
+      quantity: {
+        lte: prisma.supply.fields.minimumThreshold,
+      },
+    },
+  });
+  const pendingRequests = await prisma.request.count({
+    where: {
+      status: "PENDING",
     },
   });
 
-  const lowStockSupplies = supplies.filter(
-    (supply) => supply.quantity <= supply.minimumThreshold
-  );
-
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-500">Total Supplies</p>
-            <p className="text-2xl font-bold">{supplies.length}</p>
-          </div>
-        </div>
-        <div className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm">
-          <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-500">Low Stock Items</p>
-            <p className="text-2xl font-bold">{lowStockSupplies.length}</p>
-          </div>
-        </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
       </div>
-
-      <div className="rounded-lg border shadow-sm">
-        <div className="p-4">
-          <h2 className="text-lg font-semibold">Supply Inventory</h2>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">
-                  Name
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">
-                  Description
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">
-                  Quantity
-                </th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {supplies.map((supply) => (
-                <tr key={supply.id} className="border-b">
-                  <td className="px-4 py-2">{supply.name}</td>
-                  <td className="px-4 py-2">{supply.description}</td>
-                  <td className="px-4 py-2">{supply.quantity}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        supply.quantity <= supply.minimumThreshold
-                          ? "bg-red-100 text-red-700"
-                          : "bg-green-100 text-green-700"
-                      }`}
-                    >
-                      {supply.quantity <= supply.minimumThreshold
-                        ? "Low Stock"
-                        : "In Stock"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Supplies
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{totalSupplies}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Low Stock Items
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{lowStockSupplies}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pending Requests
+            </CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{pendingRequests}</div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
