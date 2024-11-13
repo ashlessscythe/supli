@@ -1,6 +1,7 @@
 import "./globals.css";
 import { Inter } from "next/font/google";
 import { NextAuthProvider } from "@/components/providers/next-auth-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ToasterProvider } from "@/components/providers/toaster-provider";
 import { cn } from "@/lib/utils";
 
@@ -24,10 +25,17 @@ export default function RootLayout({
           inter.className
         )}
       >
-        <NextAuthProvider>
-          <ToasterProvider />
-          {children}
-        </NextAuthProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <NextAuthProvider>
+            <ToasterProvider />
+            {children}
+          </NextAuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
