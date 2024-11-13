@@ -22,21 +22,16 @@ For each tollgate:
 [ ] Initial deployment verification
 [x] Development environment documentation
 
-Next Steps:
-- Set up Neon.tech PostgreSQL database
-- Configure database connection
-- Create initial database migrations
-
 2. Database & Backend Setup
-   - Set up Neon.tech PostgreSQL database
-   - Initialize Prisma
-   - Create database schema:
+   [x] Set up Neon.tech PostgreSQL database
+   [x] Initialize Prisma
+   [x] Create database schema:
      * User table
      * Supply table
      * Request table
      * AuditLog table
-   - Generate Prisma client
-   - Create initial database migration
+   [x] Generate Prisma client
+   [x] Create initial database migration
    - Implement backend server with Express.js
    - Set up authentication middleware
    - Create API endpoints:
@@ -44,6 +39,11 @@ Next Steps:
      * Supply routes (CRUD operations)
      * Request routes
      * Audit log routes
+
+Next Steps:
+- Install Express.js and required dependencies
+- Set up API routes structure
+- Implement basic CRUD operations
 
 [TOLLGATE 2]
 [ ] Database schema tests
