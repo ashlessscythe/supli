@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { RequestStatus } from "@prisma/client";
+import { shouldShowAllRequests } from "@/lib/actions/settings";
 
 // Schema for request validation
 const requestSchema = z.object({
@@ -23,10 +24,14 @@ export async function GET(request: Request) {
     const status = searchParams.get("status") as RequestStatus | null;
     const userId = searchParams.get("userId");
 
-    // Build query based on role and filters
+    // Check if all requests should be visible
+    const allRequestsVisible = await shouldShowAllRequests();
+
+    // Build query based on role, settings, and filters
     const where = {
       ...(status && { status: status as RequestStatus }),
-      ...(session.user.role !== "ADMIN" && { userId: session.user.id }),
+      ...(!allRequestsVisible &&
+        session.user.role !== "ADMIN" && { userId: session.user.id }),
       ...(userId && session.user.role === "ADMIN" && { userId }),
     };
 
