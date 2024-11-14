@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { NextAuthProvider } from "@/components/providers/next-auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ToasterProvider } from "@/components/providers/toaster-provider";
+import { SocketProvider } from "@/components/providers/socket-provider";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -32,8 +33,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <NextAuthProvider>
-            <ToasterProvider />
-            {children}
+            <SocketProvider>
+              <ToasterProvider />
+              {children}
+            </SocketProvider>
           </NextAuthProvider>
         </ThemeProvider>
       </body>

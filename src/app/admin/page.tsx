@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Overview } from "@/components/admin/overview";
 import { RequestsChart } from "@/components/admin/requests-chart";
 import { SupplyChart } from "@/components/admin/supply-chart";
-import { Users, Package, ClipboardList, AlertTriangle } from "lucide-react";
+import { Users, Package, ClipboardList, AlertCircle } from "lucide-react";
 import {
   getOverviewData,
   getRequestsChartData,
@@ -103,7 +103,7 @@ export default async function AdminPage() {
             <CardTitle className="text-sm font-medium">
               Low Stock Items
             </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+            <AlertCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.lowStockItems}</div>
