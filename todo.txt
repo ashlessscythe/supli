@@ -86,7 +86,7 @@ For each tollgate:
      [✓] Admin dashboard with charts
      [✓] Dark mode support
      [✓] System settings management
-     * Notifications component
+     [✓] Notifications component
    - Set up dynamic routing
    - Implement state management with React Context/Zustand
    - Create API integration with React Query/SWR
@@ -125,7 +125,7 @@ For each tollgate:
    - Notifications:
      [✓] Low inventory alerts
      [✓] Request status updates
-     [ ] Real-time updates with WebSockets
+     [✓] Real-time updates with WebSockets
    - Reporting:
      [✓] Usage trends
      [✓] Supply status reports

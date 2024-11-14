@@ -7,6 +7,7 @@ import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { RequestStatus } from "@prisma/client";
 import { shouldShowAllRequests } from "@/lib/actions/settings";
+import { getIO } from "@/lib/socket";
 
 const requestSchema = z.object({
   supplyId: z.string().min(1, "Supply ID is required"),
@@ -14,6 +15,18 @@ const requestSchema = z.object({
 });
 
 type RequestFormData = z.infer<typeof requestSchema>;
+
+async function notifyRequestUpdate(userId: string, message: string) {
+  try {
+    const io = getIO();
+    io.to(`user-${userId}`).emit("notification", {
+      type: "request-status",
+      message,
+    });
+  } catch (error) {
+    console.error("Error sending request notification:", error);
+  }
+}
 
 export async function createRequest(formData: RequestFormData) {
   try {
@@ -86,6 +99,7 @@ export async function updateRequestStatus(id: string, status: RequestStatus) {
       where: { id },
       include: {
         supply: true,
+        user: true,
       },
     });
 
@@ -144,6 +158,14 @@ export async function updateRequestStatus(id: string, status: RequestStatus) {
         action: `${status} request for ${existingRequest.quantity} ${existingRequest.supply.name}`,
       },
     });
+
+    // Send notification to the requesting user
+    await notifyRequestUpdate(
+      existingRequest.userId,
+      `Your request for ${existingRequest.quantity} ${
+        existingRequest.supply.name
+      } has been ${status.toLowerCase()}`
+    );
 
     revalidatePath("/dashboard/requests");
     return { success: true, data: request };

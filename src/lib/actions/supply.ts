@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { z } from "zod";
+import { getIO } from "@/lib/socket";
 
 const supplySchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -14,6 +15,18 @@ const supplySchema = z.object({
 });
 
 type SupplyFormData = z.infer<typeof supplySchema>;
+
+async function notifyLowInventory(supply: { name: string; quantity: number }) {
+  try {
+    const io = getIO();
+    io.emit("notification", {
+      type: "low-inventory",
+      message: `Low stock alert: ${supply.name} has only ${supply.quantity} units remaining`,
+    });
+  } catch (error) {
+    console.error("Error sending low inventory notification:", error);
+  }
+}
 
 export async function createSupply(formData: SupplyFormData) {
   try {
@@ -34,6 +47,10 @@ export async function createSupply(formData: SupplyFormData) {
         action: `Created supply: ${supply.name}`,
       },
     });
+
+    if (supply.quantity <= supply.minimumThreshold) {
+      await notifyLowInventory(supply);
+    }
 
     revalidatePath("/dashboard/supplies");
     return { success: true, data: supply };
@@ -66,6 +83,10 @@ export async function updateSupply(id: string, formData: SupplyFormData) {
         action: `Updated supply: ${supply.name}`,
       },
     });
+
+    if (supply.quantity <= supply.minimumThreshold) {
+      await notifyLowInventory(supply);
+    }
 
     revalidatePath("/dashboard/supplies");
     return { success: true, data: supply };
@@ -152,6 +173,7 @@ export async function updateQuantity(id: string, quantity: number) {
           action: `Low stock alert for ${supply.name} (${supply.quantity} remaining)`,
         },
       });
+      await notifyLowInventory(supply);
     }
 
     revalidatePath("/dashboard/supplies");

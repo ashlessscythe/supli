@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "../notifications/notification-bell";
 
 const navigation = [
   {
@@ -89,6 +90,7 @@ export function Header() {
             <ThemeToggle />
             {session?.user && (
               <>
+                <NotificationBell />
                 <span className="text-sm text-foreground/60">
                   {session.user.username} ({session.user.role})
                 </span>
