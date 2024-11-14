@@ -8,7 +8,7 @@ export function ThemeProvider({
   ...props
 }: {
   children: React.ReactNode;
-  attribute?: string;
+  attribute: "class" | "data-theme";
   defaultTheme?: string;
   enableSystem?: boolean;
   disableTransitionOnChange?: boolean;
