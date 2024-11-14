@@ -12,5 +12,6 @@ export function formatDate(date: Date | string) {
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
+    timeZone: "UTC",
   }).format(new Date(date));
 }

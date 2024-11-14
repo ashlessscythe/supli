@@ -125,7 +125,6 @@ For each tollgate:
    - Notifications:
      [✓] Low inventory alerts
      [✓] Request status updates
-     [ ] Real-time updates with WebSockets
    - Reporting:
      [✓] Usage trends
      [✓] Supply status reports
