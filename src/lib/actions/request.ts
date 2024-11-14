@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { z } from "zod";
 import { RequestStatus } from "@prisma/client";
+import { shouldShowAllRequests } from "@/lib/actions/settings";
 
 const requestSchema = z.object({
   supplyId: z.string().min(1, "Supply ID is required"),
@@ -159,8 +160,12 @@ export async function getRequests() {
       throw new Error("Unauthorized");
     }
 
+    const showAllRequests = await shouldShowAllRequests();
+
     const where =
-      session.user.role !== "ADMIN" ? { userId: session.user.id } : {};
+      session.user.role !== "ADMIN" && !showAllRequests
+        ? { userId: session.user.id }
+        : {};
 
     const requests = await prisma.request.findMany({
       where,
@@ -196,9 +201,14 @@ export async function getRequest(id: string) {
       throw new Error("Unauthorized");
     }
 
+    const showAllRequests = await shouldShowAllRequests();
+
     const where = {
       id,
-      ...(session.user.role !== "ADMIN" && { userId: session.user.id }),
+      ...(session.user.role !== "ADMIN" &&
+        !showAllRequests && {
+          userId: session.user.id,
+        }),
     };
 
     const request = await prisma.request.findFirst({
