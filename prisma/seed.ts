@@ -25,6 +25,11 @@ const argv = yargs(hideBin(process.argv))
     description: "Clear all data before seeding",
     default: false,
   })
+  .option("settings-only", {
+    type: "boolean",
+    description: "Only update system settings",
+    default: false,
+  })
   .option("count", {
     type: "number",
     description: "Number of users to create",
@@ -49,6 +54,7 @@ async function clearDatabase() {
     await prisma.auditLog.deleteMany();
     await prisma.request.deleteMany();
     await prisma.supply.deleteMany();
+    await prisma.systemSetting.deleteMany();
     await prisma.user.deleteMany();
     console.log("✓ Database cleared");
   }
@@ -82,6 +88,36 @@ async function createDefaultUsers() {
   }
 
   console.log("✓ Default users created");
+}
+
+async function createDefaultSettings() {
+  const defaultSettings = [
+    {
+      key: "ALLOW_ALL_REQUESTS_VISIBLE",
+      value: "false",
+      description: "Allow all users to see all requests (not just their own)",
+    },
+    {
+      key: "LOW_STOCK_THRESHOLD_WARNING",
+      value: "5",
+      description: "Global minimum threshold for low stock warnings",
+    },
+    {
+      key: "MAX_REQUEST_QUANTITY",
+      value: "100",
+      description: "Maximum quantity allowed per request",
+    },
+  ];
+
+  for (const setting of defaultSettings) {
+    await prisma.systemSetting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    });
+  }
+
+  console.log("✓ Default system settings created");
 }
 
 async function createFakeUsers(count: number) {
@@ -262,28 +298,15 @@ async function createAuditLogs() {
     "Modified supply details",
   ];
 
-  // Generate unique combinations of user and timestamp
-  const now = new Date();
-  const logs = Array.from({ length: 50 }, () => ({
-    userId: faker.helpers.arrayElement(users).id,
-    action: faker.helpers.arrayElement(auditActions),
-    timestamp: faker.date.between({
-      from: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-      to: now,
-    }),
-  }));
-
-  // Sort by timestamp to ensure consistent order
-  logs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
-  // Use transaction for atomicity
-  await prisma.$transaction(
-    logs.map((log) =>
-      prisma.auditLog.create({
-        data: log,
-      })
-    )
-  );
+  // Create audit logs one by one to maintain chronological order
+  for (let i = 0; i < 50; i++) {
+    await prisma.auditLog.create({
+      data: {
+        userId: faker.helpers.arrayElement(users).id,
+        action: faker.helpers.arrayElement(auditActions),
+      },
+    });
+  }
 
   console.log("✓ Created audit logs");
 }
@@ -291,21 +314,26 @@ async function createAuditLogs() {
 async function main() {
   console.log("🌱 Starting seed...");
 
-  // Clear database if --clear flag is provided
-  await clearDatabase();
+  // Create default system settings regardless of flags
+  await createDefaultSettings();
 
-  // Always create default users
-  await createDefaultUsers();
+  if (!argv["settings-only"]) {
+    // Clear database if --clear flag is provided
+    await clearDatabase();
 
-  // Create default supplies
-  await createDefaultSupplies();
+    // Create default users
+    await createDefaultUsers();
 
-  if (argv["use-faker"]) {
-    // Create additional fake data if --use-faker is true
-    await createFakeUsers(argv.count);
-    await createFakeSupplies(argv.products);
-    await createFakeRequests(argv.requests);
-    await createAuditLogs();
+    // Create default supplies
+    await createDefaultSupplies();
+
+    if (argv["use-faker"]) {
+      // Create additional fake data if --use-faker is true
+      await createFakeUsers(argv.count);
+      await createFakeSupplies(argv.products);
+      await createFakeRequests(argv.requests);
+      await createAuditLogs();
+    }
   }
 
   console.log("✅ Seed completed");

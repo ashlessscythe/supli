@@ -30,6 +30,7 @@ For each tollgate:
      * Supply table
      * Request table
      * AuditLog table
+     * SystemSetting table
    [✓] Generate Prisma client
    [✓] Create initial database migration
    [✓] Implement API routes in Next.js
@@ -39,6 +40,7 @@ For each tollgate:
      [✓] Supply routes (CRUD operations)
      [✓] Request routes
      [✓] Audit log routes
+     [✓] System settings routes
 
 [TOLLGATE 2]
 [ ] Database schema tests
@@ -83,6 +85,7 @@ For each tollgate:
      [✓] Supply request form with dialog
      [✓] Admin dashboard with charts
      [✓] Dark mode support
+     [✓] System settings management
      * Notifications component
    - Set up dynamic routing
    - Implement state management with React Context/Zustand
@@ -109,6 +112,8 @@ For each tollgate:
      [✓] Supply trends visualization
      [✓] Request distribution charts
      [✓] Navigation between admin/regular views
+     [✓] System settings configuration
+     [✓] Request visibility control
 
 [TOLLGATE 6]
 [ ] Feature integration tests
@@ -125,6 +130,10 @@ For each tollgate:
      [✓] Usage trends
      [✓] Supply status reports
      [✓] Audit logs
+   - System Configuration:
+     [✓] Global settings management
+     [✓] Request visibility toggle
+     [✓] Stock threshold configuration
 
 [TOLLGATE 7]
 [ ] Notification system tests
