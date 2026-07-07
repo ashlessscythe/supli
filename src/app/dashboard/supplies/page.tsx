@@ -15,7 +15,8 @@ export default async function SuppliesPage() {
     redirect("/login");
   }
 
-  const { data: supplies, error } = await getSupplies();
+  const result = await getSupplies();
+  const supplies = result.success ? result.data : [];
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

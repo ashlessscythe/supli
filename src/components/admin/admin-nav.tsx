@@ -10,6 +10,8 @@ import {
   Package,
   Settings,
   History,
+  MapPin,
+  Truck,
 } from "lucide-react";
 
 const adminRoutes = [
@@ -27,6 +29,16 @@ const adminRoutes = [
     title: "Supplies",
     href: "/admin/supplies",
     icon: Package,
+  },
+  {
+    title: "Locations",
+    href: "/admin/locations",
+    icon: MapPin,
+  },
+  {
+    title: "Vendors",
+    href: "/admin/vendors",
+    icon: Truck,
   },
   {
     title: "Requests",

@@ -1,55 +1,22 @@
 import { Suspense } from "react";
-import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Overview } from "@/components/admin/overview";
 import { RequestsChart } from "@/components/admin/requests-chart";
 import { SupplyChart } from "@/components/admin/supply-chart";
 import { Users, Package, ClipboardList, AlertTriangle } from "lucide-react";
-import {
-  getOverviewData,
-  getRequestsChartData,
-  getSupplyChartData,
-} from "@/lib/actions/admin";
-
-async function getStats() {
-  const [
-    totalUsers,
-    totalSupplies,
-    totalRequests,
-    pendingRequests,
-    lowStockItems,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.supply.count(),
-    prisma.request.count(),
-    prisma.request.count({
-      where: { status: "PENDING" },
-    }),
-    prisma.supply.count({
-      where: {
-        quantity: {
-          lte: prisma.supply.fields.minimumThreshold,
-        },
-      },
-    }),
-  ]);
-
-  return {
-    totalUsers,
-    totalSupplies,
-    totalRequests,
-    pendingRequests,
-    lowStockItems,
-  };
-}
+import { forecastService } from "@/server/services/forecast.service";
+import { getOverviewData, getRequestsChartData, getSupplyChartData, getStats } from "@/lib/actions/admin";
 
 export default async function AdminPage() {
-  const [stats, overviewData, requestsData, supplyData] = await Promise.all([
-    getStats(),
-    getOverviewData(),
-    getRequestsChartData(),
-    getSupplyChartData(),
-  ]);
+  const [stats, overviewData, requestsData, supplyData, metrics, depletion] =
+    await Promise.all([
+      getStats(),
+      getOverviewData(),
+      getRequestsChartData(),
+      getSupplyChartData(),
+      forecastService.getDashboardMetrics(),
+      forecastService.getDepletionEstimates(),
+    ]);
 
   return (
     <div className="space-y-6">
@@ -134,6 +101,55 @@ export default async function AdminPage() {
             <Suspense fallback={<div>Loading...</div>}>
               <RequestsChart data={requestsData} />
             </Suspense>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Recent Movements (7d)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{metrics.recentMovements}</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Fast Moving</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="text-sm space-y-1">
+              {metrics.fastMoving.map((item) => (
+                <li key={item.name}>
+                  {item.name}: {item.consumed}
+                </li>
+              ))}
+              {metrics.fastMoving.length === 0 && (
+                <li className="text-muted-foreground">No data yet</li>
+              )}
+            </ul>
+          </CardContent>
+        </Card>
+        <Card className="col-span-2">
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">
+              Reorder Forecast
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="text-sm space-y-1">
+              {depletion.slice(0, 5).map((item) => (
+                <li key={item.supplyId}>
+                  {item.name}:{" "}
+                  {item.daysUntilDepletion !== null
+                    ? `~${item.daysUntilDepletion}d remaining`
+                    : "No consumption data"}
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       </div>

@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   return (
     <div className="relative min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1">
         <div className="container">{children}</div>
       </main>
     </div>

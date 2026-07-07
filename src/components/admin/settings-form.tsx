@@ -61,7 +61,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       const result = await updateSettings(data.settings);
 
       if (!result.success) {
-        throw new Error(result.error);
+        const message = Array.isArray(result.error)
+          ? result.error.map((e) => e.message).join(", ")
+          : result.error;
+        throw new Error(message);
       }
 
       toast.success("Settings updated successfully");

@@ -17,11 +17,13 @@ export default async function EditSupplyPage({ params }: EditSupplyPageProps) {
     redirect("/dashboard/supplies");
   }
 
-  const { data: supply, error } = await getSupply(params.id);
+  const result = await getSupply(params.id);
 
-  if (error || !supply) {
+  if (!result.success || !result.data) {
     redirect("/dashboard/supplies");
   }
+
+  const supply = result.data;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

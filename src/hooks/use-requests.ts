@@ -4,21 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createRequest, updateRequestStatus } from "@/lib/actions/request";
-import { z } from "zod";
+import { type RequestInput } from "@/lib/validation/request";
 import { RequestStatus } from "@prisma/client";
-
-const requestSchema = z.object({
-  supplyId: z.string().min(1, "Supply ID is required"),
-  quantity: z.number().min(1, "Quantity must be at least 1"),
-});
-
-type RequestFormData = z.infer<typeof requestSchema>;
 
 export function useRequests() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleCreateRequest = async (data: RequestFormData) => {
+  const handleCreateRequest = async (data: RequestInput) => {
     try {
       setIsLoading(true);
       const result = await createRequest(data);

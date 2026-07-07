@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
-import { User } from "@prisma/client";
+import { rateLimitService } from "@/server/services/auth.service";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -23,13 +23,18 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        const identifier = credentials.username.toLowerCase();
+
+        if (await rateLimitService.isLocked(identifier)) {
+          return null;
+        }
+
         const user = await prisma.user.findUnique({
-          where: {
-            username: credentials.username,
-          },
+          where: { username: credentials.username },
         });
 
         if (!user) {
+          await rateLimitService.recordFailure(identifier);
           return null;
         }
 
@@ -39,8 +44,11 @@ export const authOptions: NextAuthOptions = {
         );
 
         if (!isPasswordValid) {
+          await rateLimitService.recordFailure(identifier);
           return null;
         }
+
+        await rateLimitService.reset(identifier);
 
         return {
           id: user.id,
@@ -53,12 +61,21 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        return {
-          ...token,
-          username: (user as User).username,
-          role: (user as User).role,
-        };
+        token.username = user.username;
+        token.role = user.role;
       }
+
+      if (token.sub) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: { username: true, role: true },
+        });
+        if (dbUser) {
+          token.username = dbUser.username;
+          token.role = dbUser.role;
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {

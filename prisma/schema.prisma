@@ -38,27 +38,40 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  username      String    @unique
+  id            String      @id @default(cuid())
+  username      String      @unique
+  email         String?     @unique
+  emailVerified DateTime?
+  themePreference String?   @default("system")
   password      String
-  role          Role      @default(STAFF)
+  role          Role        @default(STAFF)
   accounts      Account[]
   sessions      Session[]
   requests      Request[]
   auditLogs     AuditLog[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  authTokens    AuthToken[]
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }
 
 model Supply {
-  id               String    @id @default(cuid())
-  name             String    @unique
+  id               String       @id @default(cuid())
+  name             String
   description      String
-  quantity         Int       @default(0)
-  minimumThreshold Int       @default(0)
+  quantity         Int          @default(0)
+  minimumThreshold Int          @default(0)
+  barcode          String?      @unique
+  internalSku      String?      @unique
+  itemTypeId       String?
+  itemType         ItemType?    @relation(fields: [itemTypeId], references: [id])
   requests         Request[]
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  stockLevels      StockLevel[]
+  itemVendors      ItemVendor[]
+  stockMovements   StockMovement[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@index([name])
 }
 
 model Request {
@@ -88,6 +101,159 @@ model SystemSetting {
   description String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model AuthToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  type      TokenType
+  userId    String?
+  email     String
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+}
+
+model AuthAttempt {
+  id          String    @id @default(cuid())
+  identifier  String    @unique
+  attempts    Int       @default(0)
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  INVITATION
+}
+
+model Location {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  type           String
+  description    String?
+  isActive       Boolean         @default(true)
+  stockLevels    StockLevel[]
+  stockMovements StockMovement[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model ItemType {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  attributes  Json     @default("{}")
+  supplies    Supply[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model StockLevel {
+  id               String   @id @default(cuid())
+  supplyId         String
+  locationId       String
+  quantity         Int      @default(0)
+  minimumThreshold Int      @default(0)
+  supply           Supply   @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  location         Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([supplyId, locationId])
+  @@index([locationId])
+}
+
+model Vendor {
+  id          String       @id @default(cuid())
+  name        String
+  contact     String?
+  website     String?
+  notes       String?
+  isActive    Boolean      @default(true)
+  itemVendors ItemVendor[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model ItemVendor {
+  id            String   @id @default(cuid())
+  supplyId      String
+  vendorId      String
+  vendorSku     String?
+  internalSku   String?
+  isPreferred   Boolean  @default(false)
+  leadTimeDays  Int?
+  moq           Int?
+  cost          Decimal? @db.Decimal(10, 2)
+  supply        Supply   @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  vendor        Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([supplyId, vendorId])
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  supplyId       String
+  locationId     String
+  quantity       Int
+  type           StockMovementType
+  badgeId        String?
+  userId         String?
+  notes          String?
+  supply         Supply            @relation(fields: [supplyId], references: [id])
+  location       Location          @relation(fields: [locationId], references: [id])
+  createdAt      DateTime          @default(now())
+
+  @@index([supplyId, createdAt])
+  @@index([locationId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read])
+}
+
+model FileAttachment {
+  id           String   @id @default(cuid())
+  supplyId     String?
+  filename     String
+  mimeType     String
+  size         Int
+  storageKey   String
+  category     String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  @@index([supplyId])
+}
+
+enum StockMovementType {
+  CONSUME
+  RECEIVE
+  ADJUST
+  TRANSFER
+}
+
+enum NotificationType {
+  LOW_STOCK
+  REORDER
+  REQUEST_STATUS
+  SYSTEM
 }
 
 enum Role {

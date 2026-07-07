@@ -172,11 +172,25 @@ async function createDefaultSupplies() {
   ];
 
   for (const supply of defaultSupplies) {
-    await prisma.supply.upsert({
+    const existing = await prisma.supply.findFirst({
       where: { name: supply.name },
-      update: {},
-      create: supply,
     });
+    if (!existing) {
+      const created = await prisma.supply.create({ data: supply });
+      const defaultLocation = await prisma.location.findFirst({
+        where: { name: "Main Office" },
+      });
+      if (defaultLocation) {
+        await prisma.stockLevel.create({
+          data: {
+            supplyId: created.id,
+            locationId: defaultLocation.id,
+            quantity: created.quantity,
+            minimumThreshold: created.minimumThreshold,
+          },
+        });
+      }
+    }
   }
 
   console.log("✓ Default supplies created");
@@ -219,11 +233,12 @@ async function createFakeSupplies(count: number) {
   );
 
   for (const supply of uniqueSupplies) {
-    await prisma.supply.upsert({
+    const existing = await prisma.supply.findFirst({
       where: { name: supply.name },
-      update: {},
-      create: supply,
     });
+    if (!existing) {
+      await prisma.supply.create({ data: supply });
+    }
   }
 
   console.log(`✓ Created ${uniqueSupplies.length} fake supplies`);

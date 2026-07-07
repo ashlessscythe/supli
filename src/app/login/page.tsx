@@ -66,6 +66,12 @@ export default function LoginPage() {
           </p>
         </div>
 
+        <p className="text-center text-sm">
+          <a href="/forgot-password" className="text-primary hover:underline">
+            Forgot password?
+          </a>
+        </p>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField

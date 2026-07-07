@@ -1,0 +1,4 @@
+# Koyeb deployment — set env vars in Koyeb dashboard
+# Build: npm install && npx prisma generate && npm run build
+# Run: npm start
+# Port: 3000

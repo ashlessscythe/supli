@@ -13,7 +13,7 @@ import {
   Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeSelector } from "@/components/theme-selector";
 
 const navigation = [
   {
@@ -70,6 +70,14 @@ export function Header() {
             ))}
             {isAdmin && (
               <Link
+                href="/kiosk"
+                className="flex items-center space-x-2 text-sm font-medium text-foreground/60 hover:text-primary"
+              >
+                <span>Kiosk</span>
+              </Link>
+            )}
+            {isAdmin && (
+              <Link
                 href={isInAdminSection ? "/dashboard" : "/admin"}
                 className={cn(
                   "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
@@ -86,7 +94,7 @@ export function Header() {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <div className="flex items-center space-x-4">
-            <ThemeToggle />
+            <ThemeSelector />
             {session?.user && (
               <>
                 <span className="text-sm text-foreground/60">

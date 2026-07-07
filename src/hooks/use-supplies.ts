@@ -9,22 +9,13 @@ import {
   deleteSupply,
   updateQuantity,
 } from "@/lib/actions/supply";
-import { z } from "zod";
-
-const supplySchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().min(1, "Description is required"),
-  quantity: z.number().min(0, "Quantity must be 0 or greater"),
-  minimumThreshold: z.number().min(0, "Minimum threshold must be 0 or greater"),
-});
-
-type SupplyFormData = z.infer<typeof supplySchema>;
+import { supplySchema, type SupplyInput } from "@/lib/validation/supply";
 
 export function useSupplies() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleCreateSupply = async (data: SupplyFormData) => {
+  const handleCreateSupply = async (data: SupplyInput) => {
     try {
       setIsLoading(true);
       const result = await createSupply(data);
@@ -49,7 +40,7 @@ export function useSupplies() {
     }
   };
 
-  const handleUpdateSupply = async (id: string, data: SupplyFormData) => {
+  const handleUpdateSupply = async (id: string, data: SupplyInput) => {
     try {
       setIsLoading(true);
       const result = await updateSupply(id, data);
