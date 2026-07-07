@@ -79,7 +79,9 @@ export function ThemeSelector() {
           <DropdownMenuItem
             key={theme}
             onClick={() => selectTheme(theme)}
-            className={current === theme ? "bg-accent" : ""}
+            className={
+              current === theme ? "bg-accent text-accent-foreground" : ""
+            }
           >
             {THEME_LABELS[theme]}
             {theme === "system" && resolvedTheme

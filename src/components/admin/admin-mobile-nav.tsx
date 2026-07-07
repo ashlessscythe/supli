@@ -40,7 +40,8 @@ export function AdminMobileNav() {
                 href={route.href}
                 className={cn(
                   "flex items-center",
-                  pathname === route.href && "bg-accent"
+                  pathname === route.href &&
+                    "bg-accent text-accent-foreground"
                 )}
               >
                 <route.icon className="mr-2 h-4 w-4" />

@@ -12,6 +12,10 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  if (session.user.role === "ADMIN") {
+    redirect("/admin");
+  }
+
   // Get dashboard stats
   const totalSupplies = await prisma.supply.count();
   const lowStockSupplies = await prisma.supply.count({

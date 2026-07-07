@@ -69,7 +69,9 @@ export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           className={cn(
             "group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
-            pathname === route.href ? "bg-accent" : "transparent"
+            pathname === route.href
+              ? "bg-accent text-accent-foreground"
+              : "transparent"
           )}
         >
           <route.icon className="mr-2 h-4 w-4" />

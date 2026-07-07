@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Table,
   TableBody,
@@ -17,12 +17,28 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { useSupplies } from "@/hooks/use-supplies";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
 import { formatBarcode } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
-import { MoreHorizontal, Edit, Trash } from "lucide-react";
+import {
+  MoreHorizontal,
+  Edit,
+  Trash,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface Supply {
   id: string;
@@ -39,12 +55,29 @@ interface SuppliesTableProps {
   isAdmin: boolean;
 }
 
+type SortKey = "name" | "quantity" | "minimumThreshold";
+type SortDirection = "asc" | "desc";
+type StockFilter = "all" | "low" | "ok";
+
+const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+const ALL_PAGE_SIZE = -1;
+
 export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
   const { handleUpdateQuantity, handleDeleteSupply, isLoading } = useSupplies();
   const [quantities, setQuantities] = useState<Record<string, number | null>>(
     {}
   );
   const [editingSupply, setEditingSupply] = useState<Supply | null>(null);
+
+  const [search, setSearch] = useState("");
+  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+  const [pageSize, setPageSize] = useState<number>(25);
+  const [page, setPage] = useState(0);
+
+  const isLowStock = (supply: Supply) =>
+    supply.quantity <= supply.minimumThreshold;
 
   const handleQuantityChange = (id: string, value: string) => {
     const numValue = value === "" ? null : parseInt(value);
@@ -62,8 +95,95 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
   const isUpdateDisabled = (id: string) =>
     isLoading || quantities[id] === null || quantities[id] === undefined;
 
-  const isLowStock = (supply: Supply) =>
-    supply.quantity <= supply.minimumThreshold;
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDirection("asc");
+    }
+    setPage(0);
+  };
+
+  const filteredSorted = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    const filtered = data.filter((supply) => {
+      if (stockFilter === "low" && !isLowStock(supply)) return false;
+      if (stockFilter === "ok" && isLowStock(supply)) return false;
+
+      if (!term) return true;
+      return (
+        supply.name.toLowerCase().includes(term) ||
+        supply.description?.toLowerCase().includes(term) ||
+        supply.barcode?.toLowerCase().includes(term) ||
+        supply.internalSku?.toLowerCase().includes(term)
+      );
+    });
+
+    const sorted = [...filtered].sort((a, b) => {
+      let comparison = 0;
+      if (sortKey === "name") {
+        comparison = a.name.localeCompare(b.name);
+      } else {
+        comparison = a[sortKey] - b[sortKey];
+      }
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+    return sorted;
+  }, [data, search, stockFilter, sortKey, sortDirection]);
+
+  const total = filteredSorted.length;
+  const showAll = pageSize === ALL_PAGE_SIZE;
+  const pageCount = showAll ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const paginated = showAll
+    ? filteredSorted
+    : filteredSorted.slice(
+        currentPage * pageSize,
+        currentPage * pageSize + pageSize
+      );
+
+  const rangeStart = total === 0 ? 0 : showAll ? 1 : currentPage * pageSize + 1;
+  const rangeEnd = showAll
+    ? total
+    : Math.min(currentPage * pageSize + pageSize, total);
+
+  const SortableHead = ({
+    label,
+    sortField,
+    className,
+  }: {
+    label: string;
+    sortField: SortKey;
+    className?: string;
+  }) => {
+    const active = sortKey === sortField;
+    return (
+      <TableHead className={className}>
+        <button
+          type="button"
+          onClick={() => toggleSort(sortField)}
+          className={cn(
+            "-ml-1 inline-flex items-center gap-1 rounded px-1 py-0.5 hover:text-foreground",
+            active ? "text-foreground" : "text-muted-foreground"
+          )}
+        >
+          {label}
+          {active ? (
+            sortDirection === "asc" ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )
+          ) : (
+            <ChevronsUpDown className="h-3.5 w-3.5 opacity-50" />
+          )}
+        </button>
+      </TableHead>
+    );
+  };
 
   const ActionsMenu = ({ supply }: { supply: Supply }) => (
     <DropdownMenu>
@@ -99,133 +219,241 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
   );
 
   return (
-    <>
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          placeholder="Search by name, description, barcode, or SKU"
+          value={search}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(0);
+          }}
+          className="sm:max-w-xs"
+        />
+        <Select
+          value={stockFilter}
+          onValueChange={(value) => {
+            setStockFilter(value as StockFilter);
+            setPage(0);
+          }}
+        >
+          <SelectTrigger className="sm:w-[180px]">
+            <SelectValue placeholder="Filter stock" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All items</SelectItem>
+            <SelectItem value="low">Low stock</SelectItem>
+            <SelectItem value="ok">In stock</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Desktop / tablet: table */}
       <div className="hidden rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
+              <SortableHead label="Name" sortField="name" />
               <TableHead>Description</TableHead>
               <TableHead>Barcode</TableHead>
-              <TableHead className="w-[100px] text-right">Quantity</TableHead>
-              <TableHead className="w-[100px] text-right">
-                Min. Threshold
-              </TableHead>
+              <SortableHead
+                label="Quantity"
+                sortField="quantity"
+                className="w-[100px] text-right"
+              />
+              <SortableHead
+                label="Min. Threshold"
+                sortField="minimumThreshold"
+                className="w-[100px] text-right"
+              />
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {data.map((supply) => (
-              <TableRow key={supply.id}>
-                <TableCell className="font-medium">{supply.name}</TableCell>
-                <TableCell>{supply.description}</TableCell>
-                <TableCell className="font-mono text-sm text-muted-foreground">
-                  {supply.barcode ? formatBarcode(supply.barcode) : "—"}
-                </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <span className={cn(isLowStock(supply) && "text-red-500")}>
-                      {supply.quantity}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        value={quantities[supply.id] ?? ""}
-                        onChange={(e) =>
-                          handleQuantityChange(supply.id, e.target.value)
-                        }
-                        className="w-20"
-                        min={0}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => updateQuantity(supply.id)}
-                        disabled={isUpdateDisabled(supply.id)}
-                      >
-                        Update
-                      </Button>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  {supply.minimumThreshold}
-                </TableCell>
-                <TableCell>
-                  <ActionsMenu supply={supply} />
+            {paginated.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={6}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No supplies found.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              paginated.map((supply) => (
+                <TableRow key={supply.id}>
+                  <TableCell className="font-medium">{supply.name}</TableCell>
+                  <TableCell>{supply.description}</TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">
+                    {supply.barcode ? formatBarcode(supply.barcode) : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <span
+                        className={cn(isLowStock(supply) && "text-red-500")}
+                      >
+                        {supply.quantity}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          type="number"
+                          value={quantities[supply.id] ?? ""}
+                          onChange={(e) =>
+                            handleQuantityChange(supply.id, e.target.value)
+                          }
+                          className="w-20"
+                          min={0}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => updateQuantity(supply.id)}
+                          disabled={isUpdateDisabled(supply.id)}
+                        >
+                          Update
+                        </Button>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {supply.minimumThreshold}
+                  </TableCell>
+                  <TableCell>
+                    <ActionsMenu supply={supply} />
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </div>
 
       {/* Mobile: cards */}
       <div className="space-y-3 md:hidden">
-        {data.map((supply) => (
-          <div
-            key={supply.id}
-            className="rounded-md border p-4 space-y-3"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="font-medium break-words">{supply.name}</p>
-                {supply.description && (
-                  <p className="text-sm text-muted-foreground break-words">
-                    {supply.description}
-                  </p>
-                )}
-              </div>
-              <ActionsMenu supply={supply} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div>
-                <p className="text-muted-foreground">Quantity</p>
-                <p
-                  className={cn(
-                    "font-medium",
-                    isLowStock(supply) && "text-red-500"
+        {paginated.length === 0 ? (
+          <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+            No supplies found.
+          </div>
+        ) : (
+          paginated.map((supply) => (
+            <div key={supply.id} className="rounded-md border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">{supply.name}</p>
+                  {supply.description && (
+                    <p className="text-sm text-muted-foreground break-words">
+                      {supply.description}
+                    </p>
                   )}
+                </div>
+                <ActionsMenu supply={supply} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Quantity</p>
+                  <p
+                    className={cn(
+                      "font-medium",
+                      isLowStock(supply) && "text-red-500"
+                    )}
+                  >
+                    {supply.quantity}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Min. Threshold</p>
+                  <p className="font-medium">{supply.minimumThreshold}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Barcode</p>
+                  <p className="font-mono text-sm break-all">
+                    {supply.barcode ? formatBarcode(supply.barcode) : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  placeholder="New qty"
+                  value={quantities[supply.id] ?? ""}
+                  onChange={(e) =>
+                    handleQuantityChange(supply.id, e.target.value)
+                  }
+                  className="flex-1"
+                  min={0}
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => updateQuantity(supply.id)}
+                  disabled={isUpdateDisabled(supply.id)}
                 >
-                  {supply.quantity}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Min. Threshold</p>
-                <p className="font-medium">{supply.minimumThreshold}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-muted-foreground">Barcode</p>
-                <p className="font-mono text-sm break-all">
-                  {supply.barcode ? formatBarcode(supply.barcode) : "—"}
-                </p>
+                  Update
+                </Button>
               </div>
             </div>
+          ))
+        )}
+      </div>
 
+      {/* Pagination */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>Rows per page</span>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => {
+              setPageSize(Number(value));
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[80px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+              <SelectItem value={String(ALL_PAGE_SIZE)}>All</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">
+            {rangeStart}–{rangeEnd} of {total}
+          </span>
+          {!showAll && (
             <div className="flex items-center gap-2">
-              <Input
-                type="number"
-                placeholder="New qty"
-                value={quantities[supply.id] ?? ""}
-                onChange={(e) =>
-                  handleQuantityChange(supply.id, e.target.value)
-                }
-                className="flex-1"
-                min={0}
-              />
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => updateQuantity(supply.id)}
-                disabled={isUpdateDisabled(supply.id)}
+                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={currentPage === 0}
               >
-                Update
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only">Previous</span>
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage + 1} of {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={currentPage >= pageCount - 1}
+              >
+                <span className="sr-only sm:not-sr-only">Next</span>
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-        ))}
+          )}
+        </div>
       </div>
 
       {editingSupply && (
@@ -240,6 +468,6 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
           }}
         />
       )}
-    </>
+    </div>
   );
 }
