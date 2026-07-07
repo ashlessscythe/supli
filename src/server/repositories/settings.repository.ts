@@ -10,6 +10,20 @@ export const settingsRepository = {
     return prisma.systemSetting.findUnique({ where: { key } });
   },
 
+  upsertByKey(
+    key: string,
+    value: string,
+    description: string,
+    tx?: TransactionClient
+  ) {
+    const client = tx ?? prisma;
+    return client.systemSetting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value, description },
+    });
+  },
+
   updateMany(
     settings: { id: string; value: string }[],
     tx?: TransactionClient

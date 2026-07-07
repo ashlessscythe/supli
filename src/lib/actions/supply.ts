@@ -1,9 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth/session";
+import { Role } from "@prisma/client";
+import { requireAdmin, requireSession } from "@/lib/auth/session";
 import { supplyService } from "@/server/services/supply.service";
-import type { SupplyInput } from "@/lib/validation/supply";
+import type {
+  SupplyInput,
+  SupplyStaffUpdateInput,
+} from "@/lib/validation/supply";
 
 export async function createSupply(formData: SupplyInput) {
   try {
@@ -16,10 +20,26 @@ export async function createSupply(formData: SupplyInput) {
   }
 }
 
-export async function updateSupply(id: string, formData: SupplyInput) {
+export async function updateSupply(
+  id: string,
+  formData: SupplyInput | SupplyStaffUpdateInput
+) {
   try {
-    const session = await requireAdmin();
-    const result = await supplyService.update(session.user.id, id, formData);
+    const session = await requireSession();
+
+    const result =
+      session.user.role === Role.ADMIN
+        ? await supplyService.update(
+            session.user.id,
+            id,
+            formData as SupplyInput
+          )
+        : await supplyService.updateByStaff(
+            session.user.id,
+            id,
+            formData as SupplyStaffUpdateInput
+          );
+
     if (result.success) revalidatePath("/dashboard/supplies");
     return result;
   } catch {
@@ -40,7 +60,7 @@ export async function deleteSupply(id: string) {
 
 export async function updateQuantity(id: string, quantity: number) {
   try {
-    const session = await requireAdmin();
+    const session = await requireSession();
     const result = await supplyService.updateQuantity(
       session.user.id,
       id,

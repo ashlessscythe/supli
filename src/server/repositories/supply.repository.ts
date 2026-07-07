@@ -38,7 +38,17 @@ export const supplyRepository = {
 
   update(
     id: string,
-    data: Partial<Pick<Supply, "name" | "description" | "quantity" | "minimumThreshold">>,
+    data: Partial<
+      Pick<
+        Supply,
+        | "name"
+        | "description"
+        | "quantity"
+        | "minimumThreshold"
+        | "barcode"
+        | "internalSku"
+      >
+    >,
     tx?: TransactionClient
   ) {
     const client = tx ?? prisma;

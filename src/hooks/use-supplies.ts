@@ -9,7 +9,10 @@ import {
   deleteSupply,
   updateQuantity,
 } from "@/lib/actions/supply";
-import { supplySchema, type SupplyInput } from "@/lib/validation/supply";
+import type {
+  SupplyInput,
+  SupplyStaffUpdateInput,
+} from "@/lib/validation/supply";
 
 export function useSupplies() {
   const router = useRouter();
@@ -29,7 +32,6 @@ export function useSupplies() {
       }
 
       toast.success("Supply created successfully");
-      router.push("/dashboard/supplies");
       router.refresh();
       return true;
     } catch (error) {
@@ -40,7 +42,10 @@ export function useSupplies() {
     }
   };
 
-  const handleUpdateSupply = async (id: string, data: SupplyInput) => {
+  const handleUpdateSupply = async (
+    id: string,
+    data: SupplyInput | SupplyStaffUpdateInput
+  ) => {
     try {
       setIsLoading(true);
       const result = await updateSupply(id, data);
@@ -54,7 +59,6 @@ export function useSupplies() {
       }
 
       toast.success("Supply updated successfully");
-      router.push("/dashboard/supplies");
       router.refresh();
       return true;
     } catch (error) {

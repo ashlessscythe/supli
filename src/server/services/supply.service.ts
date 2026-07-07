@@ -1,8 +1,23 @@
 import { z } from "zod";
-import { supplySchema, type SupplyInput } from "@/lib/validation/supply";
+import {
+  supplyAdminSchema,
+  supplyStaffUpdateSchema,
+  type SupplyInput,
+  type SupplyStaffUpdateInput,
+} from "@/lib/validation/supply";
 import { failure, success, type ActionResult } from "@/lib/result";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { executeWithAudit, executeWithAudits } from "@/server/audit";
+
+// Prisma unique-constraint violation
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
 
 export const supplyService = {
   async list(): Promise<ActionResult<Awaited<ReturnType<typeof supplyRepository.findAll>>>> {
@@ -26,7 +41,7 @@ export const supplyService = {
 
   async create(userId: string, input: SupplyInput) {
     try {
-      const data = supplySchema.parse(input);
+      const data = supplyAdminSchema.parse(input);
       const supply = await executeWithAudit(
         userId,
         `Created supply: ${data.name}`,
@@ -35,16 +50,40 @@ export const supplyService = {
       return success(supply);
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
+      if (isUniqueViolation(error)) {
+        return failure("A supply with that barcode or SKU already exists");
+      }
       return failure("Failed to create supply");
     }
   },
 
   async update(userId: string, id: string, input: SupplyInput) {
     try {
-      const data = supplySchema.parse(input);
+      const data = supplyAdminSchema.parse(input);
       const supply = await executeWithAudit(
         userId,
         `Updated supply: ${data.name}`,
+        (tx) => supplyRepository.update(id, data, tx)
+      );
+      return success(supply);
+    } catch (error) {
+      if (error instanceof z.ZodError) return failure(error.errors);
+      if (isUniqueViolation(error)) {
+        return failure("A supply with that barcode or SKU already exists");
+      }
+      return failure("Failed to update supply");
+    }
+  },
+
+  async updateByStaff(userId: string, id: string, input: SupplyStaffUpdateInput) {
+    try {
+      const data = supplyStaffUpdateSchema.parse(input);
+      const existing = await supplyRepository.findById(id);
+      if (!existing) return failure("Supply not found");
+
+      const supply = await executeWithAudit(
+        userId,
+        `Updated supply: ${existing.name}`,
         (tx) => supplyRepository.update(id, data, tx)
       );
       return success(supply);

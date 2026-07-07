@@ -16,6 +16,8 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { kioskLogin } from "@/lib/actions/kiosk";
+import { KIOSK_USERNAME } from "@/lib/kiosk-constants";
 
 const formSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -36,6 +38,17 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
+      if (values.username.trim().toLowerCase() === KIOSK_USERNAME) {
+        const kioskResult = await kioskLogin(values.password);
+        if (!kioskResult.success) {
+          setError(kioskResult.error ?? "Invalid username or password");
+          return;
+        }
+        router.push("/kiosk");
+        router.refresh();
+        return;
+      }
+
       const result = await signIn("credentials", {
         username: values.username,
         password: values.password,
@@ -59,7 +72,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 p-6 bg-card rounded-lg shadow-lg border">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground">
-            Office Supplies Traco
+            Supli Mart
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Sign in to your account

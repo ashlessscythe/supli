@@ -29,6 +29,20 @@ export async function updateSettings(settings: SettingInput[]) {
   }
 }
 
+export async function updateKioskPassword(password: string) {
+  try {
+    const session = await requireAdmin();
+    const result = await settingsService.setKioskPassword(
+      session.user.id,
+      password
+    );
+    if (result.success) revalidatePath("/admin/settings");
+    return result;
+  } catch {
+    return { success: false as const, error: "Unauthorized" };
+  }
+}
+
 export async function shouldShowAllRequests() {
   return settingsService.shouldShowAllRequests();
 }

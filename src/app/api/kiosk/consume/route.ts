@@ -1,17 +1,17 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { stockMovementService } from "@/server/services/stock-movement.service";
 import { prisma } from "@/lib/prisma";
+import { isKioskAuthenticated, getKioskUserId } from "@/lib/kiosk";
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
+  if (!(await isKioskAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const kioskUserId = await getKioskUserId();
+
   const json = await request.json();
-  const result = await stockMovementService.consume(session.user.id, json);
+  const result = await stockMovementService.consume(kioskUserId, json);
 
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 400 });

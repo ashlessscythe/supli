@@ -19,8 +19,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useSupplies } from "@/hooks/use-supplies";
+import { SupplyDialog } from "@/components/supplies/supply-dialog";
 import { MoreHorizontal, Edit, Trash } from "lucide-react";
-import Link from "next/link";
 
 interface Supply {
   id: string;
@@ -28,6 +28,8 @@ interface Supply {
   description: string;
   quantity: number;
   minimumThreshold: number;
+  barcode?: string | null;
+  internalSku?: string | null;
 }
 
 interface SuppliesTableProps {
@@ -40,6 +42,7 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
   const [quantities, setQuantities] = useState<Record<string, number | null>>(
     {}
   );
+  const [editingSupply, setEditingSupply] = useState<Supply | null>(null);
 
   const handleQuantityChange = (id: string, value: string) => {
     const numValue = value === "" ? null : parseInt(value);
@@ -62,11 +65,12 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Description</TableHead>
+            <TableHead>Barcode</TableHead>
             <TableHead className="w-[100px] text-right">Quantity</TableHead>
             <TableHead className="w-[100px] text-right">
               Min. Threshold
             </TableHead>
-            {isAdmin && <TableHead className="w-[100px]">Actions</TableHead>}
+            <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -74,6 +78,9 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
             <TableRow key={supply.id}>
               <TableCell className="font-medium">{supply.name}</TableCell>
               <TableCell>{supply.description}</TableCell>
+              <TableCell className="font-mono text-sm text-muted-foreground">
+                {supply.barcode ?? "—"}
+              </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-2">
                   <span
@@ -85,8 +92,7 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
                   >
                     {supply.quantity}
                   </span>
-                  {isAdmin && (
-                    <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                       <Input
                         type="number"
                         value={quantities[supply.id] ?? ""}
@@ -109,29 +115,31 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
                         Update
                       </Button>
                     </div>
-                  )}
                 </div>
               </TableCell>
               <TableCell className="text-right">
                 {supply.minimumThreshold}
               </TableCell>
-              {isAdmin && (
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <span className="sr-only">Open menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                      <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/supplies/${supply.id}/edit`}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </DropdownMenuItem>
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <span className="sr-only">Open menu</span>
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setEditingSupply(supply);
+                      }}
+                    >
+                      <Edit className="mr-2 h-4 w-4" />
+                      Edit
+                    </DropdownMenuItem>
+                    {isAdmin && (
                       <DropdownMenuItem
                         onClick={() => handleDeleteSupply(supply.id)}
                         className="text-red-600"
@@ -140,14 +148,27 @@ export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
                         <Trash className="mr-2 h-4 w-4" />
                         Delete
                       </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              )}
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      {editingSupply && (
+        <SupplyDialog
+          key={editingSupply.id}
+          initialData={editingSupply}
+          isAdmin={isAdmin}
+          trigger={null}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingSupply(null);
+          }}
+        />
+      )}
     </div>
   );
 }

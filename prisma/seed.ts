@@ -1,6 +1,7 @@
 const { PrismaClient, Role, RequestStatus } = require("@prisma/client");
 const { faker } = require("@faker-js/faker");
 const bcrypt = require("bcrypt");
+const nodeCrypto = require("crypto");
 const yargs = require("yargs/yargs");
 const { hideBin } = require("yargs/helpers");
 
@@ -87,6 +88,19 @@ async function createDefaultUsers() {
     });
   }
 
+  // Dedicated kiosk system user. Kiosk consumption is attributed to this user
+  // for the audit trail. It is not meant to be logged into directly, so it gets
+  // a random, unknown password.
+  await prisma.user.upsert({
+    where: { username: "kiosk" },
+    update: {},
+    create: {
+      username: "kiosk",
+      password: await bcrypt.hash(nodeCrypto.randomBytes(24).toString("hex"), 10),
+      role: Role.STAFF,
+    },
+  });
+
   console.log("✓ Default users created");
 }
 
@@ -106,6 +120,12 @@ async function createDefaultSettings() {
       key: "MAX_REQUEST_QUANTITY",
       value: "100",
       description: "Maximum quantity allowed per request",
+    },
+    {
+      key: "KIOSK_PASSWORD_HASH",
+      // Default kiosk password: "kiosk1234" (change it in Admin → Settings)
+      value: await bcrypt.hash("kiosk1234", 10),
+      description: "Password required to access the kiosk terminal",
     },
   ];
 

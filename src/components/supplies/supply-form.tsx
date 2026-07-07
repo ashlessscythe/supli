@@ -16,58 +16,112 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSupplies } from "@/hooks/use-supplies";
 
-const supplySchema = z.object({
+const supplyFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().min(1, "Description is required"),
   quantity: z.coerce.number().min(0, "Quantity must be 0 or greater"),
   minimumThreshold: z.coerce
     .number()
     .min(0, "Minimum threshold must be 0 or greater"),
+  barcode: z.string().optional(),
+  internalSku: z.string().optional(),
 });
 
-type SupplyFormData = z.infer<typeof supplySchema>;
+type SupplyFormData = z.infer<typeof supplyFormSchema>;
 
-interface SupplyFormProps {
-  initialData?: SupplyFormData & { id: string };
+interface SupplyInitialData {
+  id: string;
+  name: string;
+  description: string;
+  quantity: number;
+  minimumThreshold: number;
+  barcode?: string | null;
+  internalSku?: string | null;
 }
 
-export function SupplyForm({ initialData }: SupplyFormProps) {
+interface SupplyFormProps {
+  initialData?: SupplyInitialData;
+  isAdmin?: boolean;
+  onSuccess?: () => void;
+  onCancel?: () => void;
+}
+
+export function SupplyForm({
+  initialData,
+  isAdmin = false,
+  onSuccess,
+  onCancel,
+}: SupplyFormProps) {
   const { handleCreateSupply, handleUpdateSupply, isLoading } = useSupplies();
 
   const form = useForm<SupplyFormData>({
-    resolver: zodResolver(supplySchema),
-    defaultValues: initialData || {
-      name: "",
-      description: "",
-      quantity: 0,
-      minimumThreshold: 0,
+    resolver: zodResolver(supplyFormSchema),
+    defaultValues: {
+      name: initialData?.name ?? "",
+      description: initialData?.description ?? "",
+      quantity: initialData?.quantity ?? 0,
+      minimumThreshold: initialData?.minimumThreshold ?? 0,
+      barcode: initialData?.barcode ?? "",
+      internalSku: initialData?.internalSku ?? "",
     },
   });
 
   const onSubmit = async (data: SupplyFormData) => {
-    if (initialData) {
-      await handleUpdateSupply(initialData.id, data);
-    } else {
-      await handleCreateSupply(data);
+    const trimmedBarcode = data.barcode?.trim();
+    const trimmedSku = data.internalSku?.trim();
+
+    const payload = isAdmin
+      ? {
+          name: data.name,
+          description: data.description,
+          quantity: data.quantity,
+          minimumThreshold: data.minimumThreshold,
+          barcode: trimmedBarcode ? trimmedBarcode : null,
+          internalSku: trimmedSku ? trimmedSku : null,
+        }
+      : {
+          description: data.description,
+          quantity: data.quantity,
+          minimumThreshold: data.minimumThreshold,
+        };
+
+    const success = initialData
+      ? await handleUpdateSupply(initialData.id, payload)
+      : await handleCreateSupply(payload as Parameters<typeof handleCreateSupply>[0]);
+
+    if (success) {
+      form.reset();
+      onSuccess?.();
     }
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter supply name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {isAdmin ? (
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input placeholder="Enter supply name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : (
+          initialData && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium leading-none">Name</p>
+              <p className="text-sm text-muted-foreground">
+                {initialData.name}
+              </p>
+            </div>
+          )
+        )}
 
         <FormField
           control={form.control}
@@ -127,11 +181,51 @@ export function SupplyForm({ initialData }: SupplyFormProps) {
           />
         </div>
 
+        {isAdmin && (
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="barcode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Barcode</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Scan or enter barcode"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="internalSku"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Internal SKU</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Enter internal SKU"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
+
         <div className="flex justify-end gap-4">
           <Button
             type="button"
             variant="outline"
-            onClick={() => window.history.back()}
+            onClick={() => (onCancel ? onCancel() : window.history.back())}
           >
             Cancel
           </Button>

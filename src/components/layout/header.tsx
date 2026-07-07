@@ -68,7 +68,7 @@ export function Header() {
                 <span>{item.name}</span>
               </Link>
             ))}
-            {isAdmin && (
+            {session?.user && (
               <Link
                 href="/kiosk"
                 className="flex items-center space-x-2 text-sm font-medium text-foreground/60 hover:text-primary"

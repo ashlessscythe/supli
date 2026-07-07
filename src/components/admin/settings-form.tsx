@@ -18,7 +18,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { updateSettings } from "@/lib/actions/settings";
+import { updateSettings, updateKioskPassword } from "@/lib/actions/settings";
+
+const KIOSK_PASSWORD_KEY = "KIOSK_PASSWORD_HASH";
 
 interface Setting {
   id: string;
@@ -47,11 +49,19 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 export function SettingsForm({ settings }: SettingsFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const [kioskPassword, setKioskPassword] = useState("");
+  const [isSavingKiosk, setIsSavingKiosk] = useState(false);
+
+  // The kiosk password is stored as a hash and edited via a dedicated field,
+  // so it should not be shown or round-tripped through the generic settings form.
+  const visibleSettings = settings.filter(
+    (setting) => setting.key !== KIOSK_PASSWORD_KEY
+  );
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
     defaultValues: {
-      settings,
+      settings: visibleSettings,
     },
   });
 
@@ -76,6 +86,35 @@ export function SettingsForm({ settings }: SettingsFormProps) {
     }
   };
 
+  const handleKioskPasswordUpdate = async () => {
+    if (kioskPassword.trim().length < 4) {
+      toast.error("Kiosk password must be at least 4 characters");
+      return;
+    }
+
+    try {
+      setIsSavingKiosk(true);
+      const result = await updateKioskPassword(kioskPassword);
+
+      if (!result.success) {
+        const message = Array.isArray(result.error)
+          ? result.error.map((e) => e.message).join(", ")
+          : result.error;
+        throw new Error(message);
+      }
+
+      toast.success("Kiosk password updated successfully");
+      setKioskPassword("");
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update kiosk password"
+      );
+    } finally {
+      setIsSavingKiosk(false);
+    }
+  };
+
   const formatSettingName = (key: string) => {
     return key
       .split("_")
@@ -84,9 +123,10 @@ export function SettingsForm({ settings }: SettingsFormProps) {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        {settings.map((setting, index) => (
+    <div className="space-y-8">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          {visibleSettings.map((setting, index) => (
           <FormField
             key={setting.id}
             control={form.control}
@@ -115,10 +155,38 @@ export function SettingsForm({ settings }: SettingsFormProps) {
           />
         ))}
 
-        <Button type="submit" disabled={isLoading}>
-          Save changes
-        </Button>
-      </form>
-    </Form>
+          <Button type="submit" disabled={isLoading}>
+            Save changes
+          </Button>
+        </form>
+      </Form>
+
+      <div className="space-y-4 rounded-lg border p-4">
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium leading-none">Kiosk Password</p>
+          <p className="text-sm text-muted-foreground">
+            Password required to unlock the kiosk terminal. Enter a new value to
+            change it; existing kiosk sessions will be signed out.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            type="password"
+            placeholder="Enter new kiosk password"
+            value={kioskPassword}
+            onChange={(e) => setKioskPassword(e.target.value)}
+            autoComplete="new-password"
+            className="sm:w-[240px]"
+          />
+          <Button
+            type="button"
+            onClick={handleKioskPasswordUpdate}
+            disabled={isSavingKiosk || kioskPassword.trim().length === 0}
+          >
+            {isSavingKiosk ? "Updating..." : "Update password"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
