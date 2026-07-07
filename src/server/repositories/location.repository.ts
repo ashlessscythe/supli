@@ -14,7 +14,7 @@ export const locationRepository = {
   },
 
   findDefault() {
-    return prisma.location.findFirst({ where: { name: "Main Office" } });
+    return prisma.location.findFirst({ where: { name: "Watchpoint Delta" } });
   },
 
   create(data: {

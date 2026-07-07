@@ -9,19 +9,12 @@ export function normalizeBarcode(raw: string | null | undefined): string {
 }
 
 // Human-readable barcode with dashes, for display only. Never persist this.
-// Our generated codes look like "SUP" + 12 chars -> "SUP-XXXX-XXXX-XXXX".
-// Anything else is grouped into blocks of four.
+// The canonical value is grouped into blocks of four, e.g.
+// "HDML4NDR8K23" -> "HDML-4NDR-8K23".
 export function formatBarcode(value: string | null | undefined): string {
   const normalized = normalizeBarcode(value);
   if (!normalized) return "";
 
-  let prefix = "";
-  let body = normalized;
-  if (normalized.startsWith("SUP") && normalized.length > 3) {
-    prefix = "SUP-";
-    body = normalized.slice(3);
-  }
-
-  const groups = body.match(/.{1,4}/g) ?? [body];
-  return prefix + groups.join("-");
+  const groups = normalized.match(/.{1,4}/g) ?? [normalized];
+  return groups.join("-");
 }

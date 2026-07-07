@@ -29,9 +29,9 @@ function normalizeBarcode(raw: string) {
   return String(raw ?? "").replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
 }
 
-// Generates a canonical (dash-free) code, e.g. "SUP7K2QXB4M9AZ3".
+// Generates a canonical (dash-free) code, e.g. "7K2QXB4M9AZ3".
 function generateBarcode() {
-  return `SUP${randomBarcodeGroup(4)}${randomBarcodeGroup(4)}${randomBarcodeGroup(4)}`;
+  return `${randomBarcodeGroup(4)}${randomBarcodeGroup(4)}${randomBarcodeGroup(4)}`;
 }
 
 // barcode is @unique, so guard against both in-memory and DB collisions.
@@ -110,14 +110,31 @@ async function clearDatabase() {
 }
 
 async function createDefaultUsers() {
+  // Armored Core VI handlers & mercs. Admin-role users are handlers/command;
+  // staff-role users are contracted Ravens (independent mercenaries).
   const defaultUsers = [
     {
-      username: "admin",
+      username: "walter", // Handler Walter — issues contracts, oversees ops
       password: "admin123",
       role: Role.ADMIN,
     },
     {
-      username: "staff1",
+      username: "carla", // Chief Carla — RaD, keeps the shop running
+      password: "admin123",
+      role: Role.ADMIN,
+    },
+    {
+      username: "raven", // 621 — the augmented merc
+      password: "staff123",
+      role: Role.STAFF,
+    },
+    {
+      username: "rusty", // Steel Haze — Vespa/Vesper AC pilot
+      password: "staff123",
+      role: Role.STAFF,
+    },
+    {
+      username: "iguazu", // G5 Iguazu — perpetually one step behind
       password: "staff123",
       role: Role.STAFF,
     },
@@ -194,19 +211,19 @@ async function createDefaultSettings() {
 async function createDefaultItemTypes() {
   const itemTypes = [
     {
-      slug: "paper",
-      name: "Paper Products",
-      description: "Printer paper, notebooks, sticky notes and other paper goods",
+      slug: "frame",
+      name: "Frame Parts",
+      description: "AC frame units: heads, cores, arms and legs",
     },
     {
-      slug: "writing",
-      name: "Writing Instruments",
-      description: "Pens, pencils, markers and highlighters",
+      slug: "inner",
+      name: "Inner Parts",
+      description: "Boosters, FCS units and generators",
     },
     {
-      slug: "office",
-      name: "General Office",
-      description: "Miscellaneous office supplies and accessories",
+      slug: "armament",
+      name: "Armaments",
+      description: "Arm and back weapons for Armored Cores",
     },
   ];
 
@@ -225,21 +242,22 @@ async function createDefaultItemTypes() {
 }
 
 async function createDefaultLocations() {
+  // Mission destinations on Rubicon 3.
   const locations = [
     {
-      name: "Main Office",
-      type: "Office",
-      description: "Primary office supply cabinet",
+      name: "Watchpoint Delta",
+      type: "Combat Zone",
+      description: "The Wall installation guarding the contaminated zone",
     },
     {
-      name: "Central Warehouse",
-      type: "Warehouse",
-      description: "Bulk storage and receiving",
+      name: "Xylem",
+      type: "Floating City",
+      description: "Arquebus Corporation's airborne stronghold",
     },
     {
-      name: "Storage Room A",
-      type: "Storage",
-      description: "Overflow storage room on the first floor",
+      name: "Rubicon Research Institute",
+      type: "Restricted Facility",
+      description: "Deep Coral research site in the Institute City ruins",
     },
   ];
 
@@ -256,28 +274,56 @@ async function createDefaultLocations() {
     });
   }
 
+  // Retire the pre-AC default locations (incl. the migration's "Main Office")
+  // so only the three mission destinations remain active.
+  await prisma.location.updateMany({
+    where: {
+      name: { in: ["Main Office", "Central Warehouse", "Storage Room A"] },
+    },
+    data: { isActive: false },
+  });
+
   console.log("✓ Default locations created");
 }
 
 async function createDefaultVendors() {
+  // Corporations & mercenary groups operating on Rubicon 3.
   const vendors = [
     {
-      name: "Office Depot",
-      contact: "orders@officedepot.example.com",
-      website: "https://www.officedepot.com",
-      notes: "Preferred vendor for general office supplies",
+      name: "Balam Industries",
+      contact: "procurement@balam.example.com",
+      website: "https://balam.example.com",
+      notes: "Corporate mining & MT manufacturer; backs the Redguns",
     },
     {
-      name: "Staples",
-      contact: "support@staples.example.com",
-      website: "https://www.staples.com",
-      notes: "Fast shipping, good for paper products",
+      name: "Arquebus Corporation",
+      contact: "logistics@arquebus.example.com",
+      website: "https://arquebus.example.com",
+      notes: "Corporate Coral research; fields the Vespers",
     },
     {
-      name: "Uline",
-      contact: "sales@uline.example.com",
-      website: "https://www.uline.com",
-      notes: "Bulk and warehouse supplies",
+      name: "Rubicon Liberation Front",
+      contact: "quartermaster@rlf.example.com",
+      website: "https://rlf.example.com",
+      notes: "Rubiconian insurgents; salvaged and legacy gear",
+    },
+    {
+      name: "Redguns",
+      contact: "supply@redguns.example.com",
+      website: "https://redguns.example.com",
+      notes: "Balam's independent mercenary squadron",
+    },
+    {
+      name: "Vespers",
+      contact: "armory@vespers.example.com",
+      website: "https://vespers.example.com",
+      notes: "Arquebus's elite AC squadron",
+    },
+    {
+      name: "The Association",
+      contact: "contracts@association.example.com",
+      website: "https://association.example.com",
+      notes: "Independent Raven registry and open-market parts",
     },
   ];
 
@@ -316,74 +362,386 @@ async function createDefaultSupplies() {
     vendors.map((v: { name: string; id: string }) => [v.name, v.id])
   );
 
+  // 15 Armored Core VI parts. `stock` maps locationName -> qty; `vendors` maps
+  // a merc/corp group to per-supplier terms. Barcodes are readable here but are
+  // stored canonically (dashes stripped) and re-formatted for display.
   const defaultSupplies = [
     {
-      name: "Printer Paper",
-      description: "A4 white printer paper, 500 sheets per ream",
-      quantity: 50,
-      minimumThreshold: 10,
-      barcode: "SUP-PAPR-A4WH-7K21",
-      internalSku: "SKU-PAPER-A4",
-      itemTypeSlug: "paper",
-      // Where the stock physically lives (locationName -> qty)
-      stock: { "Main Office": 20, "Central Warehouse": 30 },
-      // Vendor links (vendorName -> per-vendor details)
+      name: "Balam Head Unit",
+      description:
+        "Balam standard head unit. Reliable all-rounder. (HD-011 MELANDER)",
+      quantity: 12,
+      minimumThreshold: 4,
+      barcode: "HDML-4NDR-8K23",
+      internalSku: "AC-HD011-MEL",
+      itemTypeSlug: "frame",
+      stock: { "Watchpoint Delta": 8, Xylem: 4 },
       vendors: [
         {
-          name: "Staples",
-          vendorSku: "STP-A4-500",
+          name: "Balam Industries",
+          vendorSku: "BLM-HD011",
           isPreferred: true,
           leadTimeDays: 3,
-          moq: 5,
-          cost: 4.99,
+          moq: 2,
+          cost: 72000,
         },
         {
-          name: "Office Depot",
-          vendorSku: "OD-PAPER-A4",
+          name: "Redguns",
+          vendorSku: "RG-HD011",
           isPreferred: false,
           leadTimeDays: 5,
-          moq: 10,
-          cost: 4.49,
+          moq: 1,
+          cost: 75000,
         },
       ],
     },
     {
-      name: "Ballpoint Pens",
-      description: "Blue ink ballpoint pens",
-      quantity: 100,
-      minimumThreshold: 20,
-      barcode: "SUP-PEN5-BLU9-3M8Q",
-      internalSku: "SKU-PEN-BLUE",
-      itemTypeSlug: "writing",
-      stock: { "Main Office": 60, "Storage Room A": 40 },
+      name: "Balam Core Unit",
+      description:
+        "Balam standard core. Balanced output and armor. (BD-011 MELANDER)",
+      quantity: 10,
+      minimumThreshold: 4,
+      barcode: "BDML-4NDR-6T94",
+      internalSku: "AC-BD011-MEL",
+      itemTypeSlug: "frame",
+      stock: { "Watchpoint Delta": 6, Xylem: 4 },
       vendors: [
         {
-          name: "Office Depot",
-          vendorSku: "OD-PEN-BLU",
+          name: "Balam Industries",
+          vendorSku: "BLM-BD011",
           isPreferred: true,
-          leadTimeDays: 2,
-          moq: 25,
-          cost: 0.35,
+          leadTimeDays: 3,
+          moq: 2,
+          cost: 133000,
+        },
+        {
+          name: "Redguns",
+          vendorSku: "RG-BD011",
+          isPreferred: false,
+          leadTimeDays: 5,
+          moq: 1,
+          cost: 138000,
         },
       ],
     },
     {
-      name: "Sticky Notes",
-      description: "3x3 inch yellow sticky notes, 100 sheets per pad",
-      quantity: 30,
-      minimumThreshold: 5,
-      barcode: "SUP-NOT3-3X3Y-Z6R4",
-      internalSku: "SKU-NOTE-3X3",
-      itemTypeSlug: "office",
-      stock: { "Main Office": 30 },
+      name: "Balam Arm Unit",
+      description:
+        "Balam standard arms. Steady aim, solid carry. (AR-011 MELANDER)",
+      quantity: 9,
+      minimumThreshold: 3,
+      barcode: "ARML-4NDR-3W72",
+      internalSku: "AC-AR011-MEL",
+      itemTypeSlug: "frame",
+      stock: { "Watchpoint Delta": 5, Xylem: 4 },
       vendors: [
         {
-          name: "Uline",
-          vendorSku: "UL-STICKY-3",
+          name: "Balam Industries",
+          vendorSku: "BLM-AR011",
           isPreferred: true,
+          leadTimeDays: 3,
+          moq: 2,
+          cost: 98000,
+        },
+      ],
+    },
+    {
+      name: "Balam Leg Unit",
+      description:
+        "Balam standard bipedal legs. Dependable load rating. (LG-011 MELANDER)",
+      quantity: 8,
+      minimumThreshold: 3,
+      barcode: "LGML-4NDR-9H58",
+      internalSku: "AC-LG011-MEL",
+      itemTypeSlug: "frame",
+      stock: { "Watchpoint Delta": 5, Xylem: 3 },
+      vendors: [
+        {
+          name: "Balam Industries",
+          vendorSku: "BLM-LG011",
+          isPreferred: true,
+          leadTimeDays: 3,
+          moq: 2,
+          cost: 91000,
+        },
+      ],
+    },
+    {
+      name: "Schneider Head Unit",
+      description:
+        "Schneider lightweight head. High stability, low weight. (NACHTREIHER/44E)",
+      quantity: 7,
+      minimumThreshold: 3,
+      barcode: "N4CH-TR44-EK2D",
+      internalSku: "AC-NACHT-44E-HD",
+      itemTypeSlug: "frame",
+      stock: { Xylem: 5, "Watchpoint Delta": 2 },
+      vendors: [
+        {
+          name: "Arquebus Corporation",
+          vendorSku: "ARQ-NACHT44E",
+          isPreferred: true,
+          leadTimeDays: 4,
+          moq: 1,
+          cost: 84000,
+        },
+        {
+          name: "Vespers",
+          vendorSku: "VSP-NACHT44E",
+          isPreferred: false,
+          leadTimeDays: 6,
+          moq: 1,
+          cost: 88000,
+        },
+      ],
+    },
+    {
+      name: "Arquebus Core Unit",
+      description:
+        "Arquebus Vesper core. Tuned for energy weapons. (VP-40S)",
+      quantity: 6,
+      minimumThreshold: 3,
+      barcode: "VP4S-KRWM-5T83",
+      internalSku: "AC-VP40S-CR",
+      itemTypeSlug: "frame",
+      stock: { Xylem: 6 },
+      vendors: [
+        {
+          name: "Arquebus Corporation",
+          vendorSku: "ARQ-VP40S",
+          isPreferred: true,
+          leadTimeDays: 5,
+          moq: 1,
+          cost: 174000,
+        },
+        {
+          name: "Vespers",
+          vendorSku: "VSP-VP40S",
+          isPreferred: false,
           leadTimeDays: 7,
-          moq: 12,
-          cost: 1.25,
+          moq: 1,
+          cost: 179000,
+        },
+      ],
+    },
+    {
+      name: "Arquebus Arm Unit",
+      description:
+        "Arquebus Vesper arms. Precision energy-arm platform. (VP-46S)",
+      quantity: 5,
+      minimumThreshold: 3,
+      barcode: "VP46-ARMZ-7D24",
+      internalSku: "AC-VP46S-AR",
+      itemTypeSlug: "frame",
+      stock: { Xylem: 5 },
+      vendors: [
+        {
+          name: "Vespers",
+          vendorSku: "VSP-VP46S",
+          isPreferred: true,
+          leadTimeDays: 5,
+          moq: 1,
+          cost: 121000,
+        },
+        {
+          name: "Arquebus Corporation",
+          vendorSku: "ARQ-VP46S",
+          isPreferred: false,
+          leadTimeDays: 6,
+          moq: 1,
+          cost: 118000,
+        },
+      ],
+    },
+    {
+      name: "Schneider Reverse-Joint Legs",
+      description:
+        "Schneider reverse-joint legs. Excellent jump kinematics. (KASUAR/42Z)",
+      quantity: 4,
+      minimumThreshold: 5,
+      barcode: "K4SU-4R42-ZN63",
+      internalSku: "AC-KASUAR-42Z",
+      itemTypeSlug: "frame",
+      stock: { Xylem: 4 },
+      vendors: [
+        {
+          name: "Arquebus Corporation",
+          vendorSku: "ARQ-KASUAR42Z",
+          isPreferred: true,
+          leadTimeDays: 6,
+          moq: 1,
+          cost: 126000,
+        },
+      ],
+    },
+    {
+      name: "Schneider Booster",
+      description:
+        "Schneider booster. Strong quick-boost thrust. (ALULA/21E)",
+      quantity: 14,
+      minimumThreshold: 5,
+      barcode: "4LUL-4B22-EK95",
+      internalSku: "AC-ALULA-21E",
+      itemTypeSlug: "inner",
+      stock: { "Watchpoint Delta": 8, Xylem: 6 },
+      vendors: [
+        {
+          name: "Arquebus Corporation",
+          vendorSku: "ARQ-ALULA21E",
+          isPreferred: true,
+          leadTimeDays: 4,
+          moq: 2,
+          cost: 61000,
+        },
+        {
+          name: "Vespers",
+          vendorSku: "VSP-ALULA21E",
+          isPreferred: false,
+          leadTimeDays: 6,
+          moq: 1,
+          cost: 64000,
+        },
+      ],
+    },
+    {
+      name: "RaD Fire-Control System",
+      description:
+        "RaD fire-control system. Great mid-range assist. (FCS-G2/P05)",
+      quantity: 11,
+      minimumThreshold: 4,
+      barcode: "FCSG-2P25-W7H4",
+      internalSku: "AC-FCS-G2P05",
+      itemTypeSlug: "inner",
+      stock: { "Watchpoint Delta": 7, "Rubicon Research Institute": 4 },
+      vendors: [
+        {
+          name: "The Association",
+          vendorSku: "ASC-FCSG2P05",
+          isPreferred: true,
+          leadTimeDays: 4,
+          moq: 2,
+          cost: 51000,
+        },
+      ],
+    },
+    {
+      name: "Takigawa Generator",
+      description:
+        "Takigawa generator. High capacity, steady supply. (AG-J-098 JOSO)",
+      quantity: 9,
+      minimumThreshold: 4,
+      barcode: "AGJ9-8GEN-5T2W",
+      internalSku: "AC-AGJ098-JOSO",
+      itemTypeSlug: "inner",
+      stock: { "Watchpoint Delta": 5, "Rubicon Research Institute": 4 },
+      vendors: [
+        {
+          name: "The Association",
+          vendorSku: "ASC-JOSO098",
+          isPreferred: true,
+          leadTimeDays: 5,
+          moq: 1,
+          cost: 143000,
+        },
+      ],
+    },
+    {
+      name: "Dafeng Generator",
+      description:
+        "Dafeng generator. Fast EN recovery for aggressive builds. (DF-GN-06 MING-TANG)",
+      quantity: 6,
+      minimumThreshold: 3,
+      barcode: "DFGN-M2NG-T4K8",
+      internalSku: "AC-DFGN06-MING",
+      itemTypeSlug: "inner",
+      stock: { "Rubicon Research Institute": 6 },
+      vendors: [
+        {
+          name: "Rubicon Liberation Front",
+          vendorSku: "RLF-MINGTANG",
+          isPreferred: true,
+          leadTimeDays: 8,
+          moq: 1,
+          cost: 156000,
+        },
+      ],
+    },
+    {
+      name: "RaD Assault Rifle",
+      description:
+        "RaD assault rifle. Workhorse kinetic sidearm. (RF-024 TURNER)",
+      quantity: 20,
+      minimumThreshold: 6,
+      barcode: "RF24-TRNR-9W53",
+      internalSku: "AC-RF024-TURN",
+      itemTypeSlug: "armament",
+      stock: { "Watchpoint Delta": 12, Xylem: 8 },
+      vendors: [
+        {
+          name: "The Association",
+          vendorSku: "ASC-RF024",
+          isPreferred: true,
+          leadTimeDays: 3,
+          moq: 4,
+          cost: 39000,
+        },
+        {
+          name: "Redguns",
+          vendorSku: "RG-RF024",
+          isPreferred: false,
+          leadTimeDays: 4,
+          moq: 2,
+          cost: 41000,
+        },
+      ],
+    },
+    {
+      name: "RaD Shotgun",
+      description:
+        "RaD shotgun. Devastating stagger damage up close. (SG-027 ZIMMERMAN)",
+      quantity: 15,
+      minimumThreshold: 5,
+      barcode: "SG27-Z2MM-RN84",
+      internalSku: "AC-SG027-ZIMM",
+      itemTypeSlug: "armament",
+      stock: { "Watchpoint Delta": 9, Xylem: 6 },
+      vendors: [
+        {
+          name: "The Association",
+          vendorSku: "ASC-SG027",
+          isPreferred: true,
+          leadTimeDays: 4,
+          moq: 2,
+          cost: 92000,
+        },
+      ],
+    },
+    {
+      name: "Coral Laser Blade",
+      description:
+        "Coral laser blade (legacy). Rare — issue with caution. (IA-C01W2: MOONLIGHT)",
+      quantity: 2,
+      minimumThreshold: 3,
+      barcode: "M2NL-GHT4-K7D3",
+      internalSku: "AC-IAC01W2-MOON",
+      itemTypeSlug: "armament",
+      stock: { "Rubicon Research Institute": 2 },
+      vendors: [
+        {
+          name: "Rubicon Liberation Front",
+          vendorSku: "RLF-MOONLIGHT",
+          isPreferred: true,
+          leadTimeDays: 14,
+          moq: 1,
+          cost: 320000,
+        },
+        {
+          name: "Arquebus Corporation",
+          vendorSku: "ARQ-MOONLIGHT",
+          isPreferred: false,
+          leadTimeDays: 20,
+          moq: 1,
+          cost: 340000,
         },
       ],
     },
@@ -468,13 +826,17 @@ async function createDefaultSupplies() {
       where: { supplyId: record.id },
     });
     if (movementCount === 0) {
-      const mainOfficeId = locationByName["Main Office"];
-      if (mainOfficeId) {
+      // Log the receipt at the supply's primary (first) stock location.
+      const [primaryLocationName, primaryQty] = Object.entries(stock)[0] ?? [];
+      const primaryLocationId = primaryLocationName
+        ? locationByName[primaryLocationName]
+        : undefined;
+      if (primaryLocationId) {
         await prisma.stockMovement.create({
           data: {
             supplyId: record.id,
-            locationId: mainOfficeId,
-            quantity: stock["Main Office"] ?? supply.quantity,
+            locationId: primaryLocationId,
+            quantity: primaryQty ?? supply.quantity,
             type: StockMovementType.RECEIVE,
             userId: kioskUser?.id ?? null,
             notes: "Initial seed stock",
@@ -768,11 +1130,11 @@ async function createUsageHistory({ force = false } = {}) {
       if (alreadyConsumed > 0) continue;
     }
 
-    // Consume from a location that actually has stock (prefer Main Office).
+    // Consume from a location that actually has stock (prefer the frontline).
     const stockLevel =
       supply.stockLevels.find(
         (s: { location: { name: string } }) =>
-          s.location.name === "Main Office"
+          s.location.name === "Watchpoint Delta"
       ) ?? supply.stockLevels[0];
     if (!stockLevel) continue;
 
@@ -815,8 +1177,10 @@ async function createUsageHistory({ force = false } = {}) {
 }
 
 async function createDefaultNotifications() {
-  const admin = await prisma.user.findUnique({
-    where: { username: "admin" },
+  // Notify the first admin (handler) about low stock.
+  const admin = await prisma.user.findFirst({
+    where: { role: Role.ADMIN },
+    orderBy: { username: "asc" },
   });
   if (!admin) return;
 
@@ -856,6 +1220,52 @@ async function createDefaultNotifications() {
   console.log(`✓ Created ${created} low-stock notifications`);
 }
 
+async function createDefaultRequests() {
+  const [users, supplies] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, username: true } }),
+    prisma.supply.findMany({ select: { id: true, name: true } }),
+  ]);
+
+  const userByName = Object.fromEntries(
+    users.map((u: { username: string; id: string }) => [u.username, u.id])
+  );
+  const supplyByName = Object.fromEntries(
+    supplies.map((s: { name: string; id: string }) => [s.name, s.id])
+  );
+
+  // Ravens requisitioning parts from the shop, across statuses.
+  const wanted = [
+    { user: "raven", supply: "RaD Shotgun", quantity: 2, status: RequestStatus.APPROVED },
+    { user: "raven", supply: "Coral Laser Blade", quantity: 1, status: RequestStatus.PENDING },
+    { user: "raven", supply: "Schneider Booster", quantity: 2, status: RequestStatus.APPROVED },
+    { user: "rusty", supply: "Schneider Head Unit", quantity: 1, status: RequestStatus.APPROVED },
+    { user: "rusty", supply: "Arquebus Core Unit", quantity: 1, status: RequestStatus.PENDING },
+    { user: "rusty", supply: "Schneider Reverse-Joint Legs", quantity: 1, status: RequestStatus.PENDING },
+    { user: "iguazu", supply: "RaD Assault Rifle", quantity: 3, status: RequestStatus.DENIED },
+    { user: "iguazu", supply: "Balam Head Unit", quantity: 1, status: RequestStatus.PENDING },
+  ];
+
+  let created = 0;
+  for (const r of wanted) {
+    const userId = userByName[r.user];
+    const supplyId = supplyByName[r.supply];
+    if (!userId || !supplyId) continue;
+
+    // Idempotency guard: one seeded request per user+supply pair.
+    const existing = await prisma.request.findFirst({
+      where: { userId, supplyId },
+    });
+    if (existing) continue;
+
+    await prisma.request.create({
+      data: { userId, supplyId, quantity: r.quantity, status: r.status },
+    });
+    created++;
+  }
+
+  console.log(`✓ Created ${created} default requests`);
+}
+
 async function main() {
   console.log("🌱 Starting seed...");
 
@@ -872,6 +1282,7 @@ async function main() {
     await createDefaultLocations();
     await createDefaultVendors();
     await createDefaultSupplies();
+    await createDefaultRequests();
     await createUsageHistory();
     await createDefaultNotifications();
 
