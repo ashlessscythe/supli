@@ -35,6 +35,28 @@ export const vendorService = {
     }
   },
 
+  async listItems(vendorId: string) {
+    try {
+      const items = await prisma.itemVendor.findMany({
+        where: { vendorId },
+        include: { supply: { select: { id: true, name: true, quantity: true } } },
+        orderBy: { supply: { name: "asc" } },
+      });
+      return success(
+        items.map((item) => ({
+          supplyId: item.supply.id,
+          name: item.supply.name,
+          quantity: item.supply.quantity,
+          vendorSku: item.vendorSku,
+          isPreferred: item.isPreferred,
+          cost: item.cost ? Number(item.cost) : null,
+        }))
+      );
+    } catch {
+      return failure("Failed to fetch vendor items");
+    }
+  },
+
   async create(userId: string, input: z.infer<typeof vendorSchema>) {
     try {
       const data = vendorSchema.parse(input);

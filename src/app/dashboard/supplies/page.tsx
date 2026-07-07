@@ -6,7 +6,11 @@ import { getSupplies } from "@/lib/actions/supply";
 import { SuppliesTable } from "@/components/supplies/supplies-table";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
 
-export default async function SuppliesPage() {
+export default async function SuppliesPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -15,6 +19,7 @@ export default async function SuppliesPage() {
 
   const result = await getSupplies();
   const supplies = result.success ? result.data : [];
+  const initialSearch = searchParams.q ?? "";
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -26,6 +31,7 @@ export default async function SuppliesPage() {
         <SuppliesTable
           data={supplies || []}
           isAdmin={session.user.role === "ADMIN"}
+          initialSearch={initialSearch}
         />
       </Suspense>
     </div>

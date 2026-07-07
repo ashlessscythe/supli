@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { failure, success } from "@/lib/result";
+import { prisma } from "@/lib/prisma";
 import { locationRepository } from "@/server/repositories/location.repository";
 import { executeWithAudit } from "@/server/audit";
 
@@ -15,6 +16,26 @@ export const locationService = {
       return success(await locationRepository.findAll());
     } catch {
       return failure("Failed to fetch locations");
+    }
+  },
+
+  async listStockItems(locationId: string) {
+    try {
+      const stockLevels = await prisma.stockLevel.findMany({
+        where: { locationId },
+        include: { supply: { select: { id: true, name: true } } },
+        orderBy: { supply: { name: "asc" } },
+      });
+      return success(
+        stockLevels.map((level) => ({
+          supplyId: level.supply.id,
+          name: level.supply.name,
+          quantity: level.quantity,
+          minimumThreshold: level.minimumThreshold,
+        }))
+      );
+    } catch {
+      return failure("Failed to fetch location stock items");
     }
   },
 

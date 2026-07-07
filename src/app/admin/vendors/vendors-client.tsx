@@ -14,6 +14,7 @@ import {
   VendorDialog,
   type VendorFormValues,
 } from "@/components/admin/vendor-dialog";
+import { LinkedItemsDialog } from "@/components/admin/linked-items-dialog";
 import { toast } from "sonner";
 
 interface Vendor {
@@ -105,7 +106,14 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell>{vendor._count.itemVendors}</TableCell>
+                  <TableCell>
+                    <LinkedItemsDialog
+                      count={vendor._count.itemVendors}
+                      title={`Items supplied by ${vendor.name}`}
+                      description="Supplies linked to this vendor. Select one to view it in Supplies."
+                      fetchUrl={`/api/vendors/${vendor.id}/items`}
+                    />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

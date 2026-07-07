@@ -14,6 +14,7 @@ import {
   LocationDialog,
   type LocationFormValues,
 } from "@/components/admin/location-dialog";
+import { LinkedItemsDialog } from "@/components/admin/linked-items-dialog";
 import { toast } from "sonner";
 
 interface Location {
@@ -100,7 +101,14 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
                 <TableRow key={loc.id}>
                   <TableCell className="font-medium">{loc.name}</TableCell>
                   <TableCell>{loc.type}</TableCell>
-                  <TableCell>{loc._count.stockLevels}</TableCell>
+                  <TableCell>
+                    <LinkedItemsDialog
+                      count={loc._count.stockLevels}
+                      title={`Stock items at ${loc.name}`}
+                      description="Supplies stocked at this location. Select one to view it in Supplies."
+                      fetchUrl={`/api/locations/${loc.id}/items`}
+                    />
+                  </TableCell>
                   <TableCell>{loc.isActive ? "Active" : "Inactive"}</TableCell>
                 </TableRow>
               ))}

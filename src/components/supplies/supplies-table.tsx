@@ -53,6 +53,7 @@ interface Supply {
 interface SuppliesTableProps {
   data: Supply[];
   isAdmin: boolean;
+  initialSearch?: string;
 }
 
 type SortKey = "name" | "quantity" | "minimumThreshold";
@@ -62,14 +63,18 @@ type StockFilter = "all" | "low" | "ok";
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const ALL_PAGE_SIZE = -1;
 
-export function SuppliesTable({ data, isAdmin }: SuppliesTableProps) {
+export function SuppliesTable({
+  data,
+  isAdmin,
+  initialSearch = "",
+}: SuppliesTableProps) {
   const { handleUpdateQuantity, handleDeleteSupply, isLoading } = useSupplies();
   const [quantities, setQuantities] = useState<Record<string, number | null>>(
     {}
   );
   const [editingSupply, setEditingSupply] = useState<Supply | null>(null);
 
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
