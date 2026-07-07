@@ -14,7 +14,7 @@ import {
   Truck,
 } from "lucide-react";
 
-const adminRoutes = [
+export const adminRoutes = [
   {
     title: "Overview",
     href: "/admin",
@@ -57,7 +57,7 @@ const adminRoutes = [
   },
 ];
 
-export function AdminNav() {
+export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
 
   return (
@@ -66,6 +66,7 @@ export function AdminNav() {
         <Link
           key={route.href}
           href={route.href}
+          onClick={onNavigate}
           className={cn(
             "group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
             pathname === route.href ? "bg-accent" : "transparent"

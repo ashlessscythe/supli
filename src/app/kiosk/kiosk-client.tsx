@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Scan, LogOut } from "lucide-react";
 import { kioskLogout } from "@/lib/actions/kiosk";
+import { formatBarcode } from "@/lib/barcode";
 
 type Step = "scan" | "quantity" | "complete";
 
@@ -106,7 +107,7 @@ export function KioskClient() {
           {step === "quantity" && (
             <div className="space-y-4">
               <p className="text-center text-muted-foreground">
-                Barcode: <strong>{barcode}</strong>
+                Barcode: <strong>{formatBarcode(barcode)}</strong>
               </p>
               <div className="flex items-center justify-center gap-4">
                 <Button

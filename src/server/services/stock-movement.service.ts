@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { stockLevelRepository } from "@/server/repositories/stock-level.repository";
 import { locationRepository } from "@/server/repositories/location.repository";
 import { executeWithAudit } from "@/server/audit";
+import { normalizeBarcode } from "@/lib/barcode";
 
 const consumeSchema = z.object({
   barcode: z.string().min(1),
@@ -27,8 +28,12 @@ export const stockMovementService = {
 
       if (!location) return failure("No location configured");
 
+      // Match dash-insensitively against the canonical stored barcode.
+      const normalizedBarcode = normalizeBarcode(data.barcode);
+      if (!normalizedBarcode) return failure("Item not found");
+
       const supply = await prisma.supply.findFirst({
-        where: { barcode: data.barcode },
+        where: { barcode: normalizedBarcode },
       });
 
       if (!supply) return failure("Item not found");

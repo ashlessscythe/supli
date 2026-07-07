@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { Header } from "@/components/layout/header";
 
 export default async function AdminLayout({
@@ -23,6 +24,9 @@ export default async function AdminLayout({
           <AdminNav />
         </aside>
         <main className="flex w-full flex-1 flex-col overflow-hidden">
+          <div className="mb-4 md:hidden">
+            <AdminMobileNav />
+          </div>
           {children}
         </main>
       </div>

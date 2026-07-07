@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatBarcode } from "@/lib/barcode";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -30,7 +31,7 @@ export async function GET() {
       `"${s.description.replace(/"/g, '""')}"`,
       s.quantity,
       s.minimumThreshold,
-      s.barcode ?? "",
+      s.barcode ? formatBarcode(s.barcode) : "",
       s.internalSku ?? "",
     ].join(",")
   );

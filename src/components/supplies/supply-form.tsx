@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSupplies } from "@/hooks/use-supplies";
+import { formatBarcode } from "@/lib/barcode";
 
 const supplyFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -61,7 +62,7 @@ export function SupplyForm({
       description: initialData?.description ?? "",
       quantity: initialData?.quantity ?? 0,
       minimumThreshold: initialData?.minimumThreshold ?? 0,
-      barcode: initialData?.barcode ?? "",
+      barcode: formatBarcode(initialData?.barcode),
       internalSku: initialData?.internalSku ?? "",
     },
   });
