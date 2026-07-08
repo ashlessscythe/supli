@@ -6,6 +6,7 @@ import { requestRepository } from "@/server/repositories/request.repository";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { settingsService } from "@/server/services/settings.service";
 import { executeWithAudit } from "@/server/audit";
+import { notificationService } from "@/server/services/notification.service";
 
 export const requestService = {
   async list(userId: string, role: string) {
@@ -101,6 +102,24 @@ export const requestService = {
           return requestRepository.updateStatus(id, status, tx);
         }
       );
+
+      await notificationService.notifyRequestStatus(
+        existing.userId,
+        existing.supply.name,
+        status as "APPROVED" | "DENIED",
+        id
+      );
+
+      if (status === RequestStatus.APPROVED) {
+        const remaining = existing.supply.quantity - existing.quantity;
+        if (remaining <= existing.supply.minimumThreshold) {
+          await notificationService.notifyAdminsLowStock(
+            existing.supply.name,
+            remaining,
+            existing.supplyId
+          );
+        }
+      }
 
       return success(request);
     } catch {

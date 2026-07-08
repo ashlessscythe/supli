@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import { rateLimitService } from "@/server/services/auth.service";
@@ -48,6 +49,10 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        if (user.role === Role.PENDING) {
+          return null;
+        }
+
         await rateLimitService.reset(identifier);
 
         return {
@@ -70,15 +75,30 @@ export const authOptions: NextAuthOptions = {
           where: { id: token.sub },
           select: { username: true, role: true },
         });
-        if (dbUser) {
-          token.username = dbUser.username;
-          token.role = dbUser.role;
+        if (!dbUser || dbUser.role === Role.PENDING) {
+          delete token.sub;
+          delete token.username;
+          delete token.role;
+          return token;
         }
+        token.username = dbUser.username;
+        token.role = dbUser.role;
       }
 
       return token;
     },
     async session({ session, token }) {
+      if (!token.sub || !token.role) {
+        return {
+          ...session,
+          user: {
+            ...session.user,
+            id: "",
+            username: "",
+            role: Role.STAFF,
+          },
+        };
+      }
       return {
         ...session,
         user: {

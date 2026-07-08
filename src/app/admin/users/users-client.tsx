@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Role } from "@prisma/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { UsersTable } from "@/components/admin/users-table";
 import { UserDialog } from "@/components/admin/user-dialog";
+import {
+  RegistrationApprovalDialog,
+  type ApprovalUser,
+} from "@/components/admin/registration-approval-dialog";
 import { toast } from "sonner";
 import { z } from "zod";
 
 interface BaseUser {
   id: string;
   username: string;
+  email?: string | null;
   role: Role;
 }
 
@@ -21,15 +27,16 @@ interface UserWithDate extends BaseUser {
   };
 }
 
-// Match the schemas from UserDialog
 const createUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required").optional().or(z.literal("")),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum([Role.ADMIN, Role.STAFF]),
 });
 
 const updateUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required").optional().or(z.literal("")),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")
@@ -45,10 +52,28 @@ interface UsersClientProps {
 }
 
 export function UsersClient({ initialUsers }: UsersClientProps) {
+  const searchParams = useSearchParams();
   const [users, setUsers] = useState(initialUsers);
   const [editingUser, setEditingUser] = useState<UserWithDate | undefined>(
     undefined
   );
+  const [approvalUser, setApprovalUser] = useState<ApprovalUser | null>(null);
+  const [approvalAction, setApprovalAction] = useState<
+    "approve" | "reject" | null
+  >(null);
+  const [approvalLoading, setApprovalLoading] = useState(false);
+
+  useEffect(() => {
+    const pendingId = searchParams.get("pending");
+    if (!pendingId) return;
+    const user = users.find(
+      (u) => u.id === pendingId && u.role === Role.PENDING
+    );
+    if (user) {
+      setApprovalUser(user);
+      setApprovalAction("approve");
+    }
+  }, [searchParams, users]);
 
   const handleCreateUser = async (data: CreateUserFormValues) => {
     try {
@@ -80,10 +105,10 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     if (!data.id) return;
 
     try {
-      // Only include password in the request if it's provided
       const updateData = {
         id: data.id,
         username: data.username,
+        email: data.email?.trim() ? data.email.trim() : null,
         role: data.role,
         ...(data.password ? { password: data.password } : {}),
       };
@@ -106,6 +131,7 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
             ? {
                 ...user,
                 username: updatedUser.username,
+                email: updatedUser.email,
                 role: updatedUser.role,
               }
             : user
@@ -152,6 +178,62 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
     }
   };
 
+  const openApproval = (
+    user: UserWithDate,
+    action: "approve" | "reject"
+  ) => {
+    setApprovalUser(user);
+    setApprovalAction(action);
+  };
+
+  const closeApproval = () => {
+    setApprovalUser(null);
+    setApprovalAction(null);
+  };
+
+  const confirmApproval = async () => {
+    if (!approvalUser || !approvalAction) return;
+    setApprovalLoading(true);
+    try {
+      const endpoint =
+        approvalAction === "approve"
+          ? "/api/admin/users/approve"
+          : "/api/admin/users/reject";
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: approvalUser.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(
+          typeof data.error === "string" ? data.error : "Action failed"
+        );
+      }
+
+      if (approvalAction === "approve") {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === approvalUser.id ? { ...u, role: Role.STAFF } : u
+          )
+        );
+        toast.success("Registration approved");
+      } else {
+        setUsers((prev) => prev.filter((u) => u.id !== approvalUser.id));
+        toast.success("Registration rejected");
+      }
+      closeApproval();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to process registration"
+      );
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const pendingCount = users.filter((u) => u.role === Role.PENDING).length;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -159,6 +241,9 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
           <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
           <p className="text-muted-foreground">
             View and manage all users in the system
+            {pendingCount > 0
+              ? ` · ${pendingCount} pending approval`
+              : ""}
           </p>
         </div>
         <UserDialog onSubmit={handleSubmit} />
@@ -173,6 +258,8 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
             data={users}
             onEdit={setEditingUser}
             onDelete={handleDeleteUser}
+            onApprove={(user) => openApproval(user, "approve")}
+            onReject={(user) => openApproval(user, "reject")}
           />
         </CardContent>
       </Card>
@@ -184,6 +271,17 @@ export function UsersClient({ initialUsers }: UsersClientProps) {
           trigger={<></>}
         />
       )}
+
+      <RegistrationApprovalDialog
+        user={approvalUser}
+        open={!!approvalUser && !!approvalAction}
+        action={approvalAction}
+        loading={approvalLoading}
+        onOpenChange={(open) => {
+          if (!open) closeApproval();
+        }}
+        onConfirm={confirmApproval}
+      />
     </div>
   );
 }

@@ -8,12 +8,14 @@ import {
   inviteSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  registerSchema,
 } from "@/lib/validation/user";
 import { failure, success } from "@/lib/result";
 import { userRepository } from "@/server/repositories/user.repository";
 import { executeWithAudit } from "@/server/audit";
 import { tokenService } from "@/server/services/auth.service";
 import { emailService } from "@/server/email/email.service";
+import { notificationService } from "@/server/services/notification.service";
 
 export const userService = {
   async list() {
@@ -22,6 +24,113 @@ export const userService = {
       return success(users);
     } catch {
       return failure("Failed to fetch users");
+    }
+  },
+
+  async listPending() {
+    try {
+      const users = await userRepository.findPending();
+      return success(users);
+    } catch {
+      return failure("Failed to fetch pending users");
+    }
+  },
+
+  async register(input: z.infer<typeof registerSchema>) {
+    try {
+      const data = registerSchema.parse(input);
+      const existing = await userRepository.findByUsername(data.username);
+      if (existing) return failure("Username already exists");
+
+      const emailTaken = await userRepository.findByEmail(data.email);
+      if (emailTaken) return failure("Email already in use");
+
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const user = await userRepository.create({
+        username: data.username,
+        email: data.email,
+        password: hashedPassword,
+        role: Role.PENDING,
+      });
+
+      await emailService.sendRegistrationReceived(data.email, data.username);
+      await notificationService.notifyAdminsOfRegistration({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+      });
+
+      return success({
+        message:
+          "Account created. An admin must approve your account before you can sign in.",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) return failure(error.errors);
+      return failure("Failed to register");
+    }
+  },
+
+  async approveRegistration(actorId: string, userId: string) {
+    try {
+      const user = await userRepository.findById(userId);
+      if (!user) return failure("User not found");
+      if (user.role !== Role.PENDING) {
+        return failure("User is not pending approval");
+      }
+
+      const updated = await executeWithAudit(
+        actorId,
+        `Approved registration: ${user.username}`,
+        (tx) =>
+          userRepository.update(
+            userId,
+            {
+              username: user.username,
+              email: user.email,
+              role: Role.STAFF,
+            },
+            tx
+          )
+      );
+
+      await notificationService.markRegistrationNotificationsRead(userId);
+
+      if (user.email) {
+        await emailService.sendRegistrationApproved(user.email, user.username);
+      }
+
+      return success(updated);
+    } catch {
+      return failure("Failed to approve registration");
+    }
+  },
+
+  async rejectRegistration(actorId: string, userId: string) {
+    try {
+      const user = await userRepository.findById(userId);
+      if (!user) return failure("User not found");
+      if (user.role !== Role.PENDING) {
+        return failure("User is not pending approval");
+      }
+
+      const email = user.email;
+      const username = user.username;
+
+      await executeWithAudit(
+        actorId,
+        `Rejected registration: ${username}`,
+        (tx) => userRepository.delete(userId, tx)
+      );
+
+      await notificationService.deleteRegistrationNotifications(userId);
+
+      if (email) {
+        await emailService.sendRegistrationRejected(email, username);
+      }
+
+      return success({ success: true });
+    } catch {
+      return failure("Failed to reject registration");
     }
   },
 
@@ -121,6 +230,13 @@ export const userService = {
         const user = await userRepository.findById(id);
         if (adminCount === 1 && user?.role === Role.ADMIN) {
           return failure("Cannot change role of the last admin");
+        }
+      }
+
+      if (rest.email) {
+        const emailTaken = await userRepository.findByEmail(rest.email);
+        if (emailTaken && emailTaken.id !== id) {
+          return failure("Email already in use");
         }
       }
 

@@ -8,6 +8,7 @@ import {
 import { failure, success, type ActionResult } from "@/lib/result";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { executeWithAudit, executeWithAudits } from "@/server/audit";
+import { notificationService } from "@/server/services/notification.service";
 
 // Prisma unique-constraint violation
 function isUniqueViolation(error: unknown): boolean {
@@ -65,6 +66,15 @@ export const supplyService = {
         `Updated supply: ${data.name}`,
         (tx) => supplyRepository.update(id, data, tx)
       );
+
+      if (data.quantity <= data.minimumThreshold) {
+        await notificationService.notifyAdminsLowStock(
+          supply.name,
+          supply.quantity,
+          supply.id
+        );
+      }
+
       return success(supply);
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
@@ -134,6 +144,14 @@ export const supplyService = {
       const updated = await executeWithAudits(userId, actions, (tx) =>
         supplyRepository.update(id, { quantity }, tx)
       );
+
+      if (quantity <= supply.minimumThreshold) {
+        await notificationService.notifyAdminsLowStock(
+          supply.name,
+          quantity,
+          supply.id
+        );
+      }
 
       return success(updated);
     } catch {

@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Office Supplies Tracker",
+  title: "Supplies Tracker",
   description: "Track and manage office supplies inventory",
 };
 

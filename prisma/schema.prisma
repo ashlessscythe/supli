@@ -50,6 +50,7 @@ model User {
   requests      Request[]
   auditLogs     AuditLog[]
   authTokens    AuthToken[]
+  notifications Notification[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -224,6 +225,7 @@ model Notification {
   read      Boolean          @default(false)
   metadata  Json?
   createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, read])
 }
@@ -254,11 +256,13 @@ enum NotificationType {
   REORDER
   REQUEST_STATUS
   SYSTEM
+  USER_REGISTRATION
 }
 
 enum Role {
   ADMIN
   STAFF
+  PENDING
 }
 
 enum RequestStatus {

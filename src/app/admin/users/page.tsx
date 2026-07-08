@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { UsersClient } from "./users-client";
 
@@ -6,6 +7,7 @@ async function getUsers() {
     select: {
       id: true,
       username: true,
+      email: true,
       role: true,
       createdAt: true,
       _count: {
@@ -14,12 +16,9 @@ async function getUsers() {
         },
       },
     },
-    orderBy: {
-      username: "asc",
-    },
+    orderBy: [{ role: "asc" }, { username: "asc" }],
   });
 
-  // Convert Date objects to ISO strings before passing to client
   return users.map((user) => ({
     ...user,
     createdAt: user.createdAt.toISOString(),
@@ -29,5 +28,9 @@ async function getUsers() {
 export default async function AdminUsersPage() {
   const users = await getUsers();
 
-  return <UsersClient initialUsers={users} />;
+  return (
+    <Suspense fallback={<div className="p-6">Loading users…</div>}>
+      <UsersClient initialUsers={users} />
+    </Suspense>
+  );
 }

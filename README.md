@@ -32,6 +32,12 @@ Dedicated touch-friendly flow for consuming stock on the floor: **Scan item → 
 
 ![Kiosk](docs/images/kiosk.png)
 
+### Notifications
+
+In-app bell with unread badge for registration approvals, low-stock alerts, and request status updates.
+
+![Notifications](docs/images/notifications.png)
+
 ---
 
 ## Features
@@ -44,9 +50,9 @@ Dedicated touch-friendly flow for consuming stock on the floor: **Scan item → 
 | **Locations** | Warehouses, cages, tool rooms, and per-location stock levels |
 | **Vendors** | Vendor catalog with cost, lead time, MOQ, preferred links |
 | **Dashboards** | Admin overview charts, depletion estimates / forecasting signals |
-| **Identity** | Username/password (NextAuth), roles **ADMIN** / **STAFF**, invites, password reset |
+| **Identity** | Username/password (NextAuth), roles **ADMIN** / **STAFF** / **PENDING**, self-registration, admin approval, invites, password reset |
 | **Admin** | Users, audit log, system settings, theme preferences |
-| **Notifications** | Low stock, reorder, and request-status alerts |
+| **Notifications** | Header bell with unread count — registration requests, low stock, request status |
 | **Export** | CSV export of supplies |
 
 Roles:
@@ -124,6 +130,8 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 | Path | Audience |
 |------|----------|
 | `/login` | Sign-in |
+| `/register` | Self-registration (pending admin approval) |
+| `/forgot-password` | Request password reset email |
 | `/dashboard` | Staff overview (admins are sent to `/admin`) |
 | `/dashboard/supplies` | Browse inventory |
 | `/dashboard/requests` | Create and track requests |

@@ -34,6 +34,7 @@ import { Plus } from "lucide-react";
 // Schema for creating a new user
 const createUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required").optional().or(z.literal("")),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum([Role.ADMIN, Role.STAFF]),
 });
@@ -41,6 +42,7 @@ const createUserSchema = z.object({
 // Schema for updating an existing user
 const updateUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
+  email: z.string().email("Valid email is required").optional().or(z.literal("")),
   password: z
     .string()
     .optional()
@@ -56,6 +58,7 @@ type UpdateUserFormValues = z.infer<typeof updateUserSchema>;
 interface User {
   id: string;
   username: string;
+  email?: string | null;
   role: Role;
 }
 
@@ -74,8 +77,12 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
     resolver: zodResolver(user ? updateUserSchema : createUserSchema),
     defaultValues: {
       username: user?.username || "",
+      email: user?.email || "",
       password: "",
-      role: user?.role || Role.STAFF,
+      role:
+        user?.role === Role.ADMIN || user?.role === Role.STAFF
+          ? user.role
+          : Role.STAFF,
     },
   });
 
@@ -84,12 +91,18 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
     if (user) {
       form.reset({
         username: user.username,
+        email: user.email || "",
         password: "",
-        role: user.role,
+        role:
+          user.role === Role.ADMIN || user.role === Role.STAFF
+            ? user.role
+            : Role.STAFF,
       });
       setOpen(true);
     }
   }, [user, form]);
+
+  const normalizeEmail = (email?: string) => (email?.trim() ? email.trim() : undefined);
 
   const handleSubmit = async (
     data: CreateUserFormValues | UpdateUserFormValues
@@ -99,13 +112,17 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
       if (user) {
         const updateData = {
           username: data.username,
+          email: normalizeEmail(data.email),
           role: data.role,
           id: user.id,
           ...(data.password ? { password: data.password } : {}),
         };
         await onSubmit(updateData);
       } else {
-        await onSubmit(data as CreateUserFormValues);
+        await onSubmit({
+          ...(data as CreateUserFormValues),
+          email: normalizeEmail((data as CreateUserFormValues).email),
+        });
       }
       setOpen(false);
       form.reset();
@@ -141,6 +158,24 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
                   <FormLabel>Username</FormLabel>
                   <FormControl>
                     <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email (optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="user@example.com"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

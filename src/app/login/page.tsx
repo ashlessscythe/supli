@@ -56,6 +56,25 @@ export default function LoginPage() {
       });
 
       if (result?.error) {
+        try {
+          const statusRes = await fetch("/api/auth/check-status", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: values.username,
+              password: values.password,
+            }),
+          });
+          const statusData = await statusRes.json();
+          if (statusData.status === "pending") {
+            setError(
+              "Your account is pending admin approval. You cannot sign in yet."
+            );
+            return;
+          }
+        } catch {
+          // fall through to generic error
+        }
         setError("Invalid username or password");
         return;
       }
@@ -79,11 +98,14 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="text-center text-sm">
+        <div className="flex justify-center gap-4 text-sm">
           <a href="/forgot-password" className="text-primary hover:underline">
             Forgot password?
           </a>
-        </p>
+          <a href="/register" className="text-primary hover:underline">
+            Create an account
+          </a>
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

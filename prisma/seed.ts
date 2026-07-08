@@ -116,26 +116,31 @@ async function createDefaultUsers() {
     {
       username: "walter", // Handler Walter — issues contracts, oversees ops
       password: "admin123",
+      email: "walter@supli.local",
       role: Role.ADMIN,
     },
     {
       username: "carla", // Chief Carla — RaD, keeps the shop running
       password: "admin123",
+      email: "carla@supli.local",
       role: Role.ADMIN,
     },
     {
       username: "raven", // 621 — the augmented merc
       password: "staff123",
+      email: "raven@supli.local",
       role: Role.STAFF,
     },
     {
       username: "rusty", // Steel Haze — Vespa/Vesper AC pilot
       password: "staff123",
+      email: "rusty@supli.local",
       role: Role.STAFF,
     },
     {
       username: "iguazu", // G5 Iguazu — perpetually one step behind
       password: "staff123",
+      email: "iguazu@supli.local",
       role: Role.STAFF,
     },
   ];
@@ -144,9 +149,14 @@ async function createDefaultUsers() {
     const hashedPassword = await bcrypt.hash(user.password, 10);
     await prisma.user.upsert({
       where: { username: user.username },
-      update: {},
+      update: {
+        email: user.email,
+        emailVerified: new Date(),
+      },
       create: {
         username: user.username,
+        email: user.email,
+        emailVerified: new Date(),
         password: hashedPassword,
         role: user.role,
       },
@@ -852,23 +862,30 @@ async function createDefaultSupplies() {
 async function createFakeUsers(count: number) {
   const fakeUsers = Array.from({ length: count }, () => ({
     username: faker.internet.username().toLowerCase(),
+    email: faker.internet.email().toLowerCase(),
     password: "password123", // We'll hash this
     role: faker.helpers.arrayElement([Role.ADMIN, Role.STAFF]) as typeof Role,
   }));
 
-  // Ensure unique usernames
+  // Ensure unique usernames and emails
   const uniqueUsers = fakeUsers.filter(
     (user, index, self) =>
-      index === self.findIndex((u) => u.username === user.username)
+      index === self.findIndex((u) => u.username === user.username) &&
+      index === self.findIndex((u) => u.email === user.email)
   );
 
   for (const user of uniqueUsers) {
     const hashedPassword = await bcrypt.hash(user.password, 10);
     await prisma.user.upsert({
       where: { username: user.username },
-      update: {},
+      update: {
+        email: user.email,
+        emailVerified: new Date(),
+      },
       create: {
         username: user.username,
+        email: user.email,
+        emailVerified: new Date(),
         password: hashedPassword,
         role: user.role,
       },

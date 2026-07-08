@@ -21,7 +21,28 @@ export const userRepository = {
   findById(id: string) {
     return prisma.user.findUnique({
       where: { id },
-      select: { id: true, username: true, role: true, createdAt: true },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        emailVerified: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+  },
+
+  findPending() {
+    return prisma.user.findMany({
+      where: { role: Role.PENDING },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
     });
   },
 

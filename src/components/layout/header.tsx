@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
+import { NotificationBell } from "@/components/layout/notification-bell";
 
 const navigation = [
   {
@@ -94,6 +95,7 @@ export function Header() {
         </div>
         <div className="flex flex-1 items-center justify-end space-x-4">
           <div className="flex items-center space-x-4">
+            {session?.user && <NotificationBell />}
             <ThemeSelector />
             {session?.user && (
               <>

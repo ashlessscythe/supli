@@ -14,5 +14,7 @@ export const config = {
     "/api/requests/:path*",
     "/api/users/:path*",
     "/api/admin/:path*",
+    "/api/notifications",
+    "/api/notifications/:path*",
   ],
 };
