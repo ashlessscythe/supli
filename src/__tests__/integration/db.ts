@@ -15,25 +15,45 @@ export async function getPrisma() {
 export async function resetDatabase() {
   const prisma = await getPrisma();
 
-  await prisma.$transaction([
-    prisma.notification.deleteMany(),
-    prisma.auditLog.deleteMany(),
-    prisma.authToken.deleteMany(),
-    prisma.authAttempt.deleteMany(),
-    prisma.request.deleteMany(),
-    prisma.stockMovement.deleteMany(),
-    prisma.stockLevel.deleteMany(),
-    prisma.itemVendor.deleteMany(),
-    prisma.fileAttachment.deleteMany(),
-    prisma.session.deleteMany(),
-    prisma.account.deleteMany(),
-    prisma.supply.deleteMany(),
-    prisma.location.deleteMany(),
-    prisma.itemType.deleteMany(),
-    prisma.vendor.deleteMany(),
-    prisma.systemSetting.deleteMany(),
-    prisma.user.deleteMany(),
-  ]);
+  // Postgres integration tests: TRUNCATE is the most reliable way to reset
+  // between tests because it avoids FK RESTRICT ordering issues.
+  const schema =
+    (() => {
+      try {
+        const url = new URL(process.env.DATABASE_URL ?? "");
+        const value = url.searchParams.get("schema") ?? "public";
+        // Very small allow-list to avoid SQL injection in test code.
+        return /^[a-zA-Z0-9_]+$/.test(value) ? value : "public";
+      } catch {
+        return "public";
+      }
+    })();
+
+  const q = (table: string) => `"${schema}"."${table}"`;
+
+  await prisma.$executeRawUnsafe(
+    `
+      TRUNCATE TABLE
+        ${q("Notification")},
+        ${q("AuditLog")},
+        ${q("AuthToken")},
+        ${q("AuthAttempt")},
+        ${q("Request")},
+        ${q("StockMovement")},
+        ${q("StockLevel")},
+        ${q("ItemVendor")},
+        ${q("FileAttachment")},
+        ${q("Session")},
+        ${q("Account")},
+        ${q("Supply")},
+        ${q("Location")},
+        ${q("ItemType")},
+        ${q("Vendor")},
+        ${q("SystemSetting")},
+        ${q("User")}
+      RESTART IDENTITY CASCADE;
+    `
+  );
 }
 
 export async function createAdminUser(overrides?: {

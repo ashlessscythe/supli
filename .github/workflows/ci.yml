@@ -31,5 +31,6 @@ jobs:
       - run: npm run build
         env:
           DATABASE_URL: "postgresql://user:password@localhost:5432/supli?sslmode=disable"
+          DATABASE_TEST_URL: "postgresql://user:password@localhost:5432/supli_test?sslmode=disable"
           NEXTAUTH_SECRET: "ci-build-secret-minimum-32-characters-long"
           NEXTAUTH_URL: "http://localhost:3000"

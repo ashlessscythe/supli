@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { Role, TokenType } from "@prisma/client";
 import bcrypt from "bcrypt";
 import {
@@ -6,6 +6,7 @@ import {
   createAdminUser,
   createStaffUser,
   getPrisma,
+  resetDatabase,
 } from "./db";
 
 const registerPayload = {
@@ -15,6 +16,10 @@ const registerPayload = {
 };
 
 describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
   it("creates a pending user in the database", async () => {
     await createAdminUser();
 
@@ -90,6 +95,10 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
 });
 
 describe.skipIf(!isIntegrationEnabled())("password reset (database)", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
   it("creates a reset token and updates the password end to end", async () => {
     await createStaffUser({
       username: "resetme",

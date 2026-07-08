@@ -35,6 +35,18 @@ export function loadTestEnv() {
   parseEnvFile(path.join(root, ".env.local"));
 
   if (process.env.DATABASE_TEST_URL) {
+    // If user points tests at the same database, isolate via a dedicated schema
+    // to avoid touching real data and to keep tests deterministic.
+    try {
+      const url = new URL(process.env.DATABASE_TEST_URL);
+      if (!url.searchParams.get("schema")) {
+        url.searchParams.set("schema", "integration_test");
+      }
+      process.env.DATABASE_TEST_URL = url.toString();
+    } catch {
+      // ignore invalid URLs; env validation will surface it later
+    }
+
     process.env.DATABASE_URL = process.env.DATABASE_TEST_URL;
   }
 

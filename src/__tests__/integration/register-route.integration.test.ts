@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { isIntegrationEnabled, createAdminUser, getPrisma } from "./db";
+import { isIntegrationEnabled, createAdminUser, getPrisma, resetDatabase } from "./db";
 
 function createRegisterRequest(body: unknown) {
   return new Request("http://localhost/api/auth/register", {
@@ -12,6 +12,10 @@ function createRegisterRequest(body: unknown) {
 }
 
 describe.skipIf(!isIntegrationEnabled())("POST /api/auth/register (database)", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
   it("persists a pending user through the HTTP route", async () => {
     await createAdminUser();
 

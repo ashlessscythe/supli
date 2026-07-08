@@ -26,6 +26,11 @@ export default defineConfig({
           include: ["src/**/*.integration.test.ts"],
           setupFiles: ["src/__tests__/integration/setup.ts"],
           globalSetup: ["src/__tests__/integration/global-setup.ts"],
+          // DB-backed tests must run serially to avoid deadlocks from TRUNCATE
+          // and shared database state.
+          maxThreads: 1,
+          minThreads: 1,
+          sequence: { concurrent: false },
           testTimeout: 30_000,
           hookTimeout: 30_000,
         },

@@ -1,9 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { TokenType } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { isIntegrationEnabled, createStaffUser, getPrisma } from "./db";
+import { isIntegrationEnabled, createStaffUser, getPrisma, resetDatabase } from "./db";
 
 describe.skipIf(!isIntegrationEnabled())("auth service (database)", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
   it("locks an identifier after repeated failed attempts", async () => {
     const { rateLimitService } = await import("@/server/services/auth.service");
     const identifier = "locked-user";
@@ -70,6 +74,10 @@ describe.skipIf(!isIntegrationEnabled())("auth service (database)", () => {
 });
 
 describe.skipIf(!isIntegrationEnabled())("credentials login (database)", () => {
+  beforeEach(async () => {
+    await resetDatabase();
+  });
+
   async function getAuthorize() {
     const { authOptions } = await import("@/lib/auth");
     const provider = authOptions.providers[0];

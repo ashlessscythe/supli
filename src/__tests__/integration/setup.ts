@@ -12,7 +12,7 @@ vi.mock("@/server/email/resend.provider", () => ({
 beforeEach(async () => {
   if (process.env.SKIP_INTEGRATION) return;
 
-  const { integrationEnabled, resetDatabase } = await import("./db");
-  if (!integrationEnabled()) return;
+  const { isIntegrationEnabled, resetDatabase } = await import("./db");
+  if (!isIntegrationEnabled()) return;
   await resetDatabase();
 });

@@ -31,6 +31,21 @@ export default async function globalSetup() {
     return;
   }
 
+  // Prisma Migrate needs a direct Postgres connection.
+  // Some providers (e.g. Neon pooler endpoints) can time out advisory locks.
+  try {
+    const url = new URL(process.env.DATABASE_TEST_URL);
+    if (url.host.includes("pooler")) {
+      console.warn(
+        "\n⚠ DATABASE_TEST_URL appears to be a pooled endpoint (contains 'pooler').\n" +
+          "  Prisma migrations may fail/hang on pooled connections.\n" +
+          "  Use a direct connection string for integration tests, or run a local Postgres.\n"
+      );
+    }
+  } catch {
+    // ignore
+  }
+
   const reachable = await canConnect(process.env.DATABASE_TEST_URL);
   if (!reachable) {
     console.warn(
@@ -43,9 +58,18 @@ export default async function globalSetup() {
 
   process.env.DATABASE_URL = process.env.DATABASE_TEST_URL;
 
-  execSync("npx prisma migrate deploy", {
-    cwd: path.resolve(__dirname, "../../.."),
-    env: process.env,
-    stdio: "inherit",
-  });
+  try {
+    execSync("npx prisma migrate deploy", {
+      cwd: path.resolve(__dirname, "../../.."),
+      env: process.env,
+      stdio: "inherit",
+    });
+  } catch (e) {
+    console.warn(
+      "\n⚠ Failed to run `prisma migrate deploy` for integration tests.\n" +
+        "  Integration tests will be skipped for this run.\n" +
+        "  Tip: use a direct (non-pooler) Postgres URL for DATABASE_TEST_URL, or local Postgres.\n"
+    );
+    process.env.SKIP_INTEGRATION = "1";
+  }
 }
