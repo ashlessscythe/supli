@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import {
   Table,
   TableBody,
@@ -17,6 +17,17 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { SortableHead } from "@/components/ui/sortable-head";
+import { TablePagination } from "@/components/ui/table-pagination";
+import { useClientTable } from "@/hooks/use-client-table";
 import { useRequests } from "@/hooks/use-requests";
 import { MoreHorizontal, CheckCircle, XCircle } from "lucide-react";
 import { formatDate } from "@/lib/utils";
@@ -27,19 +38,56 @@ interface RequestsTableProps {
   isAdmin: boolean;
 }
 
+type SortKey = "supply" | "requester" | "quantity" | "status" | "date";
+type StatusFilter = "all" | "PENDING" | "APPROVED" | "DENIED";
+
 export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
   const { handleUpdateStatus, isLoading } = useRequests();
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
-  const toggleRow = (id: string) => {
-    const newExpandedRows = new Set(expandedRows);
-    if (expandedRows.has(id)) {
-      newExpandedRows.delete(id);
-    } else {
-      newExpandedRows.add(id);
-    }
-    setExpandedRows(newExpandedRows);
-  };
+  const filterFn = useCallback(
+    (request: Request, term: string) => {
+      if (statusFilter !== "all" && request.status !== statusFilter) {
+        return false;
+      }
+      if (!term) return true;
+      return (
+        request.supply.name.toLowerCase().includes(term) ||
+        request.user.username.toLowerCase().includes(term)
+      );
+    },
+    [statusFilter]
+  );
+
+  const compareFn = useCallback(
+    (a: Request, b: Request, sortKey: SortKey) => {
+      switch (sortKey) {
+        case "supply":
+          return a.supply.name.localeCompare(b.supply.name);
+        case "requester":
+          return a.user.username.localeCompare(b.user.username);
+        case "quantity":
+          return a.quantity - b.quantity;
+        case "status":
+          return a.status.localeCompare(b.status);
+        case "date":
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          );
+        default:
+          return 0;
+      }
+    },
+    []
+  );
+
+  const table = useClientTable({
+    data,
+    initialSortKey: "date" as SortKey,
+    initialSortDirection: "desc",
+    filterFn,
+    compareFn,
+  });
 
   const getStatusColor = (status: Request["status"]) => {
     switch (status) {
@@ -52,83 +100,160 @@ export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
     }
   };
 
+  const colSpan = isAdmin ? 6 : 5;
+
   return (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Supply</TableHead>
-            <TableHead>Requester</TableHead>
-            <TableHead className="w-[100px] text-right">Quantity</TableHead>
-            <TableHead className="w-[100px] text-right">Status</TableHead>
-            <TableHead className="w-[150px]">Date</TableHead>
-            {isAdmin && <TableHead className="w-[100px]">Actions</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((request) => (
-            <TableRow
-              key={request.id}
-              className="cursor-pointer"
-              onClick={() => toggleRow(request.id)}
-            >
-              <TableCell className="font-medium">
-                {request.supply.name}
-              </TableCell>
-              <TableCell>{request.user.username}</TableCell>
-              <TableCell className="text-right">{request.quantity}</TableCell>
-              <TableCell
-                className={`text-right ${getStatusColor(request.status)}`}
-              >
-                {request.status}
-              </TableCell>
-              <TableCell>{formatDate(request.createdAt)}</TableCell>
-              {isAdmin && (
-                <TableCell>
-                  {request.status === "PENDING" && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger
-                        asChild
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(request.id, "APPROVED");
-                          }}
-                          disabled={isLoading}
-                          className="text-green-600"
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Approve
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleUpdateStatus(request.id, "DENIED");
-                          }}
-                          disabled={isLoading}
-                          className="text-red-600"
-                        >
-                          <XCircle className="mr-2 h-4 w-4" />
-                          Deny
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </TableCell>
-              )}
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Input
+          placeholder="Search by supply or requester"
+          value={table.search}
+          onChange={(e) => table.setSearch(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => {
+            setStatusFilter(value as StatusFilter);
+            table.resetPage();
+          }}
+        >
+          <SelectTrigger className="sm:w-[180px]">
+            <SelectValue placeholder="Filter status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="APPROVED">Approved</SelectItem>
+            <SelectItem value="DENIED">Denied</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <SortableHead
+                label="Supply"
+                active={table.sortKey === "supply"}
+                direction={table.sortDirection}
+                onSort={() => table.toggleSort("supply")}
+              />
+              <SortableHead
+                label="Requester"
+                active={table.sortKey === "requester"}
+                direction={table.sortDirection}
+                onSort={() => table.toggleSort("requester")}
+              />
+              <SortableHead
+                label="Quantity"
+                active={table.sortKey === "quantity"}
+                direction={table.sortDirection}
+                onSort={() => table.toggleSort("quantity")}
+                className="w-[100px] text-right"
+              />
+              <SortableHead
+                label="Status"
+                active={table.sortKey === "status"}
+                direction={table.sortDirection}
+                onSort={() => table.toggleSort("status")}
+                className="w-[100px] text-right"
+              />
+              <SortableHead
+                label="Date"
+                active={table.sortKey === "date"}
+                direction={table.sortDirection}
+                onSort={() => table.toggleSort("date")}
+                className="w-[150px]"
+              />
+              {isAdmin && <TableHead className="w-[100px]">Actions</TableHead>}
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {table.paginated.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={colSpan}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No requests found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.paginated.map((request) => (
+                <TableRow key={request.id}>
+                  <TableCell className="font-medium">
+                    {request.supply.name}
+                  </TableCell>
+                  <TableCell>{request.user.username}</TableCell>
+                  <TableCell className="text-right">
+                    {request.quantity}
+                  </TableCell>
+                  <TableCell
+                    className={`text-right ${getStatusColor(request.status)}`}
+                  >
+                    {request.status}
+                  </TableCell>
+                  <TableCell>{formatDate(request.createdAt)}</TableCell>
+                  {isAdmin && (
+                    <TableCell>
+                      {request.status === "PENDING" && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleUpdateStatus(request.id, "APPROVED")
+                              }
+                              disabled={isLoading}
+                              className="text-green-600"
+                            >
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Approve
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() =>
+                                handleUpdateStatus(request.id, "DENIED")
+                              }
+                              disabled={isLoading}
+                              className="text-red-600"
+                            >
+                              <XCircle className="mr-2 h-4 w-4" />
+                              Deny
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <TablePagination
+        pageSize={table.pageSize}
+        onPageSizeChange={table.setPageSize}
+        page={table.page}
+        pageCount={table.pageCount}
+        showAll={table.showAll}
+        rangeStart={table.rangeStart}
+        rangeEnd={table.rangeEnd}
+        total={table.total}
+        onPrevious={() => table.setPage((p) => Math.max(0, p - 1))}
+        onNext={() =>
+          table.setPage((p) => Math.min(table.pageCount - 1, p + 1))
+        }
+      />
     </div>
   );
 }
