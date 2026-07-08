@@ -97,7 +97,7 @@ npm run db:seed          # demo users + sample inventory
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — it redirects to login.
+Open [http://localhost:3000](http://localhost:3000) — the landing page with sign-in and registration links.
 
 ### Seed logins
 
@@ -153,4 +153,4 @@ See [`.env.example`](.env.example):
 
 ## License
 
-Private / internal use unless otherwise noted.
+[MIT](LICENSE) — see [LICENSE](LICENSE) for details.

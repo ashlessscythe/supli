@@ -116,3 +116,42 @@
     letter-spacing: 0.01em;
   }
 }
+
+@layer utilities {
+  .landing-hero-bg {
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(
+        ellipse 80% 60% at 50% -20%,
+        hsl(var(--primary) / 0.18),
+        transparent
+      ),
+      radial-gradient(
+        ellipse 60% 50% at 100% 0%,
+        hsl(215 60% 50% / 0.12),
+        transparent
+      ),
+      radial-gradient(
+        ellipse 50% 40% at 0% 100%,
+        hsl(var(--primary) / 0.08),
+        transparent
+      ),
+      linear-gradient(
+        to bottom,
+        hsl(var(--muted) / 0.3),
+        hsl(var(--background))
+      );
+  }
+
+  .landing-hero-bg::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, black, transparent);
+    pointer-events: none;
+  }
+}

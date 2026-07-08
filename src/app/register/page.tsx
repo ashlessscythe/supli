@@ -69,7 +69,13 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8 p-6 bg-card rounded-lg shadow-lg border">
         <div className="text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">
+          <Link
+            href="/"
+            className="text-sm text-primary hover:underline"
+          >
+            Back to home
+          </Link>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-foreground">
             Create an account
           </h2>
           <p className="mt-2 text-sm text-muted-foreground">

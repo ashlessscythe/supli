@@ -13,27 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { THEMES, THEME_LABELS, type ThemeName } from "@/lib/themes";
 import { setThemePreference } from "@/lib/actions/theme";
-
-function applyTheme(theme: ThemeName) {
-  const root = document.documentElement;
-
-  if (theme === "system") {
-    root.removeAttribute("data-theme");
-    return;
-  }
-
-  if (theme === "day") {
-    root.setAttribute("data-theme", "day");
-    return;
-  }
-
-  if (theme === "night") {
-    root.setAttribute("data-theme", "night");
-    return;
-  }
-
-  root.setAttribute("data-theme", theme);
-}
+import { applyTheme } from "@/lib/apply-theme";
 
 export function ThemeSelector() {
   const { setTheme, resolvedTheme } = useTheme();

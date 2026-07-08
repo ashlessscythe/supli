@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -99,12 +100,15 @@ export default function LoginPage() {
         </div>
 
         <div className="flex justify-center gap-4 text-sm">
-          <a href="/forgot-password" className="text-primary hover:underline">
+          <Link href="/" className="text-primary hover:underline">
+            Back to home
+          </Link>
+          <Link href="/forgot-password" className="text-primary hover:underline">
             Forgot password?
-          </a>
-          <a href="/register" className="text-primary hover:underline">
+          </Link>
+          <Link href="/register" className="text-primary hover:underline">
             Create an account
-          </a>
+          </Link>
         </div>
 
         <Form {...form}>
