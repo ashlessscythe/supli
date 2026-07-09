@@ -9,7 +9,7 @@ Authentication, RBAC, email, theme preference.
 Inventory items with optional barcode, internal SKU, and item type.
 
 ### Location
-Warehouses, offices, supply cages, tool rooms, etc.
+Warehouses, supply cages, tool rooms, and more.
 
 ### ItemType
 Extensible item classification (Consumable, Returnable, Fixed Asset, Serialized, Bulk).

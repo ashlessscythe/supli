@@ -2,15 +2,20 @@ import type { Metadata } from "next";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { LandingPage } from "@/components/landing/landing-page";
+import { homeJsonLd, homeMetadata } from "@/lib/site";
 
-export const metadata: Metadata = {
-  title: "Supli Mart — Office & Ops Inventory Management",
-  description:
-    "Track supplies, approve requests, and run floor kiosk checkout. Enterprise inventory management for warehouses, tool rooms, and office operations.",
-};
+export const metadata: Metadata = homeMetadata;
 
 export default async function Home() {
   const session = await getServerSession(authOptions);
 
-  return <LandingPage initialSession={session} />;
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
+      <LandingPage initialSession={session} />
+    </>
+  );
 }

@@ -22,13 +22,13 @@ export function LandingCta({ session }: LandingCtaProps) {
           <div className="mx-auto max-w-3xl rounded-2xl border border-primary/20 bg-card px-8 py-16 text-center shadow-sm sm:px-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               {isLoggedIn
-                ? "Welcome back — your inventory is waiting"
-                : "Ready to modernize your supply ops?"}
+                ? "Welcome back — your supplies are waiting"
+                : "Ready to get your supplies under control?"}
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               {isLoggedIn
                 ? "Jump back into your dashboard to manage supplies, requests, and alerts."
-                : "Create an account and get admin approval to start tracking supplies across your organization."}
+                : "Create an account and get admin approval to start tracking supplies, vendors, and stock levels."}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Button size="lg" className="h-12 px-8 text-base" asChild>

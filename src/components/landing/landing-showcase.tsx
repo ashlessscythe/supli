@@ -42,11 +42,11 @@ export function LandingShowcase() {
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Built for real operations
+              See it in action
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              See how teams manage inventory, requests, and floor consumption
-              every day.
+              How teams manage supplies, requests, and floor consumption every
+              day.
             </p>
           </div>
         </Reveal>

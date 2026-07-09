@@ -1,6 +1,6 @@
 # Supli Mart
 
-Office and ops inventory management for tracking supplies, approving requests, and recording stock consumption — including a barcode **kiosk** for walk-up checkout.
+Inventory management for tracking supplies, approving requests, and recording consumption — with vendor lead times, MOQ, and a barcode **kiosk** for walk-up checkout.
 
 Built with **Next.js 14** (App Router), **Prisma**, **PostgreSQL (Neon)**, **NextAuth**, and **shadcn/ui**.
 

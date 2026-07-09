@@ -18,7 +18,7 @@ export function LandingHero({ session }: LandingHeroProps) {
     <section className="landing-hero-bg relative overflow-hidden">
       <div className="container relative z-10 flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center py-20 text-center">
         <p className="mb-6 inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
-          Office &amp; ops inventory management
+          Supplies &amp; inventory management
         </p>
 
         <h1 className="max-w-4xl text-5xl font-bold tracking-tight sm:text-6xl lg:text-7xl">
@@ -34,9 +34,9 @@ export function LandingHero({ session }: LandingHeroProps) {
         </h1>
 
         <p className="mt-8 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-          Supli Mart gives your team real-time inventory visibility, streamlined
-          supply requests, and a barcode kiosk for walk-up checkout — built for
-          warehouses, tool rooms, and office ops.
+          Real-time stock levels, supply requests, and vendor details like lead
+          time and MOQ — plus a barcode kiosk for walk-up checkout. Built for
+          the storeroom, ready to scale as you grow.
         </p>
 
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">

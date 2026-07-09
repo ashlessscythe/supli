@@ -20,7 +20,7 @@ const features = [
     icon: Package,
     title: "Inventory control",
     description:
-      "CRUD for supplies with barcode and SKU support, minimum thresholds, inline quantity updates, and fast search.",
+      "Track supplies with barcode and SKU support, minimum thresholds, inline quantity updates, and fast search.",
   },
   {
     icon: ClipboardList,
@@ -38,7 +38,7 @@ const features = [
     icon: MapPin,
     title: "Locations & vendors",
     description:
-      "Manage warehouses, cages, and tool rooms with per-location stock. Vendor catalog with cost, lead time, and MOQ.",
+      "Per-location stock across sites. Vendor catalog with cost, lead time, and MOQ.",
   },
   {
     icon: BarChart3,
@@ -61,11 +61,11 @@ export function LandingFeatures() {
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything your ops team needs
+              Supplies, stock, and vendors
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              From back-office inventory to front-line consumption — one platform
-              for the full supply lifecycle.
+              Inventory, requests, and purchasing context in one place — from
+              back office to the floor.
             </p>
           </div>
         </Reveal>
