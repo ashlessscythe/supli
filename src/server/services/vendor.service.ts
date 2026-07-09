@@ -26,6 +26,11 @@ const itemVendorSchema = z.object({
   cost: z.number().positive().optional(),
 });
 
+const itemVendorUpdateSchema = z.object({
+  supplyId: z.string(),
+  cost: z.number().min(0).nullable().optional(),
+});
+
 export const vendorService = {
   async list() {
     try {
@@ -145,6 +150,44 @@ export const vendorService = {
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
       return failure("Failed to link vendor");
+    }
+  },
+
+  async updateItemLink(
+    vendorId: string,
+    userId: string,
+    input: z.infer<typeof itemVendorUpdateSchema>
+  ) {
+    try {
+      const data = itemVendorUpdateSchema.parse(input);
+      const existing = await prisma.itemVendor.findUnique({
+        where: {
+          supplyId_vendorId: { supplyId: data.supplyId, vendorId },
+        },
+        include: { supply: { select: { name: true } } },
+      });
+      if (!existing) return failure("Item link not found");
+
+      const link = await executeWithAudit(
+        userId,
+        `Updated vendor catalog cost for ${existing.supply.name}`,
+        (tx) =>
+          tx.itemVendor.update({
+            where: {
+              supplyId_vendorId: { supplyId: data.supplyId, vendorId },
+            },
+            data: {
+              ...(data.cost !== undefined ? { cost: data.cost } : {}),
+            },
+          })
+      );
+      return success({
+        supplyId: link.supplyId,
+        cost: link.cost != null ? Number(link.cost) : null,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) return failure(error.errors);
+      return failure("Failed to update item link");
     }
   },
 };

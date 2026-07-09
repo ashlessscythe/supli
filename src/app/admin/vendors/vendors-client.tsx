@@ -235,8 +235,9 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                         <LinkedItemsDialog
                           count={vendor._count.itemVendors}
                           title={`Items supplied by ${vendor.name}`}
-                          description="Supplies linked to this vendor. Select one to view it in Supplies."
+                          description="Catalog unit costs for supplies linked to this vendor."
                           fetchUrl={`/api/vendors/${vendor.id}/items`}
+                          vendorId={vendor.id}
                         />
                       </TableCell>
                       <TableCell>

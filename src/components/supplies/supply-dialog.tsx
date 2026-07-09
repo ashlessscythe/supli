@@ -66,7 +66,7 @@ export function SupplyDialog({
           )}
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{initialData ? "Edit Supply" : "Add Supply"}</DialogTitle>
         </DialogHeader>

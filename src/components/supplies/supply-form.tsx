@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSupplies } from "@/hooks/use-supplies";
 import { formatBarcode } from "@/lib/barcode";
+import { SupplyVendorPricing } from "./supply-vendor-pricing";
 
 const supplyFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -220,6 +221,10 @@ export function SupplyForm({
               )}
             />
           </div>
+        )}
+
+        {isAdmin && initialData && (
+          <SupplyVendorPricing supplyId={initialData.id} />
         )}
 
         <div className="flex justify-end gap-4">
