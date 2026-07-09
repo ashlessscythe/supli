@@ -33,34 +33,18 @@ export const notificationService = {
     return notification;
   },
 
-  async markRead(userId: string, id: string) {
-    await prisma.notification.updateMany({
+  async dismiss(userId: string, id: string) {
+    await prisma.notification.deleteMany({
       where: { id, userId },
-      data: { read: true },
     });
     return success({ success: true });
   },
 
-  async markAllRead(userId: string) {
-    await prisma.notification.updateMany({
-      where: { userId, read: false },
-      data: { read: true },
+  async clearAll(userId: string) {
+    await prisma.notification.deleteMany({
+      where: { userId },
     });
     return success({ success: true });
-  },
-
-  async markRegistrationNotificationsRead(pendingUserId: string) {
-    await prisma.notification.updateMany({
-      where: {
-        type: NotificationType.USER_REGISTRATION,
-        read: false,
-        metadata: {
-          path: ["userId"],
-          equals: pendingUserId,
-        },
-      },
-      data: { read: true },
-    });
   },
 
   async deleteRegistrationNotifications(pendingUserId: string) {

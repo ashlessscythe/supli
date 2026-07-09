@@ -93,7 +93,7 @@ export const userService = {
           )
       );
 
-      await notificationService.markRegistrationNotificationsRead(userId);
+      await notificationService.deleteRegistrationNotifications(userId);
 
       if (user.email) {
         await emailService.sendRegistrationApproved(user.email, user.username);

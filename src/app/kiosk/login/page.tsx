@@ -3,14 +3,17 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock } from "lucide-react";
 import { kioskLogin } from "@/lib/actions/kiosk";
+import { getAppHomeHref } from "@/lib/landing";
 
 export default function KioskLoginPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -77,10 +80,10 @@ export default function KioskLoginPage() {
           </form>
           <p className="mt-4 text-center text-sm">
             <Link
-              href="/login"
+              href={session?.user ? getAppHomeHref(session) : "/login"}
               className="text-muted-foreground hover:text-primary hover:underline"
             >
-              Back to main login
+              {session?.user ? "Back to app" : "Back to login"}
             </Link>
           </p>
         </CardContent>

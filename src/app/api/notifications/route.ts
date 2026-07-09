@@ -42,9 +42,9 @@ export async function PATCH(request: Request) {
     const data = patchSchema.parse(json);
 
     if (data.all) {
-      await notificationService.markAllRead(session.user.id);
+      await notificationService.clearAll(session.user.id);
     } else if (data.id) {
-      await notificationService.markRead(session.user.id, data.id);
+      await notificationService.dismiss(session.user.id, data.id);
     } else {
       return NextResponse.json(
         { error: "Provide id or all: true" },

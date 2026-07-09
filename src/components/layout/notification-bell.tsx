@@ -93,30 +93,26 @@ export function NotificationBell() {
     };
   }, [fetchNotifications]);
 
-  const markAllRead = async () => {
+  const clearAll = async () => {
     const res = await fetch("/api/notifications", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ all: true }),
     });
     if (res.ok) {
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setNotifications([]);
       setUnreadCount(0);
     }
   };
 
   const handleClick = async (n: NotificationItem) => {
-    if (!n.read) {
-      await fetch("/api/notifications", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: n.id }),
-      });
-      setNotifications((prev) =>
-        prev.map((item) => (item.id === n.id ? { ...item, read: true } : item))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    }
+    await fetch("/api/notifications", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: n.id }),
+    });
+    setNotifications((prev) => prev.filter((item) => item.id !== n.id));
+    setUnreadCount((c) => Math.max(0, c - 1));
     setOpen(false);
     router.push(hrefForNotification(n));
   };
@@ -140,13 +136,13 @@ export function NotificationBell() {
       <DropdownMenuContent align="end" className="w-80">
         <div className="flex items-center justify-between px-2 py-1.5">
           <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
-          {unreadCount > 0 && (
+          {notifications.length > 0 && (
             <button
               type="button"
-              onClick={markAllRead}
+              onClick={clearAll}
               className="text-xs text-primary hover:underline"
             >
-              Mark all read
+              Clear all
             </button>
           )}
         </div>

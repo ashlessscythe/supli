@@ -41,7 +41,6 @@ vi.mock("@/server/email/email.service", () => ({
 vi.mock("@/server/services/notification.service", () => ({
   notificationService: {
     notifyAdminsOfRegistration: vi.fn(),
-    markRegistrationNotificationsRead: vi.fn(),
     deleteRegistrationNotifications: vi.fn(),
   },
 }));
