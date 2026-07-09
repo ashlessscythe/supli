@@ -14,11 +14,11 @@ Stats, request trends, and low-stock visibility for admins.
 
 ![Admin dashboard](docs/images/dashboard.png)
 
-### Inventory management
+### Supply details
 
-Search and edit supplies with quantity, minimum threshold, barcode, and internal SKU. Quantity can also be updated inline from the list.
+Click any supply to see on-hand quantity, stock by location, vendor lead times and MOQ, last receipt, and recent activity — without leaving the list.
 
-![Edit supply](docs/images/supply_edit.png)
+![Supply details](docs/images/supply_details_popup.png)
 
 ### Supply requests
 
@@ -50,7 +50,7 @@ Searchable activity trail for stock receipts, supply requests, and kiosk consump
 
 | Area | What you get |
 |------|----------------|
-| **Inventory** | CRUD for supplies; barcode & SKU; min thresholds; inline qty updates; search |
+| **Inventory** | CRUD for supplies; barcode & SKU; min thresholds; item detail view with vendors & history; search |
 | **Requests** | Staff request workflow with admin approve/deny |
 | **Kiosk** | PIN-gated barcode scan to consume stock (stock movement ledger) |
 | **Locations** | Warehouses, cages, tool rooms, and per-location stock levels |

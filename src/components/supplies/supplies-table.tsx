@@ -27,6 +27,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useSupplies } from "@/hooks/use-supplies";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
+import { SupplyDetailDialog } from "@/components/supplies/supply-detail-dialog";
 import { ReceiveDialog } from "@/components/inventory/receive-dialog";
 import { AdjustDialog } from "@/components/inventory/adjust-dialog";
 import { CreateRequestDialog } from "@/components/requests/create-request-dialog";
@@ -83,6 +84,7 @@ export function SuppliesTable({
   const [requestingSupplyId, setRequestingSupplyId] = useState<string | null>(
     null
   );
+  const [detailSupplyId, setDetailSupplyId] = useState<string | null>(null);
 
   const [search, setSearch] = useState(initialSearch);
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
@@ -195,7 +197,10 @@ export function SuppliesTable({
   };
 
   const RowActions = ({ supply }: { supply: Supply }) => (
-    <div className="flex items-center justify-end gap-1">
+    <div
+      className="flex items-center justify-end gap-1"
+      onClick={(e) => e.stopPropagation()}
+    >
       {isAdmin && locations.length > 0 && (
         <>
           <Button
@@ -319,7 +324,11 @@ export function SuppliesTable({
               </TableRow>
             ) : (
               paginated.map((supply) => (
-                <TableRow key={supply.id}>
+                <TableRow
+                  key={supply.id}
+                  className="cursor-pointer"
+                  onClick={() => setDetailSupplyId(supply.id)}
+                >
                   <TableCell className="font-medium">{supply.name}</TableCell>
                   <TableCell>{supply.description}</TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
@@ -355,7 +364,11 @@ export function SuppliesTable({
           </div>
         ) : (
           paginated.map((supply) => (
-            <div key={supply.id} className="rounded-md border p-4 space-y-3">
+            <div
+              key={supply.id}
+              className="cursor-pointer rounded-md border p-4 space-y-3 transition-colors hover:bg-accent/30"
+              onClick={() => setDetailSupplyId(supply.id)}
+            >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="font-medium break-words">{supply.name}</p>
@@ -452,6 +465,14 @@ export function SuppliesTable({
           )}
         </div>
       </div>
+
+      <SupplyDetailDialog
+        supplyId={detailSupplyId}
+        open={detailSupplyId !== null}
+        onOpenChange={(open) => {
+          if (!open) setDetailSupplyId(null);
+        }}
+      />
 
       {editingSupply && (
         <SupplyDialog

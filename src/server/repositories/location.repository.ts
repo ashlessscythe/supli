@@ -9,6 +9,13 @@ export const locationRepository = {
     });
   },
 
+  findAllAdmin() {
+    return prisma.location.findMany({
+      orderBy: { name: "asc" },
+      include: { _count: { select: { stockLevels: true } } },
+    });
+  },
+
   findById(id: string) {
     return prisma.location.findUnique({ where: { id } });
   },

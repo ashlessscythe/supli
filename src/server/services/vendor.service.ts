@@ -10,6 +10,11 @@ const vendorSchema = z.object({
   notes: z.string().optional(),
 });
 
+const vendorUpdateSchema = vendorSchema.extend({
+  id: z.string(),
+  isActive: z.boolean().optional(),
+});
+
 const itemVendorSchema = z.object({
   supplyId: z.string(),
   vendorId: z.string(),
@@ -26,6 +31,18 @@ export const vendorService = {
     try {
       const vendors = await prisma.vendor.findMany({
         where: { isActive: true },
+        orderBy: { name: "asc" },
+        include: { _count: { select: { itemVendors: true } } },
+      });
+      return success(vendors);
+    } catch {
+      return failure("Failed to fetch vendors");
+    }
+  },
+
+  async listAll() {
+    try {
+      const vendors = await prisma.vendor.findMany({
         orderBy: { name: "asc" },
         include: { _count: { select: { itemVendors: true } } },
       });
@@ -77,6 +94,36 @@ export const vendorService = {
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
       return failure("Failed to create vendor");
+    }
+  },
+
+  async update(userId: string, input: z.infer<typeof vendorUpdateSchema>) {
+    try {
+      const { id, ...fields } = vendorUpdateSchema.parse(input);
+      const existing = await prisma.vendor.findUnique({ where: { id } });
+      if (!existing) return failure("Vendor not found");
+
+      const vendor = await executeWithAudit(
+        userId,
+        `Updated vendor: ${fields.name}`,
+        (tx) =>
+          tx.vendor.update({
+            where: { id },
+            data: {
+              name: fields.name,
+              contact: fields.contact?.trim() || null,
+              website: fields.website?.trim() || null,
+              notes: fields.notes?.trim() || null,
+              ...(fields.isActive !== undefined
+                ? { isActive: fields.isActive }
+                : {}),
+            },
+          })
+      );
+      return success(vendor);
+    } catch (error) {
+      if (error instanceof z.ZodError) return failure(error.errors);
+      return failure("Failed to update vendor");
     }
   },
 

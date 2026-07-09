@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { SortableHead } from "@/components/ui/sortable-head";
 import { TablePagination } from "@/components/ui/table-pagination";
+import { Button } from "@/components/ui/button";
 import {
   LocationDialog,
   type LocationFormValues,
@@ -27,11 +28,13 @@ import {
 import { LinkedItemsDialog } from "@/components/admin/linked-items-dialog";
 import { useClientTable } from "@/hooks/use-client-table";
 import { toast } from "sonner";
+import { Edit } from "lucide-react";
 
 interface Location {
   id: string;
   name: string;
   type: string;
+  description: string | null;
   isActive: boolean;
   _count: { stockLevels: number };
 }
@@ -46,6 +49,7 @@ type StatusFilter = "all" | "active" | "inactive";
 export function LocationsClient({ initialLocations }: LocationsClientProps) {
   const [locations, setLocations] = useState(initialLocations);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
 
   const filterFn = useCallback(
     (loc: Location, term: string) => {
@@ -98,6 +102,7 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
           id: newLocation.id,
           name: newLocation.name,
           type: newLocation.type,
+          description: newLocation.description ?? null,
           isActive: newLocation.isActive,
           _count: { stockLevels: 0 },
         },
@@ -106,6 +111,48 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to create location"
+      );
+      throw error;
+    }
+  };
+
+  const handleUpdate = async (data: LocationFormValues & { id?: string }) => {
+    if (!data.id) return;
+
+    try {
+      const response = await fetch("/api/locations", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(
+          typeof error.error === "string"
+            ? error.error
+            : "Failed to update location"
+        );
+      }
+
+      const updated = await response.json();
+      setLocations((prev) =>
+        prev.map((loc) =>
+          loc.id === updated.id
+            ? {
+                ...loc,
+                name: updated.name,
+                type: updated.type,
+                description: updated.description ?? null,
+                isActive: updated.isActive,
+              }
+            : loc
+        )
+      );
+      toast.success("Location updated successfully");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update location"
       );
       throw error;
     }
@@ -175,13 +222,14 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
                     onSort={() => table.toggleSort("stockItems")}
                   />
                   <TableHead>Status</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {table.paginated.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="h-24 text-center text-muted-foreground"
                     >
                       No locations found.
@@ -202,6 +250,16 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
                       </TableCell>
                       <TableCell>
                         {loc.isActive ? "Active" : "Inactive"}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingLocation(loc)}
+                        >
+                          <Edit className="mr-1 h-3.5 w-3.5" />
+                          Edit
+                        </Button>
                       </TableCell>
                     </TableRow>
                   ))
@@ -226,6 +284,18 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
           />
         </CardContent>
       </Card>
+
+      {editingLocation && (
+        <LocationDialog
+          key={editingLocation.id}
+          location={editingLocation}
+          onSubmit={handleUpdate}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingLocation(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -10,10 +10,10 @@ const screenshots = [
     description: "Stats, trends, and low-stock visibility at a glance.",
   },
   {
-    src: "/landing/supply_edit.png",
-    alt: "Inventory management with supply search, quantity, and barcode fields",
-    title: "Inventory management",
-    description: "Search, edit, and update quantities inline.",
+    src: "/landing/supply_details_popup.png",
+    alt: "Supply detail modal with stock levels, vendors, lead time, and receipt history",
+    title: "Supply details",
+    description: "Click any item for vendors, lead times, and receipt history.",
   },
   {
     src: "/landing/request_mobile.png",

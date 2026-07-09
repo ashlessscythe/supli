@@ -20,6 +20,47 @@ export const supplyRepository = {
     });
   },
 
+  findDetails(id: string) {
+    return prisma.supply.findUnique({
+      where: { id },
+      include: {
+        itemType: { select: { name: true, slug: true } },
+        stockLevels: {
+          include: { location: { select: { name: true } } },
+          orderBy: { location: { name: "asc" } },
+        },
+        itemVendors: {
+          include: {
+            vendor: {
+              select: { id: true, name: true, contact: true, website: true },
+            },
+          },
+          orderBy: [{ isPreferred: "desc" }, { vendor: { name: "asc" } }],
+        },
+        stockMovements: {
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: {
+            location: { select: { name: true } },
+            vendorReorder: { select: { externalPoNumber: true } },
+          },
+        },
+        requests: {
+          orderBy: { createdAt: "desc" },
+          take: 5,
+          include: { user: { select: { username: true } } },
+        },
+        vendorReorders: {
+          where: {
+            status: { in: ["ORDERED", "PARTIALLY_RECEIVED"] },
+          },
+          orderBy: { orderedAt: "desc" },
+          include: { vendor: { select: { name: true } } },
+        },
+      },
+    });
+  },
+
   create(
     data: {
       name: string;

@@ -10,10 +10,32 @@ const locationSchema = z.object({
   description: z.string().optional(),
 });
 
+const locationUpdateSchema = locationSchema.extend({
+  id: z.string(),
+  isActive: z.boolean().optional(),
+});
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  );
+}
+
 export const locationService = {
   async list() {
     try {
       return success(await locationRepository.findAll());
+    } catch {
+      return failure("Failed to fetch locations");
+    }
+  },
+
+  async listAll() {
+    try {
+      return success(await locationRepository.findAllAdmin());
     } catch {
       return failure("Failed to fetch locations");
     }
@@ -50,7 +72,42 @@ export const locationService = {
       return success(location);
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
+      if (isUniqueViolation(error)) {
+        return failure("A location with that name already exists");
+      }
       return failure("Failed to create location");
+    }
+  },
+
+  async update(userId: string, input: z.infer<typeof locationUpdateSchema>) {
+    try {
+      const { id, ...fields } = locationUpdateSchema.parse(input);
+      const existing = await locationRepository.findById(id);
+      if (!existing) return failure("Location not found");
+
+      const location = await executeWithAudit(
+        userId,
+        `Updated location: ${fields.name}`,
+        (tx) =>
+          tx.location.update({
+            where: { id },
+            data: {
+              name: fields.name,
+              type: fields.type,
+              description: fields.description?.trim() || null,
+              ...(fields.isActive !== undefined
+                ? { isActive: fields.isActive }
+                : {}),
+            },
+          })
+      );
+      return success(location);
+    } catch (error) {
+      if (error instanceof z.ZodError) return failure(error.errors);
+      if (isUniqueViolation(error)) {
+        return failure("A location with that name already exists");
+      }
+      return failure("Failed to update location");
     }
   },
 };

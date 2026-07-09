@@ -22,11 +22,6 @@ export const adminRoutes = [
     icon: BarChart3,
   },
   {
-    title: "Users",
-    href: "/admin/users",
-    icon: Users,
-  },
-  {
     title: "Supplies",
     href: "/admin/supplies",
     icon: Package,
@@ -50,6 +45,11 @@ export const adminRoutes = [
     title: "Requests",
     href: "/admin/requests",
     icon: ClipboardList,
+  },
+  {
+    title: "Users",
+    href: "/admin/users",
+    icon: Users,
   },
   {
     title: "Audit Log",

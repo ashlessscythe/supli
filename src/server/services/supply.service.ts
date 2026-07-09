@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { StockMovementType } from "@prisma/client";
 import {
   supplyAdminSchema,
   supplyStaffUpdateSchema,
@@ -6,6 +7,7 @@ import {
   type SupplyStaffUpdateInput,
 } from "@/lib/validation/supply";
 import { failure, success, type ActionResult } from "@/lib/result";
+import { prisma } from "@/lib/prisma";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { executeWithAudit, executeWithAudits } from "@/server/audit";
 import { notificationService } from "@/server/services/notification.service";
@@ -37,6 +39,104 @@ export const supplyService = {
       return success(supply);
     } catch {
       return failure("Failed to fetch supply");
+    }
+  },
+
+  async getDetails(id: string) {
+    try {
+      const supply = await supplyRepository.findDetails(id);
+      if (!supply) return failure("Supply not found");
+
+      const userIds = [
+        ...new Set(
+          supply.stockMovements
+            .map((m) => m.userId)
+            .filter((uid): uid is string => !!uid)
+        ),
+      ];
+      const users =
+        userIds.length > 0
+          ? await prisma.user.findMany({
+              where: { id: { in: userIds } },
+              select: { id: true, username: true },
+            })
+          : [];
+      const userMap = new Map(users.map((u) => [u.id, u.username]));
+
+      const lastReceiptMovement = supply.stockMovements.find(
+        (m) => m.type === StockMovementType.RECEIVE
+      );
+
+      return success({
+        id: supply.id,
+        name: supply.name,
+        description: supply.description,
+        quantity: supply.quantity,
+        minimumThreshold: supply.minimumThreshold,
+        barcode: supply.barcode,
+        internalSku: supply.internalSku,
+        createdAt: supply.createdAt,
+        updatedAt: supply.updatedAt,
+        itemType: supply.itemType,
+        stockLevels: supply.stockLevels.map((sl) => ({
+          locationName: sl.location.name,
+          quantity: sl.quantity,
+          minimumThreshold: sl.minimumThreshold,
+        })),
+        vendors: supply.itemVendors.map((iv) => ({
+          id: iv.vendor.id,
+          name: iv.vendor.name,
+          contact: iv.vendor.contact,
+          website: iv.vendor.website,
+          vendorSku: iv.vendorSku,
+          internalSku: iv.internalSku,
+          isPreferred: iv.isPreferred,
+          leadTimeDays: iv.leadTimeDays,
+          moq: iv.moq,
+          cost: iv.cost != null ? Number(iv.cost) : null,
+        })),
+        lastReceipt: lastReceiptMovement
+          ? {
+              id: lastReceiptMovement.id,
+              createdAt: lastReceiptMovement.createdAt,
+              quantity: lastReceiptMovement.quantity,
+              locationName: lastReceiptMovement.location.name,
+              notes: lastReceiptMovement.notes,
+              externalPoNumber:
+                lastReceiptMovement.vendorReorder?.externalPoNumber ?? null,
+              username: lastReceiptMovement.userId
+                ? userMap.get(lastReceiptMovement.userId) ?? "Unknown"
+                : "System",
+            }
+          : null,
+        recentMovements: supply.stockMovements.map((m) => ({
+          id: m.id,
+          type: m.type,
+          quantity: m.quantity,
+          createdAt: m.createdAt,
+          locationName: m.location.name,
+          notes: m.notes,
+          externalPoNumber: m.vendorReorder?.externalPoNumber ?? null,
+          username: m.userId ? userMap.get(m.userId) ?? "Unknown" : "System",
+        })),
+        recentRequests: supply.requests.map((r) => ({
+          id: r.id,
+          quantity: r.quantity,
+          status: r.status,
+          username: r.user.username,
+          createdAt: r.createdAt,
+        })),
+        openReorders: supply.vendorReorders.map((vr) => ({
+          id: vr.id,
+          quantity: vr.quantity,
+          status: vr.status,
+          vendorName: vr.vendor?.name ?? null,
+          orderedAt: vr.orderedAt,
+          externalPoNumber: vr.externalPoNumber,
+        })),
+      });
+    } catch {
+      return failure("Failed to fetch supply details");
     }
   },
 
