@@ -38,6 +38,12 @@ In-app bell with unread badge for registration approvals, low-stock alerts, and 
 
 ![Notifications](docs/images/notifications.png)
 
+### Audit log
+
+Searchable activity trail for stock receipts, supply requests, and kiosk consumption — who did what and when.
+
+![Audit log](docs/images/audit_log.png)
+
 ---
 
 ## Features

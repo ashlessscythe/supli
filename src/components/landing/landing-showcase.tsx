@@ -33,6 +33,12 @@ const screenshots = [
     title: "Notifications",
     description: "Low stock, requests, and registration alerts.",
   },
+  {
+    src: "/landing/audit_log.png",
+    alt: "Audit log table listing system actions, users, and timestamps",
+    title: "Audit log",
+    description: "Full activity trail — receipts, requests, and consumption.",
+  },
 ];
 
 export function LandingShowcase() {
