@@ -51,6 +51,7 @@ model User {
   auditLogs     AuditLog[]
   authTokens    AuthToken[]
   notifications Notification[]
+  vendorReorders VendorReorder[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -69,6 +70,7 @@ model Supply {
   stockLevels      StockLevel[]
   itemVendors      ItemVendor[]
   stockMovements   StockMovement[]
+  vendorReorders   VendorReorder[]
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
@@ -177,6 +179,7 @@ model Vendor {
   notes       String?
   isActive    Boolean      @default(true)
   itemVendors ItemVendor[]
+  vendorReorders VendorReorder[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -200,20 +203,45 @@ model ItemVendor {
 }
 
 model StockMovement {
-  id             String            @id @default(cuid())
-  supplyId       String
-  locationId     String
-  quantity       Int
-  type           StockMovementType
-  badgeId        String?
-  userId         String?
-  notes          String?
-  supply         Supply            @relation(fields: [supplyId], references: [id])
-  location       Location          @relation(fields: [locationId], references: [id])
-  createdAt      DateTime          @default(now())
+  id              String            @id @default(cuid())
+  supplyId        String
+  locationId      String
+  quantity        Int
+  type            StockMovementType
+  badgeId         String?
+  userId          String?
+  notes           String?
+  vendorReorderId String?
+  supply          Supply            @relation(fields: [supplyId], references: [id])
+  location        Location          @relation(fields: [locationId], references: [id])
+  vendorReorder   VendorReorder?    @relation(fields: [vendorReorderId], references: [id])
+  createdAt       DateTime          @default(now())
 
   @@index([supplyId, createdAt])
   @@index([locationId])
+  @@index([vendorReorderId])
+}
+
+model VendorReorder {
+  id               String              @id @default(cuid())
+  supplyId         String
+  vendorId         String?
+  quantity         Int
+  externalPoNumber String?
+  status           VendorReorderStatus @default(ORDERED)
+  orderedAt        DateTime            @default(now())
+  receivedAt       DateTime?
+  notes            String?
+  createdById      String
+  supply           Supply              @relation(fields: [supplyId], references: [id], onDelete: Cascade)
+  vendor           Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  createdBy        User                @relation(fields: [createdById], references: [id])
+  stockMovements   StockMovement[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([supplyId])
+  @@index([status])
 }
 
 model Notification {
@@ -269,4 +297,10 @@ enum RequestStatus {
   PENDING
   APPROVED
   DENIED
+}
+
+enum VendorReorderStatus {
+  ORDERED
+  PARTIALLY_RECEIVED
+  RECEIVED
 }

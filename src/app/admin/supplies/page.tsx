@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { locationService } from "@/server/services/location.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SuppliesTable } from "@/components/supplies/supplies-table";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
@@ -13,8 +14,19 @@ async function getSupplies() {
   return supplies;
 }
 
-export default async function AdminSuppliesPage() {
-  const supplies = await getSupplies();
+export default async function AdminSuppliesPage({
+  searchParams,
+}: {
+  searchParams: { q?: string };
+}) {
+  const [supplies, locationsResult] = await Promise.all([
+    getSupplies(),
+    locationService.list(),
+  ]);
+
+  const locations = locationsResult.success
+    ? locationsResult.data.map((l) => ({ id: l.id, name: l.name }))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -35,7 +47,12 @@ export default async function AdminSuppliesPage() {
           <CardTitle>All Supplies</CardTitle>
         </CardHeader>
         <CardContent>
-          <SuppliesTable data={supplies} isAdmin={true} />
+          <SuppliesTable
+            data={supplies}
+            isAdmin={true}
+            locations={locations}
+            initialSearch={searchParams.q ?? ""}
+          />
         </CardContent>
       </Card>
     </div>

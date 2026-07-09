@@ -10,7 +10,10 @@ export async function createRequest(formData: RequestInput) {
   try {
     const session = await requireSession();
     const result = await requestService.create(session.user.id, formData);
-    if (result.success) revalidatePath("/dashboard/requests");
+    if (result.success) {
+      revalidatePath("/dashboard/requests");
+      revalidatePath("/admin/requests");
+    }
     return result;
   } catch {
     return { success: false as const, error: "Unauthorized" };
@@ -25,7 +28,10 @@ export async function updateRequestStatus(id: string, status: RequestStatus) {
       id,
       status
     );
-    if (result.success) revalidatePath("/dashboard/requests");
+    if (result.success) {
+      revalidatePath("/dashboard/requests");
+      revalidatePath("/admin/requests");
+    }
     return result;
   } catch {
     return { success: false as const, error: "Unauthorized" };

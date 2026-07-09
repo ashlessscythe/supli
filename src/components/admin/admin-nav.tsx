@@ -12,6 +12,7 @@ import {
   History,
   MapPin,
   Truck,
+  PackagePlus,
 } from "lucide-react";
 
 export const adminRoutes = [
@@ -29,6 +30,11 @@ export const adminRoutes = [
     title: "Supplies",
     href: "/admin/supplies",
     icon: Package,
+  },
+  {
+    title: "Receipts",
+    href: "/admin/receipts",
+    icon: PackagePlus,
   },
   {
     title: "Locations",

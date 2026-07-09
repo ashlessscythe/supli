@@ -35,16 +35,21 @@ type RequestFormData = z.infer<typeof requestSchema>;
 
 interface RequestFormProps {
   supplies: Supply[];
+  defaultSupplyId?: string;
   onSuccess?: () => void;
 }
 
-export function RequestForm({ supplies, onSuccess }: RequestFormProps) {
+export function RequestForm({
+  supplies,
+  defaultSupplyId,
+  onSuccess,
+}: RequestFormProps) {
   const { handleCreateRequest, isLoading } = useRequests();
 
   const form = useForm<RequestFormData>({
     resolver: zodResolver(requestSchema),
     defaultValues: {
-      supplyId: "",
+      supplyId: defaultSupplyId ?? "",
       quantity: 1,
     },
   });
@@ -70,7 +75,10 @@ export function RequestForm({ supplies, onSuccess }: RequestFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Supply</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <Select
+                onValueChange={field.onChange}
+                value={field.value}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a supply" />

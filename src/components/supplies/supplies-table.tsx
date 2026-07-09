@@ -27,6 +27,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { useSupplies } from "@/hooks/use-supplies";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
+import { ReceiveDialog } from "@/components/inventory/receive-dialog";
+import { AdjustDialog } from "@/components/inventory/adjust-dialog";
+import { CreateRequestDialog } from "@/components/requests/create-request-dialog";
 import { formatBarcode } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
 import {
@@ -38,22 +41,22 @@ import {
   ChevronsUpDown,
   ChevronLeft,
   ChevronRight,
+  PackagePlus,
+  SlidersHorizontal,
+  ClipboardList,
 } from "lucide-react";
+import { Supply } from "@/types";
 
-interface Supply {
+interface LocationOption {
   id: string;
   name: string;
-  description: string;
-  quantity: number;
-  minimumThreshold: number;
-  barcode?: string | null;
-  internalSku?: string | null;
 }
 
 interface SuppliesTableProps {
   data: Supply[];
   isAdmin: boolean;
   initialSearch?: string;
+  locations?: LocationOption[];
 }
 
 type SortKey = "name" | "quantity" | "minimumThreshold";
@@ -67,12 +70,19 @@ export function SuppliesTable({
   data,
   isAdmin,
   initialSearch = "",
+  locations = [],
 }: SuppliesTableProps) {
-  const { handleUpdateQuantity, handleDeleteSupply, isLoading } = useSupplies();
-  const [quantities, setQuantities] = useState<Record<string, number | null>>(
-    {}
-  );
+  const { handleDeleteSupply, isLoading } = useSupplies();
   const [editingSupply, setEditingSupply] = useState<Supply | null>(null);
+  const [receivingSupplyId, setReceivingSupplyId] = useState<string | null>(
+    null
+  );
+  const [adjustingSupplyId, setAdjustingSupplyId] = useState<string | null>(
+    null
+  );
+  const [requestingSupplyId, setRequestingSupplyId] = useState<string | null>(
+    null
+  );
 
   const [search, setSearch] = useState(initialSearch);
   const [stockFilter, setStockFilter] = useState<StockFilter>("all");
@@ -81,24 +91,18 @@ export function SuppliesTable({
   const [pageSize, setPageSize] = useState<number>(25);
   const [page, setPage] = useState(0);
 
+  const supplyOptions = useMemo(
+    () =>
+      data.map((s) => ({
+        id: s.id,
+        name: s.name,
+        quantity: s.quantity,
+      })),
+    [data]
+  );
+
   const isLowStock = (supply: Supply) =>
     supply.quantity <= supply.minimumThreshold;
-
-  const handleQuantityChange = (id: string, value: string) => {
-    const numValue = value === "" ? null : parseInt(value);
-    setQuantities((prev) => ({ ...prev, [id]: numValue }));
-  };
-
-  const updateQuantity = async (id: string) => {
-    const quantity = quantities[id];
-    if (quantity !== null && quantity !== undefined) {
-      await handleUpdateQuantity(id, quantity);
-      setQuantities((prev) => ({ ...prev, [id]: null }));
-    }
-  };
-
-  const isUpdateDisabled = (id: string) =>
-    isLoading || quantities[id] === null || quantities[id] === undefined;
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -190,42 +194,71 @@ export function SuppliesTable({
     );
   };
 
-  const ActionsMenu = ({ supply }: { supply: Supply }) => (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
-          <span className="sr-only">Open menu</span>
-          <MoreHorizontal className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-        <DropdownMenuItem
-          onSelect={(e) => {
-            e.preventDefault();
-            setEditingSupply(supply);
-          }}
-        >
-          <Edit className="mr-2 h-4 w-4" />
-          Edit
-        </DropdownMenuItem>
-        {isAdmin && (
-          <DropdownMenuItem
-            onClick={() => handleDeleteSupply(supply.id)}
-            className="text-red-600"
-            disabled={isLoading}
+  const RowActions = ({ supply }: { supply: Supply }) => (
+    <div className="flex items-center justify-end gap-1">
+      {isAdmin && locations.length > 0 && (
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setReceivingSupplyId(supply.id)}
           >
-            <Trash className="mr-2 h-4 w-4" />
-            Delete
+            <PackagePlus className="mr-1 h-3.5 w-3.5" />
+            Receive
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setAdjustingSupplyId(supply.id)}
+          >
+            <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
+            Adjust
+          </Button>
+        </>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setRequestingSupplyId(supply.id)}
+      >
+        <ClipboardList className="mr-1 h-3.5 w-3.5" />
+        Request
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem
+            onSelect={(e) => {
+              e.preventDefault();
+              setEditingSupply(supply);
+            }}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Edit
           </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+          {isAdmin && (
+            <DropdownMenuItem
+              onClick={() => handleDeleteSupply(supply.id)}
+              className="text-red-600"
+              disabled={isLoading}
+            >
+              <Trash className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Input
           placeholder="Search by name, description, barcode, or SKU"
@@ -254,7 +287,6 @@ export function SuppliesTable({
         </Select>
       </div>
 
-      {/* Desktop / tablet: table */}
       <div className="hidden rounded-md border md:block">
         <Table>
           <TableHeader>
@@ -272,7 +304,7 @@ export function SuppliesTable({
                 sortField="minimumThreshold"
                 className="w-[100px] text-right"
               />
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[280px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -294,38 +326,20 @@ export function SuppliesTable({
                     {supply.barcode ? formatBarcode(supply.barcode) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <span
-                        className={cn(isLowStock(supply) && "text-red-500")}
-                      >
-                        {supply.quantity}
-                      </span>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          value={quantities[supply.id] ?? ""}
-                          onChange={(e) =>
-                            handleQuantityChange(supply.id, e.target.value)
-                          }
-                          className="w-20"
-                          min={0}
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => updateQuantity(supply.id)}
-                          disabled={isUpdateDisabled(supply.id)}
-                        >
-                          Update
-                        </Button>
-                      </div>
-                    </div>
+                    <span
+                      className={cn(
+                        "font-medium",
+                        isLowStock(supply) && "text-red-500"
+                      )}
+                    >
+                      {supply.quantity}
+                    </span>
                   </TableCell>
                   <TableCell className="text-right">
                     {supply.minimumThreshold}
                   </TableCell>
                   <TableCell>
-                    <ActionsMenu supply={supply} />
+                    <RowActions supply={supply} />
                   </TableCell>
                 </TableRow>
               ))
@@ -334,7 +348,6 @@ export function SuppliesTable({
         </Table>
       </div>
 
-      {/* Mobile: cards */}
       <div className="space-y-3 md:hidden">
         {paginated.length === 0 ? (
           <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
@@ -352,7 +365,6 @@ export function SuppliesTable({
                     </p>
                   )}
                 </div>
-                <ActionsMenu supply={supply} />
               </div>
 
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -379,32 +391,12 @@ export function SuppliesTable({
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  placeholder="New qty"
-                  value={quantities[supply.id] ?? ""}
-                  onChange={(e) =>
-                    handleQuantityChange(supply.id, e.target.value)
-                  }
-                  className="flex-1"
-                  min={0}
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => updateQuantity(supply.id)}
-                  disabled={isUpdateDisabled(supply.id)}
-                >
-                  Update
-                </Button>
-              </div>
+              <RowActions supply={supply} />
             </div>
           ))
         )}
       </div>
 
-      {/* Pagination */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Rows per page</span>
@@ -470,6 +462,47 @@ export function SuppliesTable({
           open
           onOpenChange={(open) => {
             if (!open) setEditingSupply(null);
+          }}
+        />
+      )}
+
+      {isAdmin && locations.length > 0 && receivingSupplyId && (
+        <ReceiveDialog
+          key={receivingSupplyId}
+          supplies={supplyOptions}
+          locations={locations}
+          defaultSupplyId={receivingSupplyId}
+          trigger={null}
+          open
+          onOpenChange={(open) => {
+            if (!open) setReceivingSupplyId(null);
+          }}
+        />
+      )}
+
+      {isAdmin && locations.length > 0 && adjustingSupplyId && (
+        <AdjustDialog
+          key={adjustingSupplyId}
+          supplies={supplyOptions}
+          locations={locations}
+          defaultSupplyId={adjustingSupplyId}
+          trigger={null}
+          open
+          onOpenChange={(open) => {
+            if (!open) setAdjustingSupplyId(null);
+          }}
+        />
+      )}
+
+      {requestingSupplyId && (
+        <CreateRequestDialog
+          key={requestingSupplyId}
+          supplies={data}
+          defaultSupplyId={requestingSupplyId}
+          trigger={null}
+          open
+          onOpenChange={(open) => {
+            if (!open) setRequestingSupplyId(null);
           }}
         />
       )}

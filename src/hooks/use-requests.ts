@@ -25,7 +25,6 @@ export function useRequests() {
       }
 
       toast.success("Request created successfully");
-      router.push("/dashboard/requests");
       router.refresh();
       return true;
     } catch (error) {

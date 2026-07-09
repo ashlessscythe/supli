@@ -1,9 +1,11 @@
 import { z } from "zod";
-import { RequestStatus } from "@prisma/client";
+import { RequestStatus, StockMovementType } from "@prisma/client";
 import { requestSchema, type RequestInput } from "@/lib/validation/request";
 import { failure, success } from "@/lib/result";
 import { requestRepository } from "@/server/repositories/request.repository";
 import { supplyRepository } from "@/server/repositories/supply.repository";
+import { locationRepository } from "@/server/repositories/location.repository";
+import { stockLevelRepository } from "@/server/repositories/stock-level.repository";
 import { settingsService } from "@/server/services/settings.service";
 import { executeWithAudit } from "@/server/audit";
 import { notificationService } from "@/server/services/notification.service";
@@ -93,11 +95,57 @@ export const requestService = {
         `${status} request for ${existing.quantity} ${existing.supply.name}`,
         async (tx) => {
           if (status === RequestStatus.APPROVED) {
-            await supplyRepository.decrementQuantity(
-              existing.supplyId,
-              existing.quantity,
-              tx
-            );
+            const location = await locationRepository.findDefault();
+            if (!location) {
+              throw new Error("No location configured");
+            }
+
+            let level = await tx.stockLevel.findUnique({
+              where: {
+                supplyId_locationId: {
+                  supplyId: existing.supplyId,
+                  locationId: location.id,
+                },
+              },
+            });
+
+            if (!level && existing.supply.quantity >= existing.quantity) {
+              level = await tx.stockLevel.create({
+                data: {
+                  supplyId: existing.supplyId,
+                  locationId: location.id,
+                  quantity: existing.supply.quantity,
+                  minimumThreshold: existing.supply.minimumThreshold,
+                },
+              });
+            }
+
+            if (!level || level.quantity < existing.quantity) {
+              throw new Error("Insufficient stock at default location");
+            }
+
+            await tx.stockLevel.update({
+              where: {
+                supplyId_locationId: {
+                  supplyId: existing.supplyId,
+                  locationId: location.id,
+                },
+              },
+              data: { quantity: { decrement: existing.quantity } },
+            });
+
+            await tx.stockMovement.create({
+              data: {
+                supplyId: existing.supplyId,
+                locationId: location.id,
+                quantity: existing.quantity,
+                type: StockMovementType.CONSUME,
+                userId: actorId,
+                notes: `Request approved for user ${existing.userId}`,
+              },
+            });
+
+            await stockLevelRepository.syncSupplyTotals(existing.supplyId, tx);
           }
           return requestRepository.updateStatus(id, status, tx);
         }
@@ -122,7 +170,15 @@ export const requestService = {
       }
 
       return success(request);
-    } catch {
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === "No location configured") {
+          return failure("No location configured");
+        }
+        if (error.message === "Insufficient stock at default location") {
+          return failure("Insufficient stock at default location");
+        }
+      }
       return failure("Failed to update request");
     }
   },

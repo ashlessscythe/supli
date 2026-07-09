@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { getSupplies } from "@/lib/actions/supply";
+import { locationService } from "@/server/services/location.service";
 import { SuppliesTable } from "@/components/supplies/supplies-table";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
 
@@ -17,8 +18,17 @@ export default async function SuppliesPage({
     redirect("/login");
   }
 
-  const result = await getSupplies();
+  const [result, locationsResult] = await Promise.all([
+    getSupplies(),
+    session.user.role === "ADMIN"
+      ? locationService.list()
+      : Promise.resolve({ success: true as const, data: [] }),
+  ]);
   const supplies = result.success ? result.data : [];
+  const locations =
+    locationsResult.success && "data" in locationsResult
+      ? locationsResult.data.map((l) => ({ id: l.id, name: l.name }))
+      : [];
   const initialSearch = searchParams.q ?? "";
 
   return (
@@ -32,6 +42,7 @@ export default async function SuppliesPage({
           data={supplies || []}
           isAdmin={session.user.role === "ADMIN"}
           initialSearch={initialSearch}
+          locations={locations}
         />
       </Suspense>
     </div>

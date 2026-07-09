@@ -13,7 +13,11 @@ export async function createSupply(formData: SupplyInput) {
   try {
     const session = await requireAdmin();
     const result = await supplyService.create(session.user.id, formData);
-    if (result.success) revalidatePath("/dashboard/supplies");
+    if (result.success) {
+      revalidatePath("/dashboard/supplies");
+      revalidatePath("/admin/supplies");
+      revalidatePath("/admin/receipts");
+    }
     return result;
   } catch {
     return { success: false as const, error: "Unauthorized" };
