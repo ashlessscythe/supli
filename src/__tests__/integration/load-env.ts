@@ -50,7 +50,7 @@ export function loadTestEnv() {
     process.env.DATABASE_URL = process.env.DATABASE_TEST_URL;
   }
 
-  process.env.NODE_ENV = "test";
+  (process.env as Record<string, string | undefined>).NODE_ENV = "test";
   process.env.NEXTAUTH_SECRET ??=
     "integration-test-secret-at-least-32-chars-long";
   process.env.NEXTAUTH_URL ??= "http://localhost:3000";

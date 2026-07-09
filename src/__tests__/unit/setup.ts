@@ -5,4 +5,3 @@ process.env.DATABASE_URL ??=
 process.env.NEXTAUTH_SECRET ??=
   "unit-test-secret-at-least-32-characters-long";
 process.env.NEXTAUTH_URL ??= "http://localhost:3000";
-process.env.NODE_ENV ??= "test";

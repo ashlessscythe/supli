@@ -71,7 +71,9 @@ describe("userService.register", () => {
     const result = await userService.register(input);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Username already exists");
+    if (!result.success) {
+      expect(result.error).toBe("Username already exists");
+    }
   });
 
   it("fails when email already in use", async () => {
@@ -81,7 +83,9 @@ describe("userService.register", () => {
     const result = await userService.register(input);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Email already in use");
+    if (!result.success) {
+      expect(result.error).toBe("Email already in use");
+    }
   });
 
   it("returns zod errors when validation fails", async () => {
@@ -90,7 +94,9 @@ describe("userService.register", () => {
     const result = await userService.register(badInput as never);
 
     expect(result.success).toBe(false);
-    expect(Array.isArray(result.error)).toBe(true);
+    if (!result.success) {
+      expect(Array.isArray(result.error)).toBe(true);
+    }
   });
 });
 
@@ -105,7 +111,9 @@ describe("userService.verifyEmail", () => {
     const result = await userService.verifyEmail("bad-token");
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Invalid or expired token");
+    if (!result.success) {
+      expect(result.error).toBe("Invalid or expired token");
+    }
   });
 
   it("fails when user does not exist", async () => {
@@ -118,7 +126,9 @@ describe("userService.verifyEmail", () => {
     const result = await userService.verifyEmail("token");
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("User not found");
+    if (!result.success) {
+      expect(result.error).toBe("User not found");
+    }
   });
 
   it("updates user and consumes token on success", async () => {

@@ -59,7 +59,9 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe("Username already exists");
+    if (!result.success) {
+      expect(result.error).toBe("Username already exists");
+    }
 
     const prisma = await getPrisma();
     expect(await prisma.user.count({ where: { username: "taken" } })).toBe(1);
