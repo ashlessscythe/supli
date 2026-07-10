@@ -57,12 +57,12 @@ export function CheckoutDialog({
   defaultLocationId,
   trigger,
 }: CheckoutDialogProps) {
-  const initialLocationId =
-    defaultLocationId ?? locations[0]?.id ?? "";
+  const initialLocationId = defaultLocationId ?? locations[0]?.id ?? "";
   const [open, setOpen] = useState(false);
   const [barcode, setBarcode] = useState("");
   const [searchSupplyId, setSearchSupplyId] = useState("");
-  const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
+  const [selectedLocationId, setSelectedLocationId] =
+    useState(initialLocationId);
   const [selectedLocationName, setSelectedLocationName] = useState(
     locations.find((location) => location.id === initialLocationId)?.name ?? ""
   );
@@ -111,23 +111,20 @@ export function CheckoutDialog({
     []
   );
 
-  const applyStockLevels = useCallback(
-    (stock: Record<string, number>) => {
-      setCart((prev) =>
-        prev
-          .map((item) => {
-            const available = stock[item.supplyId] ?? 0;
-            return {
-              ...item,
-              available,
-              quantity: Math.min(item.quantity, available),
-            };
-          })
-          .filter((item) => item.available > 0 && item.quantity > 0)
-      );
-    },
-    []
-  );
+  const applyStockLevels = useCallback((stock: Record<string, number>) => {
+    setCart((prev) =>
+      prev
+        .map((item) => {
+          const available = stock[item.supplyId] ?? 0;
+          return {
+            ...item,
+            available,
+            quantity: Math.min(item.quantity, available),
+          };
+        })
+        .filter((item) => item.available > 0 && item.quantity > 0)
+    );
+  }, []);
 
   useEffect(() => {
     if (open) {
@@ -149,6 +146,7 @@ export function CheckoutDialog({
   }, [
     open,
     selectedLocationId,
+    cart,
     cartSupplyIds,
     refreshStockLevels,
     applyStockLevels,
@@ -164,7 +162,8 @@ export function CheckoutDialog({
     setCompleted(null);
     setSelectedLocationId(initialLocationId);
     setSelectedLocationName(
-      locations.find((location) => location.id === initialLocationId)?.name ?? ""
+      locations.find((location) => location.id === initialLocationId)?.name ??
+        ""
     );
   }
 
@@ -416,7 +415,10 @@ export function CheckoutDialog({
             <div className="space-y-2">
               <p className="text-sm text-muted-foreground">Or search by name</p>
               <div className="flex gap-2">
-                <Select value={searchSupplyId} onValueChange={setSearchSupplyId}>
+                <Select
+                  value={searchSupplyId}
+                  onValueChange={setSearchSupplyId}
+                >
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Select supply..." />
                   </SelectTrigger>
