@@ -22,6 +22,8 @@ vi.mock("@/server/repositories/supply.repository", () => ({
     update: vi.fn(),
     delete: vi.fn(),
     hasPendingRequests: vi.fn(),
+    hasRemainingStock: vi.fn(),
+    hasOpenOrders: vi.fn(),
   },
 }));
 
@@ -46,6 +48,9 @@ describe("supplyService.delete", () => {
     );
     vi.mocked(supplyRepository.findById).mockResolvedValue(supply as never);
     vi.mocked(supplyRepository.delete).mockResolvedValue(supply as never);
+    vi.mocked(supplyRepository.hasPendingRequests).mockResolvedValue(null);
+    vi.mocked(supplyRepository.hasRemainingStock).mockResolvedValue(false);
+    vi.mocked(supplyRepository.hasOpenOrders).mockResolvedValue(null);
   });
 
   it("blocks deletion when pending requests exist", async () => {
@@ -59,12 +64,38 @@ describe("supplyService.delete", () => {
     if (!result.success) {
       expect(result.error).toBe("Cannot delete supply with pending requests");
     }
+    expect(supplyRepository.hasRemainingStock).not.toHaveBeenCalled();
     expect(supplyRepository.delete).not.toHaveBeenCalled();
   });
 
-  it("deletes supply and records audit when no pending requests", async () => {
-    vi.mocked(supplyRepository.hasPendingRequests).mockResolvedValue(null);
+  it("blocks deletion when supply has remaining quantity", async () => {
+    vi.mocked(supplyRepository.hasRemainingStock).mockResolvedValue(true);
 
+    const result = await supplyService.delete(userId, supply.id);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Cannot delete supply with remaining quantity");
+    }
+    expect(supplyRepository.hasOpenOrders).not.toHaveBeenCalled();
+    expect(supplyRepository.delete).not.toHaveBeenCalled();
+  });
+
+  it("blocks deletion when open vendor orders exist", async () => {
+    vi.mocked(supplyRepository.hasOpenOrders).mockResolvedValue({
+      id: "order-1",
+    } as never);
+
+    const result = await supplyService.delete(userId, supply.id);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Cannot delete supply with open orders");
+    }
+    expect(supplyRepository.delete).not.toHaveBeenCalled();
+  });
+
+  it("deletes supply and records audit when no blockers exist", async () => {
     const result = await supplyService.delete(userId, supply.id);
 
     expect(result.success).toBe(true);

@@ -107,6 +107,31 @@ export const supplyRepository = {
     });
   },
 
+  async hasRemainingStock(supplyId: string) {
+    const supply = await prisma.supply.findUnique({
+      where: { id: supplyId },
+      select: {
+        quantity: true,
+        stockLevels: {
+          where: { quantity: { gt: 0 } },
+          take: 1,
+          select: { id: true },
+        },
+      },
+    });
+    if (!supply) return false;
+    return supply.quantity > 0 || supply.stockLevels.length > 0;
+  },
+
+  hasOpenOrders(supplyId: string) {
+    return prisma.vendorReorder.findFirst({
+      where: {
+        supplyId,
+        status: { in: ["ORDERED", "PARTIALLY_RECEIVED"] },
+      },
+    });
+  },
+
   decrementQuantity(id: string, amount: number, tx?: TransactionClient) {
     const client = tx ?? prisma;
     return client.supply.update({

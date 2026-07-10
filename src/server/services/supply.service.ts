@@ -210,6 +210,16 @@ export const supplyService = {
         return failure("Cannot delete supply with pending requests");
       }
 
+      const hasStock = await supplyRepository.hasRemainingStock(id);
+      if (hasStock) {
+        return failure("Cannot delete supply with remaining quantity");
+      }
+
+      const openOrders = await supplyRepository.hasOpenOrders(id);
+      if (openOrders) {
+        return failure("Cannot delete supply with open orders");
+      }
+
       const existing = await supplyRepository.findById(id);
       if (!existing) return failure("Supply not found");
 
