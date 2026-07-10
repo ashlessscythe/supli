@@ -132,27 +132,6 @@ export function CheckoutDialog({
     }
   }, [open]);
 
-  const cartSupplyIds = cart.map((item) => item.supplyId).join(",");
-
-  useEffect(() => {
-    if (!open || !selectedLocationId || cart.length === 0) return;
-
-    const supplyIds = cart.map((item) => item.supplyId);
-    void refreshStockLevels(selectedLocationId, supplyIds).then((stock) => {
-      if (Object.keys(stock).length > 0) {
-        applyStockLevels(stock);
-      }
-    });
-  }, [
-    open,
-    selectedLocationId,
-    cart,
-    cartSupplyIds,
-    refreshStockLevels,
-    applyStockLevels,
-    cart.length,
-  ]);
-
   function resetForm() {
     setBarcode("");
     setSearchSupplyId("");
@@ -194,7 +173,10 @@ export function CheckoutDialog({
       return;
     }
 
-    const stock = await refreshStockLevels(selectedLocationId, [supply.id]);
+    const supplyIds = [
+      ...new Set([...cart.map((item) => item.supplyId), supply.id]),
+    ];
+    const stock = await refreshStockLevels(selectedLocationId, supplyIds);
     const available = stock[supply.id] ?? 0;
 
     if (available <= 0) {
@@ -206,26 +188,33 @@ export function CheckoutDialog({
 
     setCart((prev) => {
       const existing = prev.find((item) => item.supplyId === supply.id);
-      if (existing) {
-        return prev.map((item) =>
-          item.supplyId === supply.id
-            ? {
-                ...item,
-                quantity: Math.min(item.quantity + 1, available),
-                available,
-              }
-            : item
-        );
-      }
-      return [
-        ...prev,
-        {
-          supplyId: supply.id,
-          name: supply.name,
-          quantity: 1,
-          available,
-        },
-      ];
+      const next = existing
+        ? prev.map((item) =>
+            item.supplyId === supply.id
+              ? {
+                  ...item,
+                  quantity: Math.min(item.quantity + 1, available),
+                  available,
+                }
+              : {
+                  ...item,
+                  available: stock[item.supplyId] ?? item.available,
+                }
+          )
+        : [
+            ...prev.map((item) => ({
+              ...item,
+              available: stock[item.supplyId] ?? item.available,
+            })),
+            {
+              supplyId: supply.id,
+              name: supply.name,
+              quantity: 1,
+              available,
+            },
+          ];
+
+      return next;
     });
   }
 
