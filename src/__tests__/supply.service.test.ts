@@ -49,7 +49,9 @@ describe("supplyService.delete", () => {
   });
 
   it("blocks deletion when pending requests exist", async () => {
-    vi.mocked(supplyRepository.hasPendingRequests).mockResolvedValue(true);
+    vi.mocked(supplyRepository.hasPendingRequests).mockResolvedValue({
+      id: "req-1",
+    } as never);
 
     const result = await supplyService.delete(userId, supply.id);
 
@@ -61,7 +63,7 @@ describe("supplyService.delete", () => {
   });
 
   it("deletes supply and records audit when no pending requests", async () => {
-    vi.mocked(supplyRepository.hasPendingRequests).mockResolvedValue(false);
+    vi.mocked(supplyRepository.hasPendingRequests).mockResolvedValue(null);
 
     const result = await supplyService.delete(userId, supply.id);
 
