@@ -32,7 +32,19 @@ export const updateVendorReorderSchema = z.object({
   notes: z.string().nullable().optional(),
 });
 
+export const bulkConsumeItemSchema = z.object({
+  supplyId: z.string().min(1, "Supply is required"),
+  quantity: z.number().int().positive("Quantity must be at least 1"),
+});
+
+export const bulkConsumeSchema = z.object({
+  items: z.array(bulkConsumeItemSchema).min(1, "At least one item is required"),
+  locationId: z.string().optional(),
+  notes: z.string().optional(),
+});
+
 export type ReceiveStockInput = z.infer<typeof receiveStockSchema>;
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
 export type LogVendorReorderInput = z.infer<typeof logVendorReorderSchema>;
 export type UpdateVendorReorderInput = z.infer<typeof updateVendorReorderSchema>;
+export type BulkConsumeInput = z.infer<typeof bulkConsumeSchema>;

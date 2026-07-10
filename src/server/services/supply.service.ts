@@ -79,6 +79,7 @@ export const supplyService = {
         updatedAt: supply.updatedAt,
         itemType: supply.itemType,
         stockLevels: supply.stockLevels.map((sl) => ({
+          locationId: sl.locationId,
           locationName: sl.location.name,
           quantity: sl.quantity,
           minimumThreshold: sl.minimumThreshold,

@@ -6,6 +6,7 @@ import { getSupplies } from "@/lib/actions/supply";
 import { locationService } from "@/server/services/location.service";
 import { SuppliesTable } from "@/components/supplies/supplies-table";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
+import { CheckoutDialog } from "@/components/inventory/checkout-dialog";
 
 export default async function SuppliesPage({
   searchParams,
@@ -35,7 +36,10 @@ export default async function SuppliesPage({
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Supplies</h2>
-        {session.user.role === "ADMIN" && <SupplyDialog isAdmin />}
+        <div className="flex items-center gap-2">
+          <CheckoutDialog supplies={supplies || []} />
+          {session.user.role === "ADMIN" && <SupplyDialog isAdmin />}
+        </div>
       </div>
       <Suspense fallback={<div>Loading...</div>}>
         <SuppliesTable

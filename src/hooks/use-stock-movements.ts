@@ -3,10 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { receiveStock, adjustStock } from "@/lib/actions/stock-movement";
+import { receiveStock, adjustStock, checkoutSupplies } from "@/lib/actions/stock-movement";
 import type {
   ReceiveStockInput,
   AdjustStockInput,
+  BulkConsumeInput,
 } from "@/lib/validation/stock-movement";
 
 export function useStockMovements() {
@@ -61,9 +62,39 @@ export function useStockMovements() {
     }
   };
 
+  const handleCheckout = async (data: BulkConsumeInput) => {
+    try {
+      setIsLoading(true);
+      const result = await checkoutSupplies(data);
+
+      if (!result.success) {
+        const errorMessage = Array.isArray(result.error)
+          ? result.error.map((err) => err.message).join(", ")
+          : result.error;
+        toast.error(errorMessage);
+        return false;
+      }
+
+      const count = result.data.items.length;
+      toast.success(
+        count === 1
+          ? `Checked out ${result.data.items[0].name}`
+          : `Checked out ${count} items`
+      );
+      router.refresh();
+      return true;
+    } catch {
+      toast.error("Failed to complete checkout");
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     isLoading,
     handleReceive,
     handleAdjust,
+    handleCheckout,
   };
 }

@@ -5,7 +5,11 @@ import { prisma } from "@/lib/prisma";
 import { stockLevelRepository } from "@/server/repositories/stock-level.repository";
 import { locationRepository } from "@/server/repositories/location.repository";
 import { supplyRepository } from "@/server/repositories/supply.repository";
-import { executeWithAudit, type TransactionClient } from "@/server/audit";
+import {
+  executeWithAudit,
+  executeWithAudits,
+  type TransactionClient,
+} from "@/server/audit";
 import { normalizeBarcode } from "@/lib/barcode";
 import { notificationService } from "@/server/services/notification.service";
 import {
@@ -15,8 +19,10 @@ import {
   updateVendorReorderSchema,
   type ReceiveStockInput,
   type AdjustStockInput,
+  bulkConsumeSchema,
   type LogVendorReorderInput,
   type UpdateVendorReorderInput,
+  type BulkConsumeInput,
 } from "@/lib/validation/stock-movement";
 
 const OPEN_VENDOR_REORDER_STATUSES = [
@@ -133,6 +139,67 @@ async function resolveLocation(locationId?: string) {
   );
 }
 
+type SupplyWithThreshold = {
+  id: string;
+  name: string;
+  quantity: number;
+  minimumThreshold: number;
+};
+
+async function notifyIfLowStock(supply: SupplyWithThreshold) {
+  if (supply.quantity <= supply.minimumThreshold) {
+    await notificationService.notifyAdminsLowStock(
+      supply.name,
+      supply.quantity,
+      supply.id
+    );
+  }
+}
+
+function mergeBulkConsumeItems(items: BulkConsumeInput["items"]) {
+  const merged = new Map<string, number>();
+  for (const item of items) {
+    merged.set(item.supplyId, (merged.get(item.supplyId) ?? 0) + item.quantity);
+  }
+  return [...merged.entries()].map(([supplyId, quantity]) => ({
+    supplyId,
+    quantity,
+  }));
+}
+
+async function writeConsumeMovement(
+  tx: TransactionClient,
+  userId: string,
+  supplyId: string,
+  locationId: string,
+  quantity: number,
+  options?: { badgeId?: string; notes?: string | null }
+) {
+  await tx.stockLevel.update({
+    where: {
+      supplyId_locationId: {
+        supplyId,
+        locationId,
+      },
+    },
+    data: { quantity: { decrement: quantity } },
+  });
+
+  await tx.stockMovement.create({
+    data: {
+      supplyId,
+      locationId,
+      quantity,
+      type: StockMovementType.CONSUME,
+      badgeId: options?.badgeId ?? null,
+      userId,
+      notes: options?.notes ?? null,
+    },
+  });
+
+  return stockLevelRepository.syncSupplyTotals(supplyId, tx);
+}
+
 export const stockMovementService = {
   async consume(
     userId: string,
@@ -166,28 +233,16 @@ export const stockMovementService = {
         userId,
         `Kiosk consumed ${data.quantity} ${supply.name}`,
         async (tx) => {
-          await tx.stockLevel.update({
-            where: {
-              supplyId_locationId: {
-                supplyId: supply.id,
-                locationId: location.id,
-              },
-            },
-            data: { quantity: { decrement: data.quantity } },
-          });
-
-          await tx.stockMovement.create({
-            data: {
-              supplyId: supply.id,
-              locationId: location.id,
-              quantity: data.quantity,
-              type: StockMovementType.CONSUME,
-              badgeId: data.badgeId ?? null,
-              userId,
-            },
-          });
-
-          return stockLevelRepository.syncSupplyTotals(supply.id, tx);
+          const updated = await writeConsumeMovement(
+            tx,
+            userId,
+            supply.id,
+            location.id,
+            data.quantity,
+            { badgeId: data.badgeId }
+          );
+          await notifyIfLowStock(updated);
+          return updated;
         }
       );
 
@@ -195,6 +250,75 @@ export const stockMovementService = {
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
       return failure("Failed to record consumption");
+    }
+  },
+
+  async consumeBulk(userId: string, input: BulkConsumeInput) {
+    try {
+      const data = bulkConsumeSchema.parse(input);
+      const location = await resolveLocation(data.locationId);
+
+      if (!location) return failure("No location configured");
+
+      const mergedItems = mergeBulkConsumeItems(data.items);
+      const supplies = await Promise.all(
+        mergedItems.map((item) => supplyRepository.findById(item.supplyId))
+      );
+
+      for (let i = 0; i < mergedItems.length; i++) {
+        const item = mergedItems[i];
+        const supply = supplies[i];
+
+        if (!supply) {
+          return failure("Supply not found");
+        }
+
+        const level = await stockLevelRepository.findAtLocation(
+          supply.id,
+          location.id
+        );
+
+        if (!level || level.quantity < item.quantity) {
+          return failure(
+            `Insufficient stock for ${supply.name} at this location`
+          );
+        }
+      }
+
+      const auditActions = mergedItems.map((item) => {
+        const supply = supplies.find((s) => s?.id === item.supplyId);
+        return `Checked out ${item.quantity} ${supply?.name ?? "item"}`;
+      });
+
+      const notes = data.notes?.trim() || null;
+
+      const updatedSupplies = await executeWithAudits(
+        userId,
+        auditActions,
+        async (tx) => {
+          const results: SupplyWithThreshold[] = [];
+
+          for (const item of mergedItems) {
+            const updated = await writeConsumeMovement(
+              tx,
+              userId,
+              item.supplyId,
+              location.id,
+              item.quantity,
+              { notes }
+            );
+            await notifyIfLowStock(updated);
+            results.push(updated);
+          }
+
+          return results;
+        }
+      );
+
+      return success({ items: updatedSupplies });
+    } catch (error) {
+      if (error instanceof z.ZodError) return failure(error.errors);
+      return failure("Failed to record checkout");
     }
   },
 
@@ -372,13 +496,7 @@ export const stockMovementService = {
             tx
           );
 
-          if (updated.quantity <= updated.minimumThreshold) {
-            await notificationService.notifyAdminsLowStock(
-              updated.name,
-              updated.quantity,
-              updated.id
-            );
-          }
+          await notifyIfLowStock(updated);
 
           return updated;
         }

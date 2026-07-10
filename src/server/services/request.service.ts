@@ -90,10 +90,17 @@ export const requestService = {
         return failure("Insufficient supply quantity");
       }
 
-      const request = await executeWithAudit(
+      const { request, syncedSupply } = await executeWithAudit(
         actorId,
         `${status} request for ${existing.quantity} ${existing.supply.name}`,
         async (tx) => {
+          let updatedSupply: {
+            id: string;
+            name: string;
+            quantity: number;
+            minimumThreshold: number;
+          } | null = null;
+
           if (status === RequestStatus.APPROVED) {
             const location = await locationRepository.findDefault();
             if (!location) {
@@ -145,9 +152,19 @@ export const requestService = {
               },
             });
 
-            await stockLevelRepository.syncSupplyTotals(existing.supplyId, tx);
+            updatedSupply = await stockLevelRepository.syncSupplyTotals(
+              existing.supplyId,
+              tx
+            );
           }
-          return requestRepository.updateStatus(id, status, tx);
+
+          const updatedRequest = await requestRepository.updateStatus(
+            id,
+            status,
+            tx
+          );
+
+          return { request: updatedRequest, syncedSupply: updatedSupply };
         }
       );
 
@@ -158,13 +175,12 @@ export const requestService = {
         id
       );
 
-      if (status === RequestStatus.APPROVED) {
-        const remaining = existing.supply.quantity - existing.quantity;
-        if (remaining <= existing.supply.minimumThreshold) {
+      if (status === RequestStatus.APPROVED && syncedSupply) {
+        if (syncedSupply.quantity <= syncedSupply.minimumThreshold) {
           await notificationService.notifyAdminsLowStock(
-            existing.supply.name,
-            remaining,
-            existing.supplyId
+            syncedSupply.name,
+            syncedSupply.quantity,
+            syncedSupply.id
           );
         }
       }

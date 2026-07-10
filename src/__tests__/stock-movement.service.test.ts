@@ -364,6 +364,7 @@ describe("stockMovementService.consume", () => {
         type: StockMovementType.CONSUME,
         badgeId: "badge-42",
         userId,
+        notes: null,
       },
     });
   });
@@ -400,6 +401,229 @@ describe("stockMovementService.consume", () => {
     if (!result.success) {
       expect(result.error).toBe("Item not found");
     }
+  });
+
+  it("alerts admins when consumption leaves stock at or below threshold", async () => {
+    vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
+      supplyId: supply.id,
+      locationId: location.id,
+      quantity: 10,
+    } as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...supply,
+      quantity: 4,
+      minimumThreshold: 5,
+    } as never);
+
+    await stockMovementService.consume(userId, {
+      barcode: supply.barcode,
+      quantity: 6,
+      locationId: location.id,
+    });
+
+    expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+      supply.name,
+      4,
+      supply.id
+    );
+  });
+
+  it("does not alert admins when stock remains above threshold", async () => {
+    vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
+      supplyId: supply.id,
+      locationId: location.id,
+      quantity: 10,
+    } as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...supply,
+      quantity: 8,
+      minimumThreshold: 5,
+    } as never);
+
+    await stockMovementService.consume(userId, {
+      barcode: supply.barcode,
+      quantity: 2,
+      locationId: location.id,
+    });
+
+    expect(notificationService.notifyAdminsLowStock).not.toHaveBeenCalled();
+  });
+});
+
+describe("stockMovementService.consumeBulk", () => {
+  const userId = "staff-1";
+  const location = { id: "location-1", name: "Supply closet" };
+  const supplyA = {
+    id: "supply-a",
+    name: "Head unit",
+    minimumThreshold: 2,
+  };
+  const supplyB = {
+    id: "supply-b",
+    name: "Arm unit",
+    minimumThreshold: 5,
+  };
+
+  const tx = {
+    auditLog: { create: vi.fn() },
+    stockLevel: { update: vi.fn() },
+    stockMovement: { create: vi.fn() },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
+      operation(tx as never)
+    );
+    vi.mocked(locationRepository.findById).mockResolvedValue(location as never);
+    vi.mocked(locationRepository.findDefault).mockResolvedValue(location as never);
+    tx.stockMovement.create.mockResolvedValue({ id: "movement-1" });
+  });
+
+  it("checks out multiple items in one transaction", async () => {
+    vi.mocked(supplyRepository.findById).mockImplementation((async (id: string) => {
+      if (id === supplyA.id) return supplyA as never;
+      if (id === supplyB.id) return supplyB as never;
+      return null;
+    }) as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockImplementation((async (
+      supplyId: string
+    ) =>
+      ({
+        supplyId,
+        locationId: location.id,
+        quantity: 10,
+      }) as never) as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockImplementation(
+      async (supplyId) => {
+        if (supplyId === supplyA.id) {
+          return { ...supplyA, quantity: 9 } as never;
+        }
+        return { ...supplyB, quantity: 8 } as never;
+      }
+    );
+
+    const result = await stockMovementService.consumeBulk(userId, {
+      items: [
+        { supplyId: supplyA.id, quantity: 1 },
+        { supplyId: supplyB.id, quantity: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(tx.stockLevel.update).toHaveBeenCalledTimes(2);
+    expect(tx.stockMovement.create).toHaveBeenCalledTimes(2);
+    expect(tx.stockMovement.create).toHaveBeenCalledWith({
+      data: {
+        supplyId: supplyA.id,
+        locationId: location.id,
+        quantity: 1,
+        type: StockMovementType.CONSUME,
+        badgeId: null,
+        userId,
+        notes: null,
+      },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalledTimes(2);
+  });
+
+  it("merges duplicate supply lines before checkout", async () => {
+    vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
+      supplyId: supplyB.id,
+      locationId: location.id,
+      quantity: 10,
+    } as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...supplyB,
+      quantity: 6,
+    } as never);
+
+    await stockMovementService.consumeBulk(userId, {
+      items: [
+        { supplyId: supplyB.id, quantity: 2 },
+        { supplyId: supplyB.id, quantity: 2 },
+      ],
+    });
+
+    expect(tx.stockLevel.update).toHaveBeenCalledTimes(1);
+    expect(tx.stockMovement.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        supplyId: supplyB.id,
+        quantity: 4,
+        userId,
+      }),
+    });
+  });
+
+  it("rejects bulk checkout when any item has insufficient stock", async () => {
+    vi.mocked(supplyRepository.findById).mockImplementation((async (id: string) => {
+      if (id === supplyA.id) return supplyA as never;
+      if (id === supplyB.id) return supplyB as never;
+      return null;
+    }) as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockImplementation((async (
+      supplyId: string
+    ) =>
+      ({
+        supplyId,
+        locationId: location.id,
+        quantity: supplyId === supplyB.id ? 1 : 10,
+      }) as never) as never);
+
+    const result = await stockMovementService.consumeBulk(userId, {
+      items: [
+        { supplyId: supplyA.id, quantity: 1 },
+        { supplyId: supplyB.id, quantity: 2 },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe(
+        "Insufficient stock for Arm unit at this location"
+      );
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("alerts admins for each bulk item that ends at or below threshold", async () => {
+    vi.mocked(supplyRepository.findById).mockImplementation((async (id: string) => {
+      if (id === supplyA.id) return supplyA as never;
+      if (id === supplyB.id) return supplyB as never;
+      return null;
+    }) as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockImplementation((async (
+      supplyId: string
+    ) =>
+      ({
+        supplyId,
+        locationId: location.id,
+        quantity: 10,
+      }) as never) as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockImplementation(
+      async (supplyId) => {
+        if (supplyId === supplyA.id) {
+          return { ...supplyA, quantity: 2 } as never;
+        }
+        return { ...supplyB, quantity: 8 } as never;
+      }
+    );
+
+    await stockMovementService.consumeBulk(userId, {
+      items: [
+        { supplyId: supplyA.id, quantity: 1 },
+        { supplyId: supplyB.id, quantity: 2 },
+      ],
+    });
+
+    expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledTimes(1);
+    expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+      supplyA.name,
+      2,
+      supplyA.id
+    );
   });
 });
 

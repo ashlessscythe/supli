@@ -302,6 +302,11 @@ describe("requestService.updateStatus", () => {
       quantity: 16,
       supply: { ...existing.supply, quantity: 20, minimumThreshold: 5 },
     } as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...existing.supply,
+      quantity: 4,
+      minimumThreshold: 5,
+    } as never);
 
     await requestService.updateStatus(
       actorId,

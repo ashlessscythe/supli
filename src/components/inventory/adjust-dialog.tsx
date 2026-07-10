@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -55,6 +55,11 @@ interface SupplyOption {
   quantity: number;
 }
 
+interface StockLevelAtLocation {
+  locationId: string;
+  quantity: number;
+}
+
 interface AdjustDialogProps {
   supplies: SupplyOption[];
   locations: Location[];
@@ -62,6 +67,13 @@ interface AdjustDialogProps {
   trigger?: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+}
+
+function quantityAtLocation(
+  stockLevels: StockLevelAtLocation[],
+  locationId: string
+) {
+  return stockLevels.find((sl) => sl.locationId === locationId)?.quantity ?? 0;
 }
 
 export function AdjustDialog({
@@ -73,6 +85,7 @@ export function AdjustDialog({
   onOpenChange,
 }: AdjustDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
+  const [stockLevels, setStockLevels] = useState<StockLevelAtLocation[]>([]);
   const { handleAdjust, isLoading } = useStockMovements();
 
   const isControlled = open !== undefined;
@@ -86,17 +99,72 @@ export function AdjustDialog({
   };
 
   const defaultLocationId = locations[0]?.id ?? "";
-  const defaultSupply = supplies.find((s) => s.id === defaultSupplyId);
 
   const form = useForm<AdjustFormData>({
     resolver: zodResolver(adjustFormSchema),
     defaultValues: {
       supplyId: defaultSupplyId ?? "",
-      newQuantity: defaultSupply?.quantity ?? 0,
+      newQuantity: 0,
       locationId: defaultLocationId,
       reason: "",
     },
   });
+
+  const supplyId = form.watch("supplyId");
+  const locationId = form.watch("locationId");
+  const selectedSupply = supplies.find((s) => s.id === supplyId);
+  const selectedLocation = locations.find((l) => l.id === locationId);
+
+  useEffect(() => {
+    if (!dialogOpen || !supplyId) {
+      setStockLevels([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadStockLevels() {
+      const res = await fetch(`/api/supplies/${supplyId}/details`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (cancelled) return;
+
+      const levels: StockLevelAtLocation[] = (data.stockLevels ?? []).map(
+        (sl: { locationId: string; quantity: number }) => ({
+          locationId: sl.locationId,
+          quantity: sl.quantity,
+        })
+      );
+      setStockLevels(levels);
+
+      const currentLocationId = form.getValues("locationId");
+      form.setValue(
+        "newQuantity",
+        quantityAtLocation(levels, currentLocationId)
+      );
+    }
+
+    loadStockLevels();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [dialogOpen, supplyId, form]);
+
+  useEffect(() => {
+    if (!dialogOpen || !locationId) return;
+    form.setValue("newQuantity", quantityAtLocation(stockLevels, locationId));
+  }, [locationId, stockLevels, dialogOpen, form]);
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    form.reset({
+      supplyId: defaultSupplyId ?? "",
+      newQuantity: 0,
+      locationId: defaultLocationId,
+      reason: "",
+    });
+  }, [dialogOpen, defaultSupplyId, defaultLocationId, form]);
 
   const onSubmit = async (data: AdjustFormData) => {
     const success = await handleAdjust({
@@ -137,13 +205,7 @@ export function AdjustDialog({
                 <FormItem>
                   <FormLabel>Supply</FormLabel>
                   <Select
-                    onValueChange={(value) => {
-                      field.onChange(value);
-                      const supply = supplies.find((s) => s.id === value);
-                      if (supply) {
-                        form.setValue("newQuantity", supply.quantity);
-                      }
-                    }}
+                    onValueChange={field.onChange}
                     value={field.value}
                   >
                     <FormControl>
@@ -194,10 +256,18 @@ export function AdjustDialog({
               name="newQuantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Physical count</FormLabel>
+                  <FormLabel>
+                    Physical count
+                    {selectedLocation ? ` at ${selectedLocation.name}` : ""}
+                  </FormLabel>
                   <FormControl>
                     <Input type="number" min={0} {...field} />
                   </FormControl>
+                  {selectedSupply && (
+                    <p className="text-xs text-muted-foreground">
+                      Total across all locations: {selectedSupply.quantity}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

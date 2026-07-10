@@ -9,6 +9,7 @@ import type {
   AdjustStockInput,
   LogVendorReorderInput,
   UpdateVendorReorderInput,
+  BulkConsumeInput,
 } from "@/lib/validation/stock-movement";
 
 function revalidateInventoryPaths() {
@@ -33,6 +34,20 @@ export async function adjustStock(input: AdjustStockInput) {
   try {
     const session = await requireAdmin();
     const result = await stockMovementService.adjust(session.user.id, input);
+    if (result.success) revalidateInventoryPaths();
+    return result;
+  } catch {
+    return { success: false as const, error: "Unauthorized" };
+  }
+}
+
+export async function checkoutSupplies(input: BulkConsumeInput) {
+  try {
+    const session = await requireSession();
+    const result = await stockMovementService.consumeBulk(
+      session.user.id,
+      input
+    );
     if (result.success) revalidateInventoryPaths();
     return result;
   } catch {
