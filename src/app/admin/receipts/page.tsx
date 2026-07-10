@@ -33,7 +33,16 @@ export default async function AdminReceiptsPage() {
       </div>
 
       <ReceiptsClient
-        supplies={supplies}
+        supplies={supplies.map((supply) => ({
+          id: supply.id,
+          name: supply.name,
+          quantity: supply.quantity,
+          itemVendors: supply.itemVendors.map((iv) => ({
+            vendorId: iv.vendorId,
+            vendor: iv.vendor,
+            isPreferred: iv.isPreferred,
+          })),
+        }))}
         locations={locations.map((l) => ({ id: l.id, name: l.name }))}
         receipts={receipts}
         openVendorReorders={openVendorReorders}

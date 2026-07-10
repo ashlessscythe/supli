@@ -1,11 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -16,36 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ReceiveDialog } from "@/components/inventory/receive-dialog";
-import { logVendorReorder } from "@/lib/actions/stock-movement";
+import { LogOrderDialog } from "@/components/inventory/log-order-dialog";
+import {
+  EditOrderDialog,
+  type OpenOrderForEdit,
+} from "@/components/inventory/edit-order-dialog";
+import { Edit } from "lucide-react";
 import Link from "next/link";
-
-const logOrderSchema = z.object({
-  supplyId: z.string().min(1, "Supply is required"),
-  quantity: z.coerce.number().int().positive("Quantity must be at least 1"),
-  vendorId: z.string().optional(),
-  externalPoNumber: z.string().optional(),
-  notes: z.string().optional(),
-});
-
-type LogOrderFormData = z.infer<typeof logOrderSchema>;
 
 interface Location {
   id: string;
@@ -72,16 +45,24 @@ interface ReceiptRow {
   location: { name: string };
   username: string;
   externalPoNumber: string | null;
+  vendorName?: string | null;
+  userNotes?: string | null;
 }
 
-interface VendorReorderRow {
-  id: string;
-  quantity: number;
-  externalPoNumber: string | null;
-  status: string;
+function formatReceiptDetails(receipt: ReceiptRow) {
+  return (
+    [
+      receipt.externalPoNumber ? `PO ${receipt.externalPoNumber}` : null,
+      receipt.vendorName,
+      receipt.userNotes,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "—"
+  );
+}
+
+interface VendorReorderRow extends OpenOrderForEdit {
   orderedAt: Date;
-  supply: { id: string; name: string };
-  vendor: { id: string; name: string } | null;
 }
 
 interface ReceiptsClientProps {
@@ -97,52 +78,9 @@ export function ReceiptsClient({
   receipts,
   openVendorReorders,
 }: ReceiptsClientProps) {
-  const router = useRouter();
-  const [isLogging, setIsLogging] = useState(false);
-
-  const form = useForm<LogOrderFormData>({
-    resolver: zodResolver(logOrderSchema),
-    defaultValues: {
-      supplyId: "",
-      quantity: 1,
-      vendorId: "",
-      externalPoNumber: "",
-      notes: "",
-    },
-  });
-
-  const selectedSupplyId = form.watch("supplyId");
-  const selectedSupply = supplies.find((s) => s.id === selectedSupplyId);
-  const vendorOptions = selectedSupply?.itemVendors?.map((iv) => iv.vendor) ?? [];
-
-  const onLogOrder = async (data: LogOrderFormData) => {
-    try {
-      setIsLogging(true);
-      const result = await logVendorReorder({
-        supplyId: data.supplyId,
-        quantity: data.quantity,
-        vendorId: data.vendorId || undefined,
-        externalPoNumber: data.externalPoNumber || undefined,
-        notes: data.notes || undefined,
-      });
-
-      if (!result.success) {
-        const errorMessage = Array.isArray(result.error)
-          ? result.error.map((e) => e.message).join(", ")
-          : result.error;
-        toast.error(errorMessage);
-        return;
-      }
-
-      toast.success("External order logged");
-      form.reset();
-      router.refresh();
-    } catch {
-      toast.error("Failed to log order");
-    } finally {
-      setIsLogging(false);
-    }
-  };
+  const [editingOrder, setEditingOrder] = useState<VendorReorderRow | null>(
+    null
+  );
 
   return (
     <div className="space-y-6">
@@ -164,117 +102,7 @@ export function ReceiptsClient({
           <CardTitle>Log order placed in corporate system</CardTitle>
         </CardHeader>
         <CardContent>
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onLogOrder)}
-                  className="space-y-4 max-w-lg"
-                >
-                  <FormField
-                    control={form.control}
-                    name="supplyId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Supply</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select supply" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {supplies.map((supply) => (
-                              <SelectItem key={supply.id} value={supply.id}>
-                                {supply.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quantity ordered</FormLabel>
-                        <FormControl>
-                          <Input type="number" min={1} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {vendorOptions.length > 0 && (
-                    <FormField
-                      control={form.control}
-                      name="vendorId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Vendor (optional)</FormLabel>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value ?? ""}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select vendor" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="">None</SelectItem>
-                              {vendorOptions.map((vendor) => (
-                                <SelectItem key={vendor.id} value={vendor.id}>
-                                  {vendor.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  <FormField
-                    control={form.control}
-                    name="externalPoNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Corporate PO #</FormLabel>
-                        <FormControl>
-                          <Input placeholder="SAP / corporate PO number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Notes (optional)</FormLabel>
-                        <FormControl>
-                          <Textarea rows={2} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <Button type="submit" disabled={isLogging}>
-                    Log order
-                  </Button>
-                </form>
-              </Form>
+          <LogOrderDialog supplies={supplies} />
         </CardContent>
       </Card>
 
@@ -283,81 +111,119 @@ export function ReceiptsClient({
           <CardTitle>Open orders</CardTitle>
         </CardHeader>
         <CardContent>
-              {openVendorReorders.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No open orders.</p>
-              ) : (
-                <>
-                  <div className="hidden rounded-md border md:block">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Item</TableHead>
-                          <TableHead>Vendor</TableHead>
-                          <TableHead>PO #</TableHead>
-                          <TableHead className="text-right">Qty</TableHead>
-                          <TableHead>Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {openVendorReorders.map((reorder) => (
-                          <TableRow key={reorder.id}>
-                            <TableCell>{reorder.supply.name}</TableCell>
-                            <TableCell>{reorder.vendor?.name ?? "—"}</TableCell>
-                            <TableCell>
-                              {reorder.externalPoNumber ?? "—"}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {reorder.quantity}
-                            </TableCell>
-                            <TableCell className="capitalize">
-                              {reorder.status.toLowerCase().replace("_", " ")}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  <div className="space-y-3 md:hidden">
+          {openVendorReorders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No open orders.</p>
+          ) : (
+            <>
+              <div className="hidden rounded-md border md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>PO #</TableHead>
+                      <TableHead className="text-right">Ordered</TableHead>
+                      <TableHead className="text-right">Received</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="w-[90px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {openVendorReorders.map((reorder) => (
-                      <div
-                        key={reorder.id}
-                        className="rounded-md border p-4 space-y-3"
-                      >
-                        <p className="font-medium break-words">
-                          {reorder.supply.name}
-                        </p>
-                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Vendor</p>
-                            <p className="font-medium">
-                              {reorder.vendor?.name ?? "—"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Qty</p>
-                            <p className="font-medium">{reorder.quantity}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">PO #</p>
-                            <p className="font-medium break-all">
-                              {reorder.externalPoNumber ?? "—"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Status</p>
-                            <p className="font-medium capitalize">
-                              {reorder.status.toLowerCase().replace("_", " ")}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                      <TableRow key={reorder.id}>
+                        <TableCell>{reorder.supply.name}</TableCell>
+                        <TableCell>{reorder.vendor?.name ?? "—"}</TableCell>
+                        <TableCell>
+                          {reorder.externalPoNumber ?? "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {reorder.quantity}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {reorder.receivedQuantity}
+                        </TableCell>
+                        <TableCell className="capitalize">
+                          {reorder.status.toLowerCase().replace("_", " ")}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingOrder(reorder)}
+                          >
+                            <Edit className="mr-1 h-3.5 w-3.5" />
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="space-y-3 md:hidden">
+                {openVendorReorders.map((reorder) => (
+                  <div
+                    key={reorder.id}
+                    className="rounded-md border p-4 space-y-3"
+                  >
+                    <p className="font-medium break-words">
+                      {reorder.supply.name}
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Vendor</p>
+                        <p className="font-medium">
+                          {reorder.vendor?.name ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Ordered</p>
+                        <p className="font-medium">{reorder.quantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Received</p>
+                        <p className="font-medium">{reorder.receivedQuantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">PO #</p>
+                        <p className="font-medium break-all">
+                          {reorder.externalPoNumber ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Status</p>
+                        <p className="font-medium capitalize">
+                          {reorder.status.toLowerCase().replace("_", " ")}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditingOrder(reorder)}
+                    >
+                      <Edit className="mr-1 h-3.5 w-3.5" />
+                      Edit order
+                    </Button>
                   </div>
-                </>
-              )}
+                ))}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      {editingOrder && (
+        <EditOrderDialog
+          order={editingOrder}
+          supplies={supplies}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditingOrder(null);
+          }}
+        />
+      )}
 
       <Card>
         <CardHeader>
@@ -400,9 +266,7 @@ export function ReceiptsClient({
                         </TableCell>
                         <TableCell>{receipt.username}</TableCell>
                         <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                          {receipt.externalPoNumber
-                            ? `PO ${receipt.externalPoNumber}`
-                            : receipt.notes ?? "—"}
+                          {formatReceiptDetails(receipt)}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -444,9 +308,7 @@ export function ReceiptsClient({
                       <div className="col-span-2">
                         <p className="text-muted-foreground">Notes / PO</p>
                         <p className="font-medium break-words">
-                          {receipt.externalPoNumber
-                            ? `PO ${receipt.externalPoNumber}`
-                            : receipt.notes ?? "—"}
+                          {formatReceiptDetails(receipt)}
                         </p>
                       </div>
                     </div>

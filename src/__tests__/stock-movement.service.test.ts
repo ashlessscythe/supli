@@ -13,6 +13,19 @@ vi.mock("@/lib/prisma", () => ({
     supply: {
       findFirst: vi.fn(),
     },
+    vendorReorder: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      update: vi.fn(),
+    },
+    vendor: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
+    stockMovement: {
+      aggregate: vi.fn(),
+      findMany: vi.fn(),
+    },
   },
 }));
 
@@ -92,8 +105,23 @@ describe("stockMovementService.receive", () => {
     tx.stockMovement.create.mockResolvedValue({ id: "movement-1" });
     tx.vendorReorder.findUnique.mockResolvedValue({
       id: "reorder-1",
+      supplyId: supply.id,
       quantity: 12,
+      status: VendorReorderStatus.ORDERED,
     });
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+      id: "reorder-1",
+      supplyId: supply.id,
+      quantity: 12,
+      status: VendorReorderStatus.ORDERED,
+    } as never);
+    vi.mocked(prisma.stockMovement.aggregate).mockResolvedValue({
+      _sum: { quantity: 0 },
+    } as never);
+    vi.mocked(prisma.vendor.findUnique).mockResolvedValue({
+      id: "vendor-1",
+      name: "Balam Industries",
+    } as never);
     tx.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 12 } });
   });
 
@@ -124,7 +152,7 @@ describe("stockMovementService.receive", () => {
         quantity: 12,
         type: StockMovementType.RECEIVE,
         userId,
-        notes: "PO: PO-123 | Vendor ID: vendor-1 | Delivered on pallet 4",
+        notes: "PO: PO-123 | Vendor: Balam Industries | Delivered on pallet 4",
         vendorReorderId: "reorder-1",
       },
     });
@@ -173,9 +201,20 @@ describe("stockMovementService.receive", () => {
   });
 
   it("marks a vendor reorder as partially received when quantity is short", async () => {
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+      id: "reorder-1",
+      supplyId: supply.id,
+      quantity: 20,
+      status: VendorReorderStatus.ORDERED,
+    } as never);
+    vi.mocked(prisma.stockMovement.aggregate).mockResolvedValue({
+      _sum: { quantity: 0 },
+    } as never);
     tx.vendorReorder.findUnique.mockResolvedValue({
       id: "reorder-1",
+      supplyId: supply.id,
       quantity: 20,
+      status: VendorReorderStatus.ORDERED,
     });
     tx.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 8 } });
 
@@ -193,6 +232,71 @@ describe("stockMovementService.receive", () => {
         receivedAt: undefined,
       },
     });
+  });
+
+  it("rejects linking a receipt to an open order for a different supply", async () => {
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+      id: "reorder-1",
+      supplyId: "other-supply",
+      quantity: 12,
+      status: VendorReorderStatus.ORDERED,
+    } as never);
+
+    const result = await stockMovementService.receive(userId, {
+      supplyId: supply.id,
+      locationId: location.id,
+      quantity: 4,
+      vendorReorderId: "reorder-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Open order does not match the selected supply");
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects receiving more than the remaining quantity on a linked open order", async () => {
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+      id: "reorder-1",
+      supplyId: supply.id,
+      quantity: 20,
+      status: VendorReorderStatus.PARTIALLY_RECEIVED,
+    } as never);
+    vi.mocked(prisma.stockMovement.aggregate).mockResolvedValue({
+      _sum: { quantity: 15 },
+    } as never);
+
+    const result = await stockMovementService.receive(userId, {
+      supplyId: supply.id,
+      locationId: location.id,
+      quantity: 8,
+      vendorReorderId: "reorder-1",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe(
+        "Cannot receive more than 5 remaining on this open order"
+      );
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects linking a receipt when the open order is not found", async () => {
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue(null);
+
+    const result = await stockMovementService.receive(userId, {
+      supplyId: supply.id,
+      locationId: location.id,
+      quantity: 4,
+      vendorReorderId: "missing-reorder",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Open order not found");
+    }
   });
 });
 
@@ -378,5 +482,87 @@ describe("stockMovementService.adjust", () => {
     if (!result.success) {
       expect(result.error).toBe("Quantity is already at the requested count");
     }
+  });
+});
+
+describe("stockMovementService.updateVendorReorder", () => {
+  const userId = "user-1";
+
+  const tx = {
+    auditLog: { create: vi.fn() },
+    vendorReorder: {
+      update: vi.fn(),
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
+      operation(tx as never)
+    );
+  });
+
+  it("updates an open order when quantity is still above received amount", async () => {
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+      id: "reorder-1",
+      supplyId: "supply-1",
+      quantity: 20,
+      status: VendorReorderStatus.PARTIALLY_RECEIVED,
+      vendorId: "vendor-1",
+      externalPoNumber: "PO-1",
+      notes: "Old note",
+      supply: { name: "Gloves" },
+      stockMovements: [{ quantity: 8 }],
+    } as never);
+    tx.vendorReorder.update.mockResolvedValue({
+      id: "reorder-1",
+      quantity: 25,
+    });
+
+    const result = await stockMovementService.updateVendorReorder(
+      userId,
+      "reorder-1",
+      {
+        quantity: 25,
+        externalPoNumber: "PO-2",
+        notes: "Corrected PO",
+      }
+    );
+
+    expect(result.success).toBe(true);
+    expect(tx.vendorReorder.update).toHaveBeenCalledWith({
+      where: { id: "reorder-1" },
+      data: expect.objectContaining({
+        quantity: 25,
+        externalPoNumber: "PO-2",
+        notes: "Corrected PO",
+        status: VendorReorderStatus.PARTIALLY_RECEIVED,
+      }),
+    });
+  });
+
+  it("rejects reducing quantity below what has already been received", async () => {
+    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+      id: "reorder-1",
+      supplyId: "supply-1",
+      quantity: 20,
+      status: VendorReorderStatus.PARTIALLY_RECEIVED,
+      supply: { name: "Gloves" },
+      stockMovements: [{ quantity: 12 }],
+    } as never);
+
+    const result = await stockMovementService.updateVendorReorder(
+      userId,
+      "reorder-1",
+      { quantity: 10 }
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe(
+        "Quantity cannot be less than 12 already received"
+      );
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

@@ -25,6 +25,14 @@ export const logVendorReorderSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const updateVendorReorderSchema = z.object({
+  quantity: z.number().int().positive("Quantity must be at least 1"),
+  vendorId: z.string().nullable().optional(),
+  externalPoNumber: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+});
+
 export type ReceiveStockInput = z.infer<typeof receiveStockSchema>;
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
 export type LogVendorReorderInput = z.infer<typeof logVendorReorderSchema>;
+export type UpdateVendorReorderInput = z.infer<typeof updateVendorReorderSchema>;

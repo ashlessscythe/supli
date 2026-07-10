@@ -8,6 +8,7 @@ import type {
   ReceiveStockInput,
   AdjustStockInput,
   LogVendorReorderInput,
+  UpdateVendorReorderInput,
 } from "@/lib/validation/stock-movement";
 
 function revalidateInventoryPaths() {
@@ -62,6 +63,24 @@ export async function logVendorReorder(input: LogVendorReorderInput) {
     const session = await requireAdmin();
     const result = await stockMovementService.logVendorReorder(
       session.user.id,
+      input
+    );
+    if (result.success) revalidatePath("/admin/receipts");
+    return result;
+  } catch {
+    return { success: false as const, error: "Unauthorized" };
+  }
+}
+
+export async function updateVendorReorder(
+  reorderId: string,
+  input: UpdateVendorReorderInput
+) {
+  try {
+    const session = await requireAdmin();
+    const result = await stockMovementService.updateVendorReorder(
+      session.user.id,
+      reorderId,
       input
     );
     if (result.success) revalidatePath("/admin/receipts");

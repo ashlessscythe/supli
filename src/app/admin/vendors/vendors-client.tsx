@@ -69,6 +69,16 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
     compareFn,
   });
 
+  const handleLinksChanged = (vendorId: string, newCount: number) => {
+    setVendors((prev) =>
+      prev.map((vendor) =>
+        vendor.id === vendorId
+          ? { ...vendor, _count: { itemVendors: newCount } }
+          : vendor
+      )
+    );
+  };
+
   const handleCreate = async (data: VendorFormValues) => {
     try {
       const response = await fetch("/api/vendors", {
@@ -235,9 +245,10 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                         <LinkedItemsDialog
                           count={vendor._count.itemVendors}
                           title={`Items supplied by ${vendor.name}`}
-                          description="Catalog unit costs for supplies linked to this vendor."
+                          description="Manage supplies linked to this vendor."
                           fetchUrl={`/api/vendors/${vendor.id}/items`}
                           vendorId={vendor.id}
+                          onLinksChanged={handleLinksChanged}
                         />
                       </TableCell>
                       <TableCell>
@@ -316,9 +327,10 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                       <LinkedItemsDialog
                         count={vendor._count.itemVendors}
                         title={`Items supplied by ${vendor.name}`}
-                        description="Catalog unit costs for supplies linked to this vendor."
+                        description="Manage supplies linked to this vendor."
                         fetchUrl={`/api/vendors/${vendor.id}/items`}
                         vendorId={vendor.id}
+                        onLinksChanged={handleLinksChanged}
                       />
                     </div>
                   </div>

@@ -11,6 +11,7 @@ export const config = {
     "/dashboard/:path*",
     "/admin/:path*",
     "/api/supplies/:path*",
+    "/api/vendors/:path*",
     "/api/requests/:path*",
     "/api/users/:path*",
     "/api/admin/:path*",

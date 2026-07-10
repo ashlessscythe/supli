@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -52,6 +52,8 @@ const receiveFormSchema = z.object({
 
 type ReceiveFormData = z.infer<typeof receiveFormSchema>;
 
+const SELECT_NONE = "__none__";
+
 interface Location {
   id: string;
   name: string;
@@ -71,6 +73,7 @@ interface SupplyOption {
 interface VendorReorderOption {
   id: string;
   quantity: number;
+  remainingQuantity?: number;
   externalPoNumber: string | null;
   supply: { id: string; name: string };
   vendor: { id: string; name: string } | null;
@@ -131,6 +134,27 @@ export function ReceiveDialog({
     if (!selectedSupply?.itemVendors?.length) return [];
     return selectedSupply.itemVendors.map((iv) => iv.vendor);
   }, [selectedSupply]);
+
+  const openOrdersForSupply = useMemo(() => {
+    if (!selectedSupplyId) return [];
+    return openVendorReorders.filter(
+      (reorder) =>
+        reorder.supply.id === selectedSupplyId &&
+        (reorder.remainingQuantity ?? reorder.quantity) > 0
+    );
+  }, [openVendorReorders, selectedSupplyId]);
+
+  const selectedVendorReorderId = form.watch("vendorReorderId");
+
+  useEffect(() => {
+    if (!selectedVendorReorderId) return;
+    const stillValid = openOrdersForSupply.some(
+      (reorder) => reorder.id === selectedVendorReorderId
+    );
+    if (!stillValid) {
+      form.setValue("vendorReorderId", "");
+    }
+  }, [openOrdersForSupply, selectedVendorReorderId, form]);
 
   const onSubmit = async (data: ReceiveFormData) => {
     let supplyId = data.supplyId;
@@ -347,8 +371,10 @@ export function ReceiveDialog({
                   <FormItem>
                     <FormLabel>Vendor (optional)</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ""}
+                      onValueChange={(value) =>
+                        field.onChange(value === SELECT_NONE ? "" : value)
+                      }
+                      value={field.value ? field.value : SELECT_NONE}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -356,7 +382,7 @@ export function ReceiveDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
+                        <SelectItem value={SELECT_NONE}>None</SelectItem>
                         {vendorOptions.map((vendor) => (
                           <SelectItem key={vendor.id} value={vendor.id}>
                             {vendor.name}
@@ -384,7 +410,7 @@ export function ReceiveDialog({
               )}
             />
 
-            {openVendorReorders.length > 0 && (
+            {openOrdersForSupply.length > 0 && (
               <FormField
                 control={form.control}
                 name="vendorReorderId"
@@ -392,8 +418,10 @@ export function ReceiveDialog({
                   <FormItem>
                     <FormLabel>Link to open order (optional)</FormLabel>
                     <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ""}
+                      onValueChange={(value) =>
+                        field.onChange(value === SELECT_NONE ? "" : value)
+                      }
+                      value={field.value ? field.value : SELECT_NONE}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -401,12 +429,15 @@ export function ReceiveDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">None</SelectItem>
-                        {openVendorReorders.map((reorder) => (
+                        <SelectItem value={SELECT_NONE}>None</SelectItem>
+                        {openOrdersForSupply.map((reorder) => (
                           <SelectItem key={reorder.id} value={reorder.id}>
-                            {reorder.supply.name} — {reorder.quantity} ordered
+                            {reorder.quantity} ordered
+                            {reorder.remainingQuantity != null
+                              ? ` (${reorder.remainingQuantity} remaining)`
+                              : ""}
                             {reorder.externalPoNumber
-                              ? ` (PO ${reorder.externalPoNumber})`
+                              ? ` · PO ${reorder.externalPoNumber}`
                               : ""}
                           </SelectItem>
                         ))}

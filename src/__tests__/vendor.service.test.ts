@@ -9,6 +9,17 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
+    supply: {
+      findUnique: vi.fn(),
+    },
+    itemVendor: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+    },
   },
 }));
 
@@ -98,5 +109,237 @@ describe("vendorService.listAll", () => {
       orderBy: { name: "asc" },
       include: { _count: { select: { itemVendors: true } } },
     });
+  });
+});
+
+describe("vendorService.linkItem", () => {
+  const userId = "admin-1";
+  const vendorId = "vendor-1";
+  const supplyId = "supply-1";
+
+  const tx = {
+    auditLog: { create: vi.fn() },
+    itemVendor: {
+      create: vi.fn(),
+      updateMany: vi.fn(),
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
+      operation(tx as never)
+    );
+    vi.mocked(prisma.supply.findUnique).mockResolvedValue({
+      id: supplyId,
+      name: "Widget",
+    } as never);
+    vi.mocked(prisma.vendor.findUnique).mockResolvedValue({
+      id: vendorId,
+      name: "Acme",
+    } as never);
+    vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue(null);
+    tx.itemVendor.create.mockResolvedValue({
+      supplyId,
+      vendorId,
+      vendorSku: "SKU-1",
+      internalSku: null,
+      isPreferred: true,
+      leadTimeDays: 5,
+      moq: 10,
+      cost: 12.5,
+    });
+  });
+
+  it("creates a link and clears other preferred vendors", async () => {
+    const result = await vendorService.linkItem(vendorId, userId, {
+      supplyId,
+      vendorSku: "SKU-1",
+      isPreferred: true,
+      leadTimeDays: 5,
+      moq: 10,
+      cost: 12.5,
+    });
+
+    expect(result.success).toBe(true);
+    expect(tx.itemVendor.updateMany).toHaveBeenCalledWith({
+      where: {
+        supplyId,
+        vendorId: { not: vendorId },
+        isPreferred: true,
+      },
+      data: { isPreferred: false },
+    });
+    expect(tx.itemVendor.create).toHaveBeenCalled();
+    expect(tx.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("returns an error when supply is missing", async () => {
+    vi.mocked(prisma.supply.findUnique).mockResolvedValue(null);
+
+    const result = await vendorService.linkItem(vendorId, userId, { supplyId });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Supply not found");
+    }
+  });
+
+  it("returns an error when vendor is missing", async () => {
+    vi.mocked(prisma.vendor.findUnique).mockResolvedValue(null);
+
+    const result = await vendorService.linkItem(vendorId, userId, { supplyId });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Vendor not found");
+    }
+  });
+
+  it("returns an error when link already exists", async () => {
+    vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue({
+      supplyId,
+      vendorId,
+    } as never);
+
+    const result = await vendorService.linkItem(vendorId, userId, { supplyId });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("This supply is already linked to this vendor");
+    }
+  });
+});
+
+describe("vendorService.updateItemLink", () => {
+  const userId = "admin-1";
+  const vendorId = "vendor-1";
+  const supplyId = "supply-1";
+
+  const tx = {
+    auditLog: { create: vi.fn() },
+    itemVendor: {
+      update: vi.fn(),
+      updateMany: vi.fn(),
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
+      operation(tx as never)
+    );
+    vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue({
+      supplyId,
+      vendorId,
+      supply: { name: "Widget" },
+      vendor: { name: "Acme" },
+    } as never);
+    tx.itemVendor.update.mockResolvedValue({
+      supplyId,
+      vendorId,
+      vendorSku: "NEW-SKU",
+      internalSku: null,
+      isPreferred: true,
+      leadTimeDays: 3,
+      moq: 5,
+      cost: 9.99,
+    });
+  });
+
+  it("updates link metadata and clears other preferred vendors", async () => {
+    const result = await vendorService.updateItemLink(vendorId, userId, {
+      supplyId,
+      vendorSku: "NEW-SKU",
+      isPreferred: true,
+      leadTimeDays: 3,
+      moq: 5,
+      cost: 9.99,
+    });
+
+    expect(result.success).toBe(true);
+    expect(tx.itemVendor.updateMany).toHaveBeenCalledWith({
+      where: {
+        supplyId,
+        vendorId: { not: vendorId },
+        isPreferred: true,
+      },
+      data: { isPreferred: false },
+    });
+    expect(tx.itemVendor.update).toHaveBeenCalledWith({
+      where: { supplyId_vendorId: { supplyId, vendorId } },
+      data: expect.objectContaining({
+        vendorSku: "NEW-SKU",
+        isPreferred: true,
+        leadTimeDays: 3,
+        moq: 5,
+        cost: 9.99,
+      }),
+    });
+  });
+
+  it("returns an error when link is missing", async () => {
+    vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue(null);
+
+    const result = await vendorService.updateItemLink(vendorId, userId, {
+      supplyId,
+      cost: 1,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Item link not found");
+    }
+  });
+});
+
+describe("vendorService.unlinkItem", () => {
+  const userId = "admin-1";
+  const vendorId = "vendor-1";
+  const supplyId = "supply-1";
+
+  const tx = {
+    auditLog: { create: vi.fn() },
+    itemVendor: {
+      delete: vi.fn(),
+    },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
+      operation(tx as never)
+    );
+    vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue({
+      supplyId,
+      vendorId,
+      supply: { name: "Widget" },
+      vendor: { name: "Acme" },
+    } as never);
+    tx.itemVendor.delete.mockResolvedValue({ supplyId, vendorId });
+  });
+
+  it("deletes an existing link", async () => {
+    const result = await vendorService.unlinkItem(vendorId, supplyId, userId);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.supplyId).toBe(supplyId);
+    }
+    expect(tx.itemVendor.delete).toHaveBeenCalledWith({
+      where: { supplyId_vendorId: { supplyId, vendorId } },
+    });
+    expect(tx.auditLog.create).toHaveBeenCalled();
+  });
+
+  it("returns an error when link is missing", async () => {
+    vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue(null);
+
+    const result = await vendorService.unlinkItem(vendorId, supplyId, userId);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Item link not found");
+    }
   });
 });
