@@ -286,33 +286,76 @@ export function ReceiptsClient({
               {openVendorReorders.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No open orders.</p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Item</TableHead>
-                      <TableHead>Vendor</TableHead>
-                      <TableHead>PO #</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <>
+                  <div className="hidden rounded-md border md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Item</TableHead>
+                          <TableHead>Vendor</TableHead>
+                          <TableHead>PO #</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead>Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {openVendorReorders.map((reorder) => (
+                          <TableRow key={reorder.id}>
+                            <TableCell>{reorder.supply.name}</TableCell>
+                            <TableCell>{reorder.vendor?.name ?? "—"}</TableCell>
+                            <TableCell>
+                              {reorder.externalPoNumber ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {reorder.quantity}
+                            </TableCell>
+                            <TableCell className="capitalize">
+                              {reorder.status.toLowerCase().replace("_", " ")}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  <div className="space-y-3 md:hidden">
                     {openVendorReorders.map((reorder) => (
-                      <TableRow key={reorder.id}>
-                        <TableCell>{reorder.supply.name}</TableCell>
-                        <TableCell>{reorder.vendor?.name ?? "—"}</TableCell>
-                        <TableCell>{reorder.externalPoNumber ?? "—"}</TableCell>
-                        <TableCell className="text-right">
-                          {reorder.quantity}
-                        </TableCell>
-                        <TableCell className="capitalize">
-                          {reorder.status.toLowerCase().replace("_", " ")}
-                        </TableCell>
-                      </TableRow>
+                      <div
+                        key={reorder.id}
+                        className="rounded-md border p-4 space-y-3"
+                      >
+                        <p className="font-medium break-words">
+                          {reorder.supply.name}
+                        </p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                          <div>
+                            <p className="text-muted-foreground">Vendor</p>
+                            <p className="font-medium">
+                              {reorder.vendor?.name ?? "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Qty</p>
+                            <p className="font-medium">{reorder.quantity}</p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">PO #</p>
+                            <p className="font-medium break-all">
+                              {reorder.externalPoNumber ?? "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-muted-foreground">Status</p>
+                            <p className="font-medium capitalize">
+                              {reorder.status.toLowerCase().replace("_", " ")}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </TableBody>
-            </Table>
-          )}
+                  </div>
+                </>
+              )}
         </CardContent>
       </Card>
 
@@ -324,45 +367,93 @@ export function ReceiptsClient({
           {receipts.length === 0 ? (
             <p className="text-sm text-muted-foreground">No receipts yet.</p>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Item</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead>By</TableHead>
-                  <TableHead>Notes / PO</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <>
+              <div className="hidden rounded-md border md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Item</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead className="text-right">Qty</TableHead>
+                      <TableHead>By</TableHead>
+                      <TableHead>Notes / PO</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {receipts.map((receipt) => (
+                      <TableRow key={receipt.id}>
+                        <TableCell className="whitespace-nowrap text-sm">
+                          {new Date(receipt.createdAt).toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            href={`/admin/supplies?q=${encodeURIComponent(receipt.supply.name)}`}
+                            className="hover:underline"
+                          >
+                            {receipt.supply.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{receipt.location.name}</TableCell>
+                        <TableCell className="text-right">
+                          +{receipt.quantity}
+                        </TableCell>
+                        <TableCell>{receipt.username}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                          {receipt.externalPoNumber
+                            ? `PO ${receipt.externalPoNumber}`
+                            : receipt.notes ?? "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="space-y-3 md:hidden">
                 {receipts.map((receipt) => (
-                  <TableRow key={receipt.id}>
-                    <TableCell className="whitespace-nowrap text-sm">
-                      {new Date(receipt.createdAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
+                  <div
+                    key={receipt.id}
+                    className="rounded-md border p-4 space-y-3"
+                  >
+                    <div>
                       <Link
                         href={`/admin/supplies?q=${encodeURIComponent(receipt.supply.name)}`}
-                        className="hover:underline"
+                        className="font-medium break-words hover:underline"
                       >
                         {receipt.supply.name}
                       </Link>
-                    </TableCell>
-                    <TableCell>{receipt.location.name}</TableCell>
-                    <TableCell className="text-right">
-                      +{receipt.quantity}
-                    </TableCell>
-                    <TableCell>{receipt.username}</TableCell>
-                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                      {receipt.externalPoNumber
-                        ? `PO ${receipt.externalPoNumber}`
-                        : receipt.notes ?? "—"}
-                    </TableCell>
-                  </TableRow>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(receipt.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                      <div>
+                        <p className="text-muted-foreground">Location</p>
+                        <p className="font-medium">{receipt.location.name}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">Qty</p>
+                        <p className="font-medium">+{receipt.quantity}</p>
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground">By</p>
+                        <p className="font-medium">{receipt.username}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Notes / PO</p>
+                        <p className="font-medium break-words">
+                          {receipt.externalPoNumber
+                            ? `PO ${receipt.externalPoNumber}`
+                            : receipt.notes ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

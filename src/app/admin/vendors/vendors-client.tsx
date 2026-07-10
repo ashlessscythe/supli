@@ -173,7 +173,7 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
             />
           </div>
 
-          <div className="rounded-md border">
+          <div className="hidden rounded-md border md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -258,6 +258,73 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {table.paginated.length === 0 ? (
+              <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+                No vendors found.
+              </div>
+            ) : (
+              table.paginated.map((vendor) => (
+                <div
+                  key={vendor.id}
+                  className="rounded-md border p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium break-words">{vendor.name}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingVendor(vendor)}
+                    >
+                      <Edit className="mr-1 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Contact</p>
+                      <p className="font-medium break-words">
+                        {vendor.contact ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Status</p>
+                      <p className="font-medium">
+                        {vendor.isActive ? "Active" : "Inactive"}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Website</p>
+                      {vendor.website ? (
+                        <a
+                          href={vendor.website}
+                          className="font-medium text-primary break-all hover:underline"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          {vendor.website}
+                        </a>
+                      ) : (
+                        <p className="font-medium">—</p>
+                      )}
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Linked items</p>
+                      <LinkedItemsDialog
+                        count={vendor._count.itemVendors}
+                        title={`Items supplied by ${vendor.name}`}
+                        description="Catalog unit costs for supplies linked to this vendor."
+                        fetchUrl={`/api/vendors/${vendor.id}/items`}
+                        vendorId={vendor.id}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <TablePagination

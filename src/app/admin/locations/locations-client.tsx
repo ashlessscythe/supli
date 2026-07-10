@@ -199,7 +199,7 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
             </Select>
           </div>
 
-          <div className="rounded-md border">
+          <div className="hidden rounded-md border md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -266,6 +266,55 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          <div className="space-y-3 md:hidden">
+            {table.paginated.length === 0 ? (
+              <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+                No locations found.
+              </div>
+            ) : (
+              table.paginated.map((loc) => (
+                <div
+                  key={loc.id}
+                  className="rounded-md border p-4 space-y-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium break-words">{loc.name}</p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setEditingLocation(loc)}
+                    >
+                      <Edit className="mr-1 h-3.5 w-3.5" />
+                      Edit
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Type</p>
+                      <p className="font-medium">{loc.type}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Status</p>
+                      <p className="font-medium">
+                        {loc.isActive ? "Active" : "Inactive"}
+                      </p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground">Stock items</p>
+                      <LinkedItemsDialog
+                        count={loc._count.stockLevels}
+                        title={`Stock items at ${loc.name}`}
+                        description="Supplies stocked at this location. Select one to view it in Supplies."
+                        fetchUrl={`/api/locations/${loc.id}/items`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <TablePagination

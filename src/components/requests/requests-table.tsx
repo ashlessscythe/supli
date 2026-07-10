@@ -100,6 +100,40 @@ export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
     }
   };
 
+  const RequestActions = ({ request }: { request: Request }) => {
+    if (!isAdmin || request.status !== "PENDING") return null;
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem
+            onClick={() => handleUpdateStatus(request.id, "APPROVED")}
+            disabled={isLoading}
+            className="text-green-600"
+          >
+            <CheckCircle className="mr-2 h-4 w-4" />
+            Approve
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => handleUpdateStatus(request.id, "DENIED")}
+            disabled={isLoading}
+            className="text-red-600"
+          >
+            <XCircle className="mr-2 h-4 w-4" />
+            Deny
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  };
+
   const colSpan = isAdmin ? 6 : 5;
 
   return (
@@ -130,7 +164,7 @@ export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
         </Select>
       </div>
 
-      <div className="rounded-md border">
+      <div className="hidden rounded-md border md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -198,39 +232,7 @@ export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
                   <TableCell>{formatDate(request.createdAt)}</TableCell>
                   {isAdmin && (
                     <TableCell>
-                      {request.status === "PENDING" && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateStatus(request.id, "APPROVED")
-                              }
-                              disabled={isLoading}
-                              className="text-green-600"
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" />
-                              Approve
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                handleUpdateStatus(request.id, "DENIED")
-                              }
-                              disabled={isLoading}
-                              className="text-red-600"
-                            >
-                              <XCircle className="mr-2 h-4 w-4" />
-                              Deny
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
+                      <RequestActions request={request} />
                     </TableCell>
                   )}
                 </TableRow>
@@ -238,6 +240,51 @@ export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {table.paginated.length === 0 ? (
+          <div className="rounded-md border p-4 text-center text-sm text-muted-foreground">
+            No requests found.
+          </div>
+        ) : (
+          table.paginated.map((request) => (
+            <div key={request.id} className="rounded-md border p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="font-medium break-words">
+                    {request.supply.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {request.user.username}
+                  </p>
+                </div>
+                <RequestActions request={request} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Quantity</p>
+                  <p className="font-medium">{request.quantity}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <p
+                    className={`font-medium capitalize ${getStatusColor(request.status)}`}
+                  >
+                    {request.status.toLowerCase()}
+                  </p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-muted-foreground">Date</p>
+                  <p className="font-medium">
+                    {formatDate(request.createdAt)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       <TablePagination
