@@ -13,6 +13,9 @@ vi.mock("@/lib/prisma", () => ({
     supply: {
       findFirst: vi.fn(),
     },
+    stockLevel: {
+      findMany: vi.fn(),
+    },
     vendorReorder: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -31,8 +34,9 @@ vi.mock("@/lib/prisma", () => ({
 
 vi.mock("@/server/repositories/location.repository", () => ({
   locationRepository: {
-    findById: vi.fn(),
+    findActiveById: vi.fn(),
     findDefault: vi.fn(),
+    findAll: vi.fn(),
   },
 }));
 
@@ -94,7 +98,7 @@ describe("stockMovementService.receive", () => {
       operation(tx as never)
     );
     vi.mocked(supplyRepository.findById).mockResolvedValue(supply as never);
-    vi.mocked(locationRepository.findById).mockResolvedValue(location as never);
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue(location as never);
     vi.mocked(locationRepository.findDefault).mockResolvedValue(null as never);
     vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
       ...supply,
@@ -173,6 +177,22 @@ describe("stockMovementService.receive", () => {
         action: "Received 12 Nitrile gloves at Receiving dock",
       },
     });
+  });
+
+  it("rejects receiving stock at an inactive location", async () => {
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue(null as never);
+
+    const result = await stockMovementService.receive(userId, {
+      supplyId: supply.id,
+      locationId: "inactive-loc",
+      quantity: 4,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Location is not available");
+    }
+    expect(tx.stockMovement.create).not.toHaveBeenCalled();
   });
 
   it("increments an existing stock level instead of creating a new one", async () => {
@@ -320,7 +340,7 @@ describe("stockMovementService.consume", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
       operation(tx as never)
     );
-    vi.mocked(locationRepository.findById).mockResolvedValue(location as never);
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue(location as never);
     vi.mocked(prisma.supply.findFirst).mockResolvedValue(supply as never);
     vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
       ...supply,
@@ -384,7 +404,7 @@ describe("stockMovementService.consume", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toBe("Insufficient stock at this location");
+      expect(result.error).toBe("Insufficient stock at Kiosk");
     }
   });
 
@@ -475,8 +495,9 @@ describe("stockMovementService.consumeBulk", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
       operation(tx as never)
     );
-    vi.mocked(locationRepository.findById).mockResolvedValue(location as never);
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue(location as never);
     vi.mocked(locationRepository.findDefault).mockResolvedValue(location as never);
+    vi.mocked(locationRepository.findAll).mockResolvedValue([location] as never);
     tx.stockMovement.create.mockResolvedValue({ id: "movement-1" });
   });
 
@@ -571,6 +592,14 @@ describe("stockMovementService.consumeBulk", () => {
         locationId: location.id,
         quantity: supplyId === supplyB.id ? 1 : 10,
       }) as never) as never);
+    vi.mocked(prisma.stockLevel.findMany).mockImplementation((async (args: {
+      where: { supplyId: string };
+    }) => {
+      if (args.where.supplyId === supplyB.id) {
+        return [{ quantity: 1 }] as never;
+      }
+      return [{ quantity: 10 }] as never;
+    }) as never);
 
     const result = await stockMovementService.consumeBulk(userId, {
       items: [
@@ -625,6 +654,114 @@ describe("stockMovementService.consumeBulk", () => {
       supplyA.id
     );
   });
+
+  it("checks out from a non-default active location when default has no stock", async () => {
+    const defaultLocation = { id: "default-loc", name: "Watchpoint Delta" };
+    const stockedLocation = { id: "active-loc", name: "Rubicon Research Institute" };
+
+    vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
+    vi.mocked(locationRepository.findDefault).mockResolvedValue(
+      defaultLocation as never
+    );
+    vi.mocked(locationRepository.findAll).mockResolvedValue([
+      defaultLocation,
+      stockedLocation,
+    ] as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockImplementation((async (
+      supplyId: string,
+      locationId: string
+    ) => {
+      if (locationId === defaultLocation.id) {
+        return { supplyId, locationId, quantity: 0 } as never;
+      }
+      return { supplyId, locationId: stockedLocation.id, quantity: 6 } as never;
+    }) as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...supplyB,
+      quantity: 5,
+    } as never);
+
+    const result = await stockMovementService.consumeBulk(userId, {
+      items: [{ supplyId: supplyB.id, quantity: 1 }],
+    });
+
+    expect(result.success).toBe(true);
+    expect(tx.stockMovement.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        supplyId: supplyB.id,
+        locationId: stockedLocation.id,
+        quantity: 1,
+      }),
+    });
+  });
+
+  it("rejects checkout from an inactive location", async () => {
+    vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue(null as never);
+
+    const result = await stockMovementService.consumeBulk(userId, {
+      items: [{ supplyId: supplyB.id, quantity: 1 }],
+      locationId: "inactive-loc",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Location is not available");
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns a location-specific stock error when checkout exceeds location quantity", async () => {
+    vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue({
+      id: location.id,
+      name: "Watchpoint Delta",
+    } as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
+      supplyId: supplyB.id,
+      locationId: location.id,
+      quantity: 8,
+    } as never);
+
+    const result = await stockMovementService.consumeBulk(userId, {
+      items: [{ supplyId: supplyB.id, quantity: 11 }],
+      locationId: location.id,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe(
+        "Insufficient stock for Arm unit at Watchpoint Delta (8 available)"
+      );
+    }
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+});
+
+describe("stockMovementService.getCheckoutStockLevels", () => {
+  it("returns stock quantities for the selected active location", async () => {
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue({
+      id: "loc-1",
+      name: "Watchpoint Delta",
+    } as never);
+    vi.mocked(prisma.stockLevel.findMany).mockResolvedValue([
+      { supplyId: "supply-a", quantity: 8 },
+    ] as never);
+
+    const result = await stockMovementService.getCheckoutStockLevels("loc-1", [
+      "supply-a",
+      "supply-b",
+    ]);
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.location.name).toBe("Watchpoint Delta");
+      expect(result.data.stock).toEqual({
+        "supply-a": 8,
+        "supply-b": 0,
+      });
+    }
+  });
 });
 
 describe("stockMovementService.adjust", () => {
@@ -647,7 +784,7 @@ describe("stockMovementService.adjust", () => {
       operation(tx as never)
     );
     vi.mocked(supplyRepository.findById).mockResolvedValue(supply as never);
-    vi.mocked(locationRepository.findById).mockResolvedValue(location as never);
+    vi.mocked(locationRepository.findActiveById).mockResolvedValue(location as never);
     vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
       supplyId: supply.id,
       locationId: location.id,

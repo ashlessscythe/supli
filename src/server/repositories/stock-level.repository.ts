@@ -31,7 +31,9 @@ export const stockLevelRepository = {
 
   async syncSupplyTotals(supplyId: string, tx?: TransactionClient) {
     const client = tx ?? prisma;
-    const levels = await client.stockLevel.findMany({ where: { supplyId } });
+    const levels = await client.stockLevel.findMany({
+      where: { supplyId, location: { isActive: true } },
+    });
     const quantity = levels.reduce((sum, l) => sum + l.quantity, 0);
     const minimumThreshold = Math.min(
       ...levels.map((l) => l.minimumThreshold),

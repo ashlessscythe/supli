@@ -33,6 +33,58 @@ vi.mock("@/server/services/notification.service", () => ({
   },
 }));
 
+describe("supplyService.getDetails", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.user.findMany).mockResolvedValue([] as never);
+  });
+
+  it("returns only active location stock levels", async () => {
+    const createdAt = new Date("2026-07-08T20:00:00.000Z");
+    const updatedAt = new Date("2026-07-10T18:17:00.000Z");
+
+    vi.mocked(supplyRepository.findDetails).mockResolvedValue({
+      id: "supply-1",
+      name: "Dafeng Generator",
+      description: "Generator",
+      quantity: 6,
+      minimumThreshold: 3,
+      barcode: "DFGN-M2NG-T4K8",
+      internalSku: "AC-DFGN06-MING",
+      createdAt,
+      updatedAt,
+      itemType: { name: "Inner Parts", slug: "inner-parts" },
+      stockLevels: [
+        {
+          locationId: "loc-active",
+          quantity: 6,
+          minimumThreshold: 3,
+          location: { name: "Rubicon Research Institute" },
+        },
+      ],
+      itemVendors: [],
+      stockMovements: [],
+      requests: [],
+      vendorReorders: [],
+    } as never);
+
+    const result = await supplyService.getDetails("supply-1");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.quantity).toBe(6);
+      expect(result.data.stockLevels).toEqual([
+        {
+          locationId: "loc-active",
+          locationName: "Rubicon Research Institute",
+          quantity: 6,
+          minimumThreshold: 3,
+        },
+      ]);
+    }
+  });
+});
+
 describe("supplyService.delete", () => {
   const userId = "admin-1";
   const supply = { id: "supply-1", name: "Gloves" };

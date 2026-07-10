@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,8 +20,22 @@ import {
 } from "@/components/ui/select";
 import { normalizeBarcode, formatBarcode } from "@/lib/barcode";
 import { useStockMovements } from "@/hooks/use-stock-movements";
-import { CheckCircle2, Minus, Plus, Scan, ShoppingCart, Trash2 } from "lucide-react";
+import { getCheckoutStockLevels } from "@/lib/actions/stock-movement";
+import {
+  CheckCircle2,
+  MapPin,
+  Minus,
+  Plus,
+  Scan,
+  ShoppingCart,
+  Trash2,
+} from "lucide-react";
 import { Supply } from "@/types";
+
+interface LocationOption {
+  id: string;
+  name: string;
+}
 
 interface CartItem {
   supplyId: string;
@@ -32,17 +46,31 @@ interface CartItem {
 
 interface CheckoutDialogProps {
   supplies: Supply[];
+  locations: LocationOption[];
+  defaultLocationId?: string;
   trigger?: React.ReactNode;
 }
 
-export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
+export function CheckoutDialog({
+  supplies,
+  locations,
+  defaultLocationId,
+  trigger,
+}: CheckoutDialogProps) {
+  const initialLocationId =
+    defaultLocationId ?? locations[0]?.id ?? "";
   const [open, setOpen] = useState(false);
   const [barcode, setBarcode] = useState("");
   const [searchSupplyId, setSearchSupplyId] = useState("");
+  const [selectedLocationId, setSelectedLocationId] = useState(initialLocationId);
+  const [selectedLocationName, setSelectedLocationName] = useState(
+    locations.find((location) => location.id === initialLocationId)?.name ?? ""
+  );
   const [cart, setCart] = useState<CartItem[]>([]);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState<string[] | null>(null);
+  const [loadingStock, setLoadingStock] = useState(false);
   const { handleCheckout, isLoading } = useStockMovements();
   const scanRef = useRef<HTMLInputElement>(null);
 
@@ -56,11 +84,76 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
     return map;
   }, [supplies]);
 
+  const refreshStockLevels = useCallback(
+    async (locationId: string, supplyIds: string[]) => {
+      if (!locationId || supplyIds.length === 0) {
+        return {};
+      }
+
+      setLoadingStock(true);
+      try {
+        const result = await getCheckoutStockLevels(locationId, supplyIds);
+        if (!result.success) {
+          setError(
+            typeof result.error === "string"
+              ? result.error
+              : "Failed to load stock for this location"
+          );
+          return {};
+        }
+
+        setSelectedLocationName(result.data.location.name);
+        return result.data.stock;
+      } finally {
+        setLoadingStock(false);
+      }
+    },
+    []
+  );
+
+  const applyStockLevels = useCallback(
+    (stock: Record<string, number>) => {
+      setCart((prev) =>
+        prev
+          .map((item) => {
+            const available = stock[item.supplyId] ?? 0;
+            return {
+              ...item,
+              available,
+              quantity: Math.min(item.quantity, available),
+            };
+          })
+          .filter((item) => item.available > 0 && item.quantity > 0)
+      );
+    },
+    []
+  );
+
   useEffect(() => {
     if (open) {
       scanRef.current?.focus();
     }
   }, [open]);
+
+  const cartSupplyIds = cart.map((item) => item.supplyId).join(",");
+
+  useEffect(() => {
+    if (!open || !selectedLocationId || cart.length === 0) return;
+
+    const supplyIds = cart.map((item) => item.supplyId);
+    void refreshStockLevels(selectedLocationId, supplyIds).then((stock) => {
+      if (Object.keys(stock).length > 0) {
+        applyStockLevels(stock);
+      }
+    });
+  }, [
+    open,
+    selectedLocationId,
+    cartSupplyIds,
+    refreshStockLevels,
+    applyStockLevels,
+    cart.length,
+  ]);
 
   function resetForm() {
     setBarcode("");
@@ -69,16 +162,59 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
     setNotes("");
     setError(null);
     setCompleted(null);
+    setSelectedLocationId(initialLocationId);
+    setSelectedLocationName(
+      locations.find((location) => location.id === initialLocationId)?.name ?? ""
+    );
   }
 
-  function addToCart(supply: Supply) {
+  async function handleLocationChange(locationId: string) {
+    setSelectedLocationId(locationId);
     setError(null);
+
+    const locationName =
+      locations.find((location) => location.id === locationId)?.name ?? "";
+    setSelectedLocationName(locationName);
+
+    if (cart.length === 0) return;
+
+    const stock = await refreshStockLevels(
+      locationId,
+      cart.map((item) => item.supplyId)
+    );
+    if (Object.keys(stock).length > 0) {
+      applyStockLevels(stock);
+    }
+  }
+
+  async function addToCart(supply: Supply) {
+    setError(null);
+
+    if (!selectedLocationId) {
+      setError("Select a checkout location first");
+      return;
+    }
+
+    const stock = await refreshStockLevels(selectedLocationId, [supply.id]);
+    const available = stock[supply.id] ?? 0;
+
+    if (available <= 0) {
+      setError(
+        `No stock for ${supply.name} at ${selectedLocationName || "this location"}`
+      );
+      return;
+    }
+
     setCart((prev) => {
       const existing = prev.find((item) => item.supplyId === supply.id);
       if (existing) {
         return prev.map((item) =>
           item.supplyId === supply.id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? {
+                ...item,
+                quantity: Math.min(item.quantity + 1, available),
+                available,
+              }
             : item
         );
       }
@@ -88,7 +224,7 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
           supplyId: supply.id,
           name: supply.name,
           quantity: 1,
-          available: supply.quantity,
+          available,
         },
       ];
     });
@@ -105,7 +241,7 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
       return;
     }
 
-    addToCart(supply);
+    void addToCart(supply);
     setBarcode("");
     scanRef.current?.focus();
   }
@@ -114,7 +250,7 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
     if (!searchSupplyId) return;
     const supply = supplies.find((s) => s.id === searchSupplyId);
     if (!supply) return;
-    addToCart(supply);
+    void addToCart(supply);
     setSearchSupplyId("");
   }
 
@@ -123,7 +259,13 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
       prev
         .map((item) =>
           item.supplyId === supplyId
-            ? { ...item, quantity: item.quantity + delta }
+            ? {
+                ...item,
+                quantity: Math.min(
+                  Math.max(1, item.quantity + delta),
+                  item.available
+                ),
+              }
             : item
         )
         .filter((item) => item.quantity > 0)
@@ -135,8 +277,21 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
   }
 
   async function handleComplete() {
+    if (!selectedLocationId) {
+      setError("Select a checkout location");
+      return;
+    }
+
     if (cart.length === 0) {
       setError("Add at least one item to check out");
+      return;
+    }
+
+    const overLimit = cart.find((item) => item.quantity > item.available);
+    if (overLimit) {
+      setError(
+        `Only ${overLimit.available} ${overLimit.name} available at ${selectedLocationName}`
+      );
       return;
     }
 
@@ -146,15 +301,25 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
         supplyId: item.supplyId,
         quantity: item.quantity,
       })),
+      locationId: selectedLocationId,
       notes: notes.trim() || undefined,
     });
 
     if (success) {
-      setCompleted(cart.map((item) => `${item.quantity}× ${item.name}`));
+      setCompleted(
+        cart.map(
+          (item) =>
+            `${item.quantity}× ${item.name} from ${selectedLocationName}`
+        )
+      );
       setCart([]);
       setNotes("");
       setBarcode("");
     }
+  }
+
+  if (locations.length === 0) {
+    return null;
   }
 
   return (
@@ -199,6 +364,32 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                <span>Checking out from</span>
+              </div>
+              <Select
+                value={selectedLocationId}
+                onValueChange={handleLocationChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select location..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {locations.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Stock is deducted from the selected location only. Quantities
+                below reflect what is on hand there.
+              </p>
+            </div>
+
             <form onSubmit={handleScanSubmit} className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Scan className="h-4 w-4" />
@@ -211,8 +402,12 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
                   onChange={(e) => setBarcode(e.target.value)}
                   placeholder="Scan barcode..."
                   autoComplete="off"
+                  disabled={!selectedLocationId}
                 />
-                <Button type="submit" disabled={!barcode.trim()}>
+                <Button
+                  type="submit"
+                  disabled={!barcode.trim() || !selectedLocationId}
+                >
                   Add
                 </Button>
               </div>
@@ -228,7 +423,7 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
                   <SelectContent>
                     {supplies.map((supply) => (
                       <SelectItem key={supply.id} value={supply.id}>
-                        {supply.name} ({supply.quantity} on hand)
+                        {supply.name} ({supply.quantity} total on hand)
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -237,7 +432,7 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
                   type="button"
                   variant="outline"
                   onClick={handleSearchAdd}
-                  disabled={!searchSupplyId}
+                  disabled={!searchSupplyId || !selectedLocationId}
                 >
                   Add
                 </Button>
@@ -254,9 +449,13 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
                       className="flex items-center justify-between gap-2"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">{item.name}</p>
+                        <p className="truncate text-sm font-medium">
+                          {item.name}
+                        </p>
                         <p className="text-xs text-muted-foreground">
-                          {item.available} available
+                          {loadingStock
+                            ? "Loading stock..."
+                            : `${item.available} available at ${selectedLocationName}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-1">
@@ -278,7 +477,9 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
                           size="icon"
                           className="h-8 w-8"
                           onClick={() => updateQuantity(item.supplyId, 1)}
-                          disabled={item.quantity >= item.available}
+                          disabled={
+                            item.quantity >= item.available || loadingStock
+                          }
                         >
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
@@ -320,7 +521,7 @@ export function CheckoutDialog({ supplies, trigger }: CheckoutDialogProps) {
               <Button
                 type="button"
                 onClick={handleComplete}
-                disabled={isLoading || cart.length === 0}
+                disabled={isLoading || loadingStock || cart.length === 0}
               >
                 {isLoading ? "Processing..." : "Complete checkout"}
               </Button>

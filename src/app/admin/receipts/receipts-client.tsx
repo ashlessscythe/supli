@@ -70,6 +70,7 @@ interface ReceiptsClientProps {
   locations: Location[];
   receipts: ReceiptRow[];
   openVendorReorders: VendorReorderRow[];
+  suppliesPath?: string;
 }
 
 export function ReceiptsClient({
@@ -77,6 +78,7 @@ export function ReceiptsClient({
   locations,
   receipts,
   openVendorReorders,
+  suppliesPath = "/dashboard/supplies",
 }: ReceiptsClientProps) {
   const [editingOrder, setEditingOrder] = useState<VendorReorderRow | null>(
     null
@@ -254,7 +256,7 @@ export function ReceiptsClient({
                         </TableCell>
                         <TableCell>
                           <Link
-                            href={`/admin/supplies?q=${encodeURIComponent(receipt.supply.name)}`}
+                            href={`${suppliesPath}?q=${encodeURIComponent(receipt.supply.name)}`}
                             className="hover:underline"
                           >
                             {receipt.supply.name}
@@ -282,7 +284,7 @@ export function ReceiptsClient({
                   >
                     <div>
                       <Link
-                        href={`/admin/supplies?q=${encodeURIComponent(receipt.supply.name)}`}
+                        href={`${suppliesPath}?q=${encodeURIComponent(receipt.supply.name)}`}
                         className="font-medium break-words hover:underline"
                       >
                         {receipt.supply.name}

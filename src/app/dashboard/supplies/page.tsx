@@ -21,15 +21,16 @@ export default async function SuppliesPage({
 
   const [result, locationsResult] = await Promise.all([
     getSupplies(),
-    session.user.role === "ADMIN"
-      ? locationService.list()
-      : Promise.resolve({ success: true as const, data: [] }),
+    locationService.list(),
   ]);
   const supplies = result.success ? result.data : [];
   const locations =
     locationsResult.success && "data" in locationsResult
       ? locationsResult.data.map((l) => ({ id: l.id, name: l.name }))
       : [];
+  const defaultLocationId =
+    locations.find((location) => location.name === "Watchpoint Delta")?.id ??
+    locations[0]?.id;
   const initialSearch = searchParams.q ?? "";
 
   return (
@@ -37,7 +38,11 @@ export default async function SuppliesPage({
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Supplies</h2>
         <div className="flex items-center gap-2">
-          <CheckoutDialog supplies={supplies || []} />
+          <CheckoutDialog
+            supplies={supplies || []}
+            locations={locations}
+            defaultLocationId={defaultLocationId}
+          />
           {session.user.role === "ADMIN" && <SupplyDialog isAdmin />}
         </div>
       </div>

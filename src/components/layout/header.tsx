@@ -11,6 +11,7 @@ import {
   Settings,
   LogOut,
   Shield,
+  PackagePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -33,6 +34,12 @@ const navigation = [
     name: "Requests",
     href: "/dashboard/requests",
     icon: ClipboardList,
+    adminOnly: false,
+  },
+  {
+    name: "Receipts",
+    href: "/dashboard/receipts",
+    icon: PackagePlus,
     adminOnly: false,
   },
 ];

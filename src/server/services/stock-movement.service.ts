@@ -133,10 +133,63 @@ function extractLegacyVendorId(notes: string | null) {
 }
 
 async function resolveLocation(locationId?: string) {
-  return (
-    (locationId ? await locationRepository.findById(locationId) : null) ??
-    (await locationRepository.findDefault())
-  );
+  if (locationId) {
+    return locationRepository.findActiveById(locationId);
+  }
+  return locationRepository.findDefault();
+}
+
+async function canFulfillAtLocation(
+  locationId: string,
+  items: { supplyId: string; quantity: number }[]
+) {
+  for (const item of items) {
+    const level = await stockLevelRepository.findAtLocation(
+      item.supplyId,
+      locationId
+    );
+    if (!level || level.quantity < item.quantity) {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function resolveCheckoutLocation(
+  items: { supplyId: string; quantity: number }[],
+  locationId?: string
+) {
+  if (locationId) {
+    const location = await locationRepository.findActiveById(locationId);
+    if (!location) {
+      return failure("Location is not available");
+    }
+    if (!(await canFulfillAtLocation(location.id, items))) {
+      return failure(`Insufficient stock at ${location.name}`);
+    }
+    return success(location);
+  }
+
+  const candidates: { id: string; name: string }[] = [];
+  const defaultLocation = await locationRepository.findDefault();
+  if (defaultLocation) {
+    candidates.push(defaultLocation);
+  }
+
+  const activeLocations = await locationRepository.findAll();
+  for (const location of activeLocations) {
+    if (!candidates.some((candidate) => candidate.id === location.id)) {
+      candidates.push(location);
+    }
+  }
+
+  for (const location of candidates) {
+    if (await canFulfillAtLocation(location.id, items)) {
+      return success(location);
+    }
+  }
+
+  return failure("Insufficient stock at this location");
 }
 
 type SupplyWithThreshold = {
@@ -207,10 +260,6 @@ export const stockMovementService = {
   ) {
     try {
       const data = consumeSchema.parse(input);
-      const location = await resolveLocation(data.locationId);
-
-      if (!location) return failure("No location configured");
-
       const normalizedBarcode = normalizeBarcode(data.barcode);
       if (!normalizedBarcode) return failure("Item not found");
 
@@ -220,14 +269,14 @@ export const stockMovementService = {
 
       if (!supply) return failure("Item not found");
 
-      const level = await stockLevelRepository.findAtLocation(
-        supply.id,
-        location.id
+      const locationResult = await resolveCheckoutLocation(
+        [{ supplyId: supply.id, quantity: data.quantity }],
+        data.locationId
       );
-
-      if (!level || level.quantity < data.quantity) {
-        return failure("Insufficient stock at this location");
+      if (!locationResult.success) {
+        return locationResult;
       }
+      const location = locationResult.data;
 
       const result = await executeWithAudit(
         userId,
@@ -256,34 +305,62 @@ export const stockMovementService = {
   async consumeBulk(userId: string, input: BulkConsumeInput) {
     try {
       const data = bulkConsumeSchema.parse(input);
-      const location = await resolveLocation(data.locationId);
-
-      if (!location) return failure("No location configured");
-
       const mergedItems = mergeBulkConsumeItems(data.items);
       const supplies = await Promise.all(
         mergedItems.map((item) => supplyRepository.findById(item.supplyId))
       );
 
       for (let i = 0; i < mergedItems.length; i++) {
-        const item = mergedItems[i];
-        const supply = supplies[i];
-
-        if (!supply) {
+        if (!supplies[i]) {
           return failure("Supply not found");
         }
-
-        const level = await stockLevelRepository.findAtLocation(
-          supply.id,
-          location.id
-        );
-
-        if (!level || level.quantity < item.quantity) {
-          return failure(
-            `Insufficient stock for ${supply.name} at this location`
-          );
-        }
       }
+
+      const locationResult = await resolveCheckoutLocation(
+        mergedItems,
+        data.locationId
+      );
+      if (!locationResult.success) {
+        if (data.locationId) {
+          const location = await locationRepository.findActiveById(data.locationId);
+          for (let i = 0; i < mergedItems.length; i++) {
+            const item = mergedItems[i];
+            const supply = supplies[i]!;
+            const level = await stockLevelRepository.findAtLocation(
+              item.supplyId,
+              data.locationId
+            );
+            const available = level?.quantity ?? 0;
+            if (available < item.quantity) {
+              return failure(
+                `Insufficient stock for ${supply.name} at ${location?.name ?? "this location"} (${available} available)`
+              );
+            }
+          }
+        } else {
+          for (let i = 0; i < mergedItems.length; i++) {
+            const item = mergedItems[i];
+            const supply = supplies[i]!;
+            const activeLevels = await prisma.stockLevel.findMany({
+              where: {
+                supplyId: item.supplyId,
+                location: { isActive: true },
+              },
+            });
+            const maxAvailable = Math.max(
+              0,
+              ...activeLevels.map((level) => level.quantity)
+            );
+            if (maxAvailable < item.quantity) {
+              return failure(
+                `Insufficient stock for ${supply.name} at this location`
+              );
+            }
+          }
+        }
+        return locationResult;
+      }
+      const location = locationResult.data;
 
       const auditActions = mergedItems.map((item) => {
         const supply = supplies.find((s) => s?.id === item.supplyId);
@@ -329,7 +406,11 @@ export const stockMovementService = {
       if (!supply) return failure("Supply not found");
 
       const location = await resolveLocation(data.locationId);
-      if (!location) return failure("No location configured");
+      if (!location) {
+        return failure(
+          data.locationId ? "Location is not available" : "No location configured"
+        );
+      }
 
       if (data.vendorReorderId) {
         const linkValidation = await validateVendorReorderLink(
@@ -450,7 +531,11 @@ export const stockMovementService = {
       if (!supply) return failure("Supply not found");
 
       const location = await resolveLocation(data.locationId);
-      if (!location) return failure("No location configured");
+      if (!location) {
+        return failure(
+          data.locationId ? "Location is not available" : "No location configured"
+        );
+      }
 
       const existing = await stockLevelRepository.findAtLocation(
         supply.id,
@@ -750,5 +835,41 @@ export const stockMovementService = {
       orderBy: { createdAt: "desc" },
       include: { location: { select: { name: true } } },
     });
+  },
+
+  async getCheckoutStockLevels(locationId: string, supplyIds: string[]) {
+    try {
+      const location = await locationRepository.findActiveById(locationId);
+      if (!location) {
+        return failure("Location is not available");
+      }
+
+      const uniqueSupplyIds = [...new Set(supplyIds)];
+      const levels =
+        uniqueSupplyIds.length > 0
+          ? await prisma.stockLevel.findMany({
+              where: {
+                locationId,
+                supplyId: { in: uniqueSupplyIds },
+                location: { isActive: true },
+              },
+              select: { supplyId: true, quantity: true },
+            })
+          : [];
+
+      const stock = Object.fromEntries(
+        uniqueSupplyIds.map((supplyId) => {
+          const level = levels.find((entry) => entry.supplyId === supplyId);
+          return [supplyId, level?.quantity ?? 0];
+        })
+      );
+
+      return success({
+        location: { id: location.id, name: location.name },
+        stock,
+      });
+    } catch {
+      return failure("Failed to fetch stock levels");
+    }
   },
 };

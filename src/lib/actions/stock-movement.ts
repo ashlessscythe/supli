@@ -14,6 +14,7 @@ import type {
 
 function revalidateInventoryPaths() {
   revalidatePath("/admin/receipts");
+  revalidatePath("/dashboard/receipts");
   revalidatePath("/admin/supplies");
   revalidatePath("/dashboard/supplies");
   revalidatePath("/admin/locations");
@@ -21,7 +22,7 @@ function revalidateInventoryPaths() {
 
 export async function receiveStock(input: ReceiveStockInput) {
   try {
-    const session = await requireAdmin();
+    const session = await requireSession();
     const result = await stockMovementService.receive(session.user.id, input);
     if (result.success) revalidateInventoryPaths();
     return result;
@@ -57,7 +58,7 @@ export async function checkoutSupplies(input: BulkConsumeInput) {
 
 export async function getReceiptHistory() {
   try {
-    await requireAdmin();
+    await requireSession();
     return stockMovementService.listReceipts();
   } catch {
     return { success: false as const, error: "Unauthorized" };
@@ -75,12 +76,12 @@ export async function getLocations() {
 
 export async function logVendorReorder(input: LogVendorReorderInput) {
   try {
-    const session = await requireAdmin();
+    const session = await requireSession();
     const result = await stockMovementService.logVendorReorder(
       session.user.id,
       input
     );
-    if (result.success) revalidatePath("/admin/receipts");
+    if (result.success) revalidateInventoryPaths();
     return result;
   } catch {
     return { success: false as const, error: "Unauthorized" };
@@ -92,14 +93,26 @@ export async function updateVendorReorder(
   input: UpdateVendorReorderInput
 ) {
   try {
-    const session = await requireAdmin();
+    const session = await requireSession();
     const result = await stockMovementService.updateVendorReorder(
       session.user.id,
       reorderId,
       input
     );
-    if (result.success) revalidatePath("/admin/receipts");
+    if (result.success) revalidateInventoryPaths();
     return result;
+  } catch {
+    return { success: false as const, error: "Unauthorized" };
+  }
+}
+
+export async function getCheckoutStockLevels(
+  locationId: string,
+  supplyIds: string[]
+) {
+  try {
+    await requireSession();
+    return stockMovementService.getCheckoutStockLevels(locationId, supplyIds);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }
@@ -107,7 +120,7 @@ export async function updateVendorReorder(
 
 export async function getOpenVendorReorders() {
   try {
-    await requireAdmin();
+    await requireSession();
     return stockMovementService.listOpenVendorReorders();
   } catch {
     return { success: false as const, error: "Unauthorized" };

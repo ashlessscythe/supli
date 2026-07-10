@@ -201,7 +201,7 @@ export function SuppliesTable({
       className="flex items-center justify-end gap-1"
       onClick={(e) => e.stopPropagation()}
     >
-      {isAdmin && locations.length > 0 && (
+      {locations.length > 0 && (
         <>
           <Button
             variant="outline"
@@ -211,14 +211,16 @@ export function SuppliesTable({
             <PackagePlus className="mr-1 h-3.5 w-3.5" />
             Receive
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setAdjustingSupplyId(supply.id)}
-          >
-            <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
-            Adjust
-          </Button>
+          {isAdmin && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setAdjustingSupplyId(supply.id)}
+            >
+              <SlidersHorizontal className="mr-1 h-3.5 w-3.5" />
+              Adjust
+            </Button>
+          )}
         </>
       )}
       <Button
@@ -487,7 +489,7 @@ export function SuppliesTable({
         />
       )}
 
-      {isAdmin && locations.length > 0 && receivingSupplyId && (
+      {locations.length > 0 && receivingSupplyId && (
         <ReceiveDialog
           key={receivingSupplyId}
           supplies={supplyOptions}

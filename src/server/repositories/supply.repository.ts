@@ -26,6 +26,7 @@ export const supplyRepository = {
       include: {
         itemType: { select: { name: true, slug: true } },
         stockLevels: {
+          where: { location: { isActive: true } },
           include: { location: { select: { name: true } } },
           orderBy: { location: { name: "asc" } },
         },

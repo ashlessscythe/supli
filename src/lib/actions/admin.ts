@@ -10,6 +10,10 @@ export async function getRequestsChartData() {
   return adminService.getRequestsChartData();
 }
 
+export async function getReceiptsChartData() {
+  return adminService.getReceiptsChartData();
+}
+
 export async function getSupplyChartData() {
   return adminService.getSupplyChartData();
 }

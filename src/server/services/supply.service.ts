@@ -67,23 +67,30 @@ export const supplyService = {
         (m) => m.type === StockMovementType.RECEIVE
       );
 
+      const stockLevels = supply.stockLevels.map((sl) => ({
+          locationId: sl.locationId,
+          locationName: sl.location.name,
+          quantity: sl.quantity,
+          minimumThreshold: sl.minimumThreshold,
+        }));
+      const quantity = stockLevels.reduce((sum, sl) => sum + sl.quantity, 0);
+      const minimumThreshold =
+        stockLevels.length > 0
+          ? Math.min(...stockLevels.map((sl) => sl.minimumThreshold))
+          : supply.minimumThreshold;
+
       return success({
         id: supply.id,
         name: supply.name,
         description: supply.description,
-        quantity: supply.quantity,
-        minimumThreshold: supply.minimumThreshold,
+        quantity,
+        minimumThreshold,
         barcode: supply.barcode,
         internalSku: supply.internalSku,
         createdAt: supply.createdAt,
         updatedAt: supply.updatedAt,
         itemType: supply.itemType,
-        stockLevels: supply.stockLevels.map((sl) => ({
-          locationId: sl.locationId,
-          locationName: sl.location.name,
-          quantity: sl.quantity,
-          minimumThreshold: sl.minimumThreshold,
-        })),
+        stockLevels,
         vendors: supply.itemVendors.map((iv) => ({
           id: iv.vendor.id,
           name: iv.vendor.name,

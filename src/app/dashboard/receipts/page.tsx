@@ -1,12 +1,12 @@
-import { ReceiptsClient } from "./receipts-client";
+import { ReceiptsClient } from "@/app/admin/receipts/receipts-client";
 import { getReceiptsPageData } from "@/lib/receipts-page-data";
 
-export default async function AdminReceiptsPage() {
+export default async function DashboardReceiptsPage() {
   const { supplies, locations, receipts, openVendorReorders } =
     await getReceiptsPageData();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 py-4 md:py-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Receipts</h2>
         <p className="text-muted-foreground">
@@ -19,7 +19,7 @@ export default async function AdminReceiptsPage() {
         locations={locations}
         receipts={receipts}
         openVendorReorders={openVendorReorders}
-        suppliesPath="/admin/supplies"
+        suppliesPath="/dashboard/supplies"
       />
     </div>
   );

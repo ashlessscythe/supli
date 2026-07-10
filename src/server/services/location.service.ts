@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { failure, success } from "@/lib/result";
 import { prisma } from "@/lib/prisma";
+import { stockLevelRepository } from "@/server/repositories/stock-level.repository";
 import { locationRepository } from "@/server/repositories/location.repository";
 import { executeWithAudit } from "@/server/audit";
 
@@ -101,6 +102,19 @@ export const locationService = {
             },
           })
       );
+
+      if (fields.isActive === false && existing.isActive) {
+        const affectedLevels = await prisma.stockLevel.findMany({
+          where: { locationId: id },
+          select: { supplyId: true },
+        });
+        await Promise.all(
+          affectedLevels.map((level) =>
+            stockLevelRepository.syncSupplyTotals(level.supplyId)
+          )
+        );
+      }
+
       return success(location);
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);

@@ -20,8 +20,16 @@ export const locationRepository = {
     return prisma.location.findUnique({ where: { id } });
   },
 
+  findActiveById(id: string) {
+    return prisma.location.findFirst({
+      where: { id, isActive: true },
+    });
+  },
+
   findDefault() {
-    return prisma.location.findFirst({ where: { name: "Watchpoint Delta" } });
+    return prisma.location.findFirst({
+      where: { name: "Watchpoint Delta", isActive: true },
+    });
   },
 
   create(data: {
