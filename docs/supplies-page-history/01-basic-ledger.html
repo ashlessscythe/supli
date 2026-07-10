@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1" />
+  <title>Supplies — Era 01 Basic Ledger</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 24px;
+      font-family: "Times New Roman", Times, serif;
+      font-size: 14px;
+      color: #000;
+      background: #fff;
+    }
+    .era-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #666;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: bold;
+      margin: 0 0 4px;
+    }
+    .subtitle {
+      color: #444;
+      margin: 0 0 16px;
+      font-style: italic;
+    }
+    .summary-line {
+      margin: 0 0 12px;
+      font-size: 13px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #f0f0f0;
+      font-weight: bold;
+    }
+    .mono { font-family: "Courier New", Courier, monospace; font-size: 12px; }
+    .qty-low { font-weight: bold; text-decoration: underline; }
+    .row-low { background: #fff8f8; }
+    .empty { text-align: center; padding: 24px; color: #666; }
+    #toolbar { display: none; }
+    #pagination {
+      margin-top: 12px;
+      font-size: 13px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .btn-page {
+      font-family: inherit;
+      font-size: 13px;
+      padding: 2px 10px;
+      cursor: pointer;
+    }
+    .btn-page:disabled { opacity: 0.4; cursor: default; }
+    .page-controls { display: flex; gap: 8px; align-items: center; }
+    footer {
+      margin-top: 24px;
+      font-size: 11px;
+      color: #888;
+      border-top: 1px solid #ccc;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <p class="era-label">Era 01 · Basic Ledger · 2019</p>
+    <h1>Supplies Inventory</h1>
+    <p class="subtitle">Internal stock register — printed layout</p>
+    <div id="summary"></div>
+    <div id="toolbar"></div>
+    <table id="supplies-table">
+      <thead>
+        <tr>
+          <th><button type="button" data-sort="name" class="sort-btn">Name <span class="sort-indicator">⇅</span></button></th>
+          <th>Description</th>
+          <th>Barcode</th>
+          <th><button type="button" data-sort="quantity" class="sort-btn">Quantity <span class="sort-indicator">⇅</span></button></th>
+          <th><button type="button" data-sort="minimumThreshold" class="sort-btn">Min. Threshold <span class="sort-indicator">⇅</span></button></th>
+        </tr>
+      </thead>
+      <tbody id="supplies-body"></tbody>
+    </table>
+    <div id="pagination"></div>
+    <footer>Supli historical mock · data from seed · viewport 1440×900</footer>
+  </div>
+  <script src="render.js"></script>
+  <script>
+    SuppliesHistory.init({
+      era: "01-basic-ledger",
+      theme: "basic",
+      isAdmin: false,
+      showToolbar: false,
+      showSummary: true,
+      showPagination: true,
+    });
+  </script>
+</body>
+</html>

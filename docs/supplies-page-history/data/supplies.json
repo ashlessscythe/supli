@@ -1,0 +1,273 @@
+{
+  "meta": {
+    "version": "1",
+    "source": "prisma/seed.ts",
+    "theme": "armored-core-vi",
+    "capturedAt": "2026-07-10"
+  },
+  "locations": [
+    { "id": "loc-watchpoint", "name": "Watchpoint Delta" },
+    { "id": "loc-xylem", "name": "Xylem" },
+    { "id": "loc-rri", "name": "Rubicon Research Institute" }
+  ],
+  "supplies": [
+    {
+      "id": "supply-balam-head",
+      "name": "Balam Head Unit",
+      "description": "Balam standard head unit. Reliable all-rounder. (HD-011 MELANDER)",
+      "quantity": 12,
+      "minimumThreshold": 4,
+      "barcode": "HDML4NDR8K23",
+      "internalSku": "AC-HD011-MEL",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 8 },
+        { "locationName": "Xylem", "quantity": 4 }
+      ],
+      "vendors": [
+        { "name": "Balam Industries", "vendorSku": "BLM-HD011", "isPreferred": true, "leadTimeDays": 3, "moq": 2, "cost": 72000 },
+        { "name": "Redguns", "vendorSku": "RG-HD011", "isPreferred": false, "leadTimeDays": 5, "moq": 1, "cost": 75000 }
+      ]
+    },
+    {
+      "id": "supply-balam-core",
+      "name": "Balam Core Unit",
+      "description": "Balam standard core. Balanced output and armor. (BD-011 MELANDER)",
+      "quantity": 10,
+      "minimumThreshold": 4,
+      "barcode": "BDML4NDR6T94",
+      "internalSku": "AC-BD011-MEL",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 6 },
+        { "locationName": "Xylem", "quantity": 4 }
+      ],
+      "vendors": [
+        { "name": "Balam Industries", "vendorSku": "BLM-BD011", "isPreferred": true, "leadTimeDays": 3, "moq": 2, "cost": 133000 },
+        { "name": "Redguns", "vendorSku": "RG-BD011", "isPreferred": false, "leadTimeDays": 5, "moq": 1, "cost": 138000 }
+      ]
+    },
+    {
+      "id": "supply-balam-arm",
+      "name": "Balam Arm Unit",
+      "description": "Balam standard arms. Steady aim, solid carry. (AR-011 MELANDER)",
+      "quantity": 9,
+      "minimumThreshold": 3,
+      "barcode": "ARML4NDR3W72",
+      "internalSku": "AC-AR011-MEL",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 5 },
+        { "locationName": "Xylem", "quantity": 4 }
+      ],
+      "vendors": [
+        { "name": "Balam Industries", "vendorSku": "BLM-AR011", "isPreferred": true, "leadTimeDays": 3, "moq": 2, "cost": 98000 }
+      ]
+    },
+    {
+      "id": "supply-balam-leg",
+      "name": "Balam Leg Unit",
+      "description": "Balam standard bipedal legs. Dependable load rating. (LG-011 MELANDER)",
+      "quantity": 8,
+      "minimumThreshold": 3,
+      "barcode": "LGML4NDR9H58",
+      "internalSku": "AC-LG011-MEL",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 5 },
+        { "locationName": "Xylem", "quantity": 3 }
+      ],
+      "vendors": [
+        { "name": "Balam Industries", "vendorSku": "BLM-LG011", "isPreferred": true, "leadTimeDays": 3, "moq": 2, "cost": 91000 }
+      ]
+    },
+    {
+      "id": "supply-schneider-head",
+      "name": "Schneider Head Unit",
+      "description": "Schneider lightweight head. High stability, low weight. (NACHTREIHER/44E)",
+      "quantity": 7,
+      "minimumThreshold": 3,
+      "barcode": "N4CHTR44EK2D",
+      "internalSku": "AC-NACHT-44E-HD",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Xylem", "quantity": 5 },
+        { "locationName": "Watchpoint Delta", "quantity": 2 }
+      ],
+      "vendors": [
+        { "name": "Arquebus Corporation", "vendorSku": "ARQ-NACHT44E", "isPreferred": true, "leadTimeDays": 4, "moq": 1, "cost": 84000 },
+        { "name": "Vespers", "vendorSku": "VSP-NACHT44E", "isPreferred": false, "leadTimeDays": 6, "moq": 1, "cost": 88000 }
+      ]
+    },
+    {
+      "id": "supply-arquebus-core",
+      "name": "Arquebus Core Unit",
+      "description": "Arquebus Vesper core. Tuned for energy weapons. (VP-40S)",
+      "quantity": 6,
+      "minimumThreshold": 3,
+      "barcode": "VP4SKRWM5T83",
+      "internalSku": "AC-VP40S-CR",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Xylem", "quantity": 6 }
+      ],
+      "vendors": [
+        { "name": "Arquebus Corporation", "vendorSku": "ARQ-VP40S", "isPreferred": true, "leadTimeDays": 5, "moq": 1, "cost": 174000 },
+        { "name": "Vespers", "vendorSku": "VSP-VP40S", "isPreferred": false, "leadTimeDays": 7, "moq": 1, "cost": 179000 }
+      ]
+    },
+    {
+      "id": "supply-arquebus-arm",
+      "name": "Arquebus Arm Unit",
+      "description": "Arquebus Vesper arms. Precision energy-arm platform. (VP-46S)",
+      "quantity": 5,
+      "minimumThreshold": 3,
+      "barcode": "VP46ARMZ7D24",
+      "internalSku": "AC-VP46S-AR",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Xylem", "quantity": 5 }
+      ],
+      "vendors": [
+        { "name": "Vespers", "vendorSku": "VSP-VP46S", "isPreferred": true, "leadTimeDays": 5, "moq": 1, "cost": 121000 },
+        { "name": "Arquebus Corporation", "vendorSku": "ARQ-VP46S", "isPreferred": false, "leadTimeDays": 6, "moq": 1, "cost": 118000 }
+      ]
+    },
+    {
+      "id": "supply-schneider-legs",
+      "name": "Schneider Reverse-Joint Legs",
+      "description": "Schneider reverse-joint legs. Excellent jump kinematics. (KASUAR/42Z)",
+      "quantity": 4,
+      "minimumThreshold": 5,
+      "barcode": "K4SU4R42ZN63",
+      "internalSku": "AC-KASUAR-42Z",
+      "itemTypeSlug": "frame",
+      "stockLevels": [
+        { "locationName": "Xylem", "quantity": 4 }
+      ],
+      "vendors": [
+        { "name": "Arquebus Corporation", "vendorSku": "ARQ-KASUAR42Z", "isPreferred": true, "leadTimeDays": 6, "moq": 1, "cost": 126000 }
+      ]
+    },
+    {
+      "id": "supply-schneider-booster",
+      "name": "Schneider Booster",
+      "description": "Schneider booster. Strong quick-boost thrust. (ALULA/21E)",
+      "quantity": 14,
+      "minimumThreshold": 5,
+      "barcode": "4LUL4B22EK95",
+      "internalSku": "AC-ALULA-21E",
+      "itemTypeSlug": "inner",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 8 },
+        { "locationName": "Xylem", "quantity": 6 }
+      ],
+      "vendors": [
+        { "name": "Arquebus Corporation", "vendorSku": "ARQ-ALULA21E", "isPreferred": true, "leadTimeDays": 4, "moq": 2, "cost": 61000 },
+        { "name": "Vespers", "vendorSku": "VSP-ALULA21E", "isPreferred": false, "leadTimeDays": 6, "moq": 1, "cost": 64000 }
+      ]
+    },
+    {
+      "id": "supply-rad-fcs",
+      "name": "RaD Fire-Control System",
+      "description": "RaD fire-control system. Great mid-range assist. (FCS-G2/P05)",
+      "quantity": 11,
+      "minimumThreshold": 4,
+      "barcode": "FCSG2P25W7H4",
+      "internalSku": "AC-FCS-G2P05",
+      "itemTypeSlug": "inner",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 7 },
+        { "locationName": "Rubicon Research Institute", "quantity": 4 }
+      ],
+      "vendors": [
+        { "name": "The Association", "vendorSku": "ASC-FCSG2P05", "isPreferred": true, "leadTimeDays": 4, "moq": 2, "cost": 51000 }
+      ]
+    },
+    {
+      "id": "supply-takigawa-gen",
+      "name": "Takigawa Generator",
+      "description": "Takigawa generator. High capacity, steady supply. (AG-J-098 JOSO)",
+      "quantity": 9,
+      "minimumThreshold": 4,
+      "barcode": "AGJ98GEN5T2W",
+      "internalSku": "AC-AGJ098-JOSO",
+      "itemTypeSlug": "inner",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 5 },
+        { "locationName": "Rubicon Research Institute", "quantity": 4 }
+      ],
+      "vendors": [
+        { "name": "The Association", "vendorSku": "ASC-JOSO098", "isPreferred": true, "leadTimeDays": 5, "moq": 1, "cost": 143000 }
+      ]
+    },
+    {
+      "id": "supply-dafeng-gen",
+      "name": "Dafeng Generator",
+      "description": "Dafeng generator. Fast EN recovery for aggressive builds. (DF-GN-06 MING-TANG)",
+      "quantity": 6,
+      "minimumThreshold": 3,
+      "barcode": "DFGNM2NGT4K8",
+      "internalSku": "AC-DFGN06-MING",
+      "itemTypeSlug": "inner",
+      "stockLevels": [
+        { "locationName": "Rubicon Research Institute", "quantity": 6 }
+      ],
+      "vendors": [
+        { "name": "Rubicon Liberation Front", "vendorSku": "RLF-MINGTANG", "isPreferred": true, "leadTimeDays": 8, "moq": 1, "cost": 156000 }
+      ]
+    },
+    {
+      "id": "supply-rad-rifle",
+      "name": "RaD Assault Rifle",
+      "description": "RaD assault rifle. Workhorse kinetic sidearm. (RF-024 TURNER)",
+      "quantity": 20,
+      "minimumThreshold": 6,
+      "barcode": "RF24TRNR9W53",
+      "internalSku": "AC-RF024-TURN",
+      "itemTypeSlug": "armament",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 12 },
+        { "locationName": "Xylem", "quantity": 8 }
+      ],
+      "vendors": [
+        { "name": "The Association", "vendorSku": "ASC-RF024", "isPreferred": true, "leadTimeDays": 3, "moq": 4, "cost": 39000 },
+        { "name": "Redguns", "vendorSku": "RG-RF024", "isPreferred": false, "leadTimeDays": 4, "moq": 2, "cost": 41000 }
+      ]
+    },
+    {
+      "id": "supply-rad-shotgun",
+      "name": "RaD Shotgun",
+      "description": "RaD shotgun. Devastating stagger damage up close. (SG-027 ZIMMERMAN)",
+      "quantity": 15,
+      "minimumThreshold": 5,
+      "barcode": "SG27Z2MMRN84",
+      "internalSku": "AC-SG027-ZIMM",
+      "itemTypeSlug": "armament",
+      "stockLevels": [
+        { "locationName": "Watchpoint Delta", "quantity": 9 },
+        { "locationName": "Xylem", "quantity": 6 }
+      ],
+      "vendors": [
+        { "name": "The Association", "vendorSku": "ASC-SG027", "isPreferred": true, "leadTimeDays": 4, "moq": 2, "cost": 92000 }
+      ]
+    },
+    {
+      "id": "supply-coral-blade",
+      "name": "Coral Laser Blade",
+      "description": "Coral laser blade (legacy). Rare — issue with caution. (IA-C01W2: MOONLIGHT)",
+      "quantity": 2,
+      "minimumThreshold": 3,
+      "barcode": "M2NLGHT4K7D3",
+      "internalSku": "AC-IAC01W2-MOON",
+      "itemTypeSlug": "armament",
+      "stockLevels": [
+        { "locationName": "Rubicon Research Institute", "quantity": 2 }
+      ],
+      "vendors": [
+        { "name": "Rubicon Liberation Front", "vendorSku": "RLF-MOONLIGHT", "isPreferred": true, "leadTimeDays": 14, "moq": 1, "cost": 320000 },
+        { "name": "Arquebus Corporation", "vendorSku": "ARQ-MOONLIGHT", "isPreferred": false, "leadTimeDays": 20, "moq": 1, "cost": 340000 }
+      ]
+    }
+  ]
+}

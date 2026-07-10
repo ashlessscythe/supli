@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=1440, initial-scale=1" />
+  <title>Supplies — Era 03 Dashboard Cards</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 14px;
+      color: #1a1a2e;
+      background: #f4f6f9;
+    }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px;
+      background: #fff;
+      border-right: 1px solid #e2e8f0;
+      padding: 20px 0;
+      flex-shrink: 0;
+    }
+    .sidebar .logo {
+      padding: 0 20px 20px;
+      font-weight: 700;
+      font-size: 18px;
+      color: #4f46e5;
+    }
+    .nav-item {
+      padding: 10px 20px;
+      color: #64748b;
+      font-size: 13px;
+    }
+    .nav-item.active {
+      background: #eef2ff;
+      color: #4f46e5;
+      font-weight: 600;
+      border-right: 3px solid #4f46e5;
+    }
+    .main { flex: 1; padding: 24px 32px; }
+    .era-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    .page-header h2 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .btn-primary {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+    }
+    #summary { margin-bottom: 20px; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    .summary-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+      border: 1px solid #e2e8f0;
+    }
+    .summary-label {
+      display: block;
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 4px;
+    }
+    .summary-value { font-size: 28px; font-weight: 700; }
+    .summary-low { color: #dc2626; }
+    .summary-ok { color: #16a34a; }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+      overflow: hidden;
+    }
+    .card-title {
+      padding: 16px 20px 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: #334155;
+    }
+    #toolbar {
+      padding: 16px 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .search-input, .stock-filter {
+      font-family: inherit;
+      font-size: 13px;
+      padding: 8px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .search-input { width: 320px; }
+    .search-input:focus, .stock-filter:focus {
+      outline: 2px solid #c7d2fe;
+      border-color: #a5b4fc;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 12px 20px;
+      text-align: left;
+      border-top: 1px solid #f1f5f9;
+    }
+    th {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      background: #f8fafc;
+    }
+    .sort-btn {
+      background: none;
+      border: none;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .sort-active { color: #4f46e5; }
+    .mono { font-family: ui-monospace, monospace; font-size: 12px; color: #64748b; }
+    .qty-low { color: #dc2626; font-weight: 600; }
+    .row-low { background: #fef2f2; }
+    .row:hover { background: #f8fafc; }
+    .row-low:hover { background: #fee2e2; }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+    }
+    .badge-low { background: #fee2e2; color: #b91c1c; }
+    .badge-ok { background: #dcfce7; color: #15803d; }
+    .row-actions { display: flex; gap: 6px; }
+    .btn {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid #e2e8f0;
+      background: #fff;
+      color: #334155;
+    }
+    .btn-receive, .btn-adjust { background: #f8fafc; }
+    .btn-request { border-color: #c7d2fe; color: #4f46e5; }
+    .btn-edit { color: #64748b; }
+    #pagination {
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      color: #64748b;
+      border-top: 1px solid #f1f5f9;
+    }
+    .btn-page {
+      font-family: inherit;
+      font-size: 12px;
+      padding: 6px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .btn-page:disabled { opacity: 0.4; cursor: default; }
+    .page-controls { display: flex; gap: 8px; align-items: center; }
+    .empty { text-align: center; padding: 32px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="logo">Supli</div>
+      <div class="nav-item">Dashboard</div>
+      <div class="nav-item active">Supplies</div>
+      <div class="nav-item">Requests</div>
+      <div class="nav-item">Inventory</div>
+      <div class="nav-item">Settings</div>
+    </aside>
+    <div class="main">
+      <div id="app">
+        <p class="era-label">Era 03 · Dashboard Cards · 2023</p>
+        <div class="page-header">
+          <h2>Supplies</h2>
+          <button type="button" class="btn-primary">+ Add Supply</button>
+        </div>
+        <div id="summary"></div>
+        <div class="card">
+          <div class="card-title">All Supplies</div>
+          <div id="toolbar"></div>
+          <table id="supplies-table">
+            <thead>
+              <tr>
+                <th><button type="button" data-sort="name" class="sort-btn">Name <span class="sort-indicator">⇅</span></button></th>
+                <th>Description</th>
+                <th>Barcode</th>
+                <th><button type="button" data-sort="quantity" class="sort-btn">Quantity <span class="sort-indicator">⇅</span></button></th>
+                <th><button type="button" data-sort="minimumThreshold" class="sort-btn">Min. Threshold <span class="sort-indicator">⇅</span></button></th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="supplies-body"></tbody>
+          </table>
+          <div id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="render.js"></script>
+  <script>
+    SuppliesHistory.init({
+      era: "03-dashboard-cards",
+      theme: "dashboard",
+      isAdmin: true,
+      showStatus: true,
+    });
+  </script>
+</body>
+</html>
