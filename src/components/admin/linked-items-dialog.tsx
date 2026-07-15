@@ -15,6 +15,10 @@ import { cn } from "@/lib/utils";
 import { ExternalLink, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { ItemVendorLinkForm } from "@/components/admin/item-vendor-link-form";
+import {
+  buildLeadTimePatch,
+  parseLeadTimeDaysInput,
+} from "@/lib/vendor-link";
 
 export interface LinkedItem {
   supplyId: string;
@@ -136,13 +140,9 @@ function LinkedItemRow({
   const handleSaveLeadTime = async () => {
     if (!vendorId || !leadDirty) return;
 
-    if (
-      leadInput.trim() !== "" &&
-      (Number.isNaN(parsedLead) ||
-        !Number.isInteger(parsedLead) ||
-        parsedLead! <= 0)
-    ) {
-      toast.error("Enter a whole number of days (1+), or leave blank to clear.");
+    const parsedResult = parseLeadTimeDaysInput(leadInput);
+    if (!parsedResult.ok) {
+      toast.error(parsedResult.error);
       return;
     }
 
@@ -151,10 +151,9 @@ function LinkedItemRow({
       const res = await fetch(`/api/vendors/${vendorId}/items`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          supplyId: item.supplyId,
-          leadTimeDays: parsedLead,
-        }),
+        body: JSON.stringify(
+          buildLeadTimePatch(item.supplyId, parsedResult.value)
+        ),
       });
 
       if (!res.ok) {
