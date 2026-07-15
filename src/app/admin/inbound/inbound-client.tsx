@@ -11,14 +11,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ReceiveDialog } from "@/components/inventory/receive-dialog";
 import { LogOrderDialog } from "@/components/inventory/log-order-dialog";
 import {
   EditOrderDialog,
   type OpenOrderForEdit,
 } from "@/components/inventory/edit-order-dialog";
-import { Edit } from "lucide-react";
+import { RequestsTable } from "@/components/requests/requests-table";
+import { ClipboardList, Edit, PackagePlus } from "lucide-react";
 import Link from "next/link";
+import type { Request } from "@/types";
 
 interface Location {
   id: string;
@@ -65,48 +73,112 @@ interface VendorReorderRow extends OpenOrderForEdit {
   orderedAt: Date;
 }
 
-interface ReceiptsClientProps {
+type InboundStep = "closed" | "choose" | "receive" | "log";
+
+interface InboundClientProps {
   supplies: SupplyOption[];
   locations: Location[];
   receipts: ReceiptRow[];
   openVendorReorders: VendorReorderRow[];
   suppliesPath?: string;
+  isAdmin?: boolean;
+  requests?: Request[];
 }
 
-export function ReceiptsClient({
+export function InboundClient({
   supplies,
   locations,
   receipts,
   openVendorReorders,
   suppliesPath = "/dashboard/supplies",
-}: ReceiptsClientProps) {
+  isAdmin = false,
+  requests = [],
+}: InboundClientProps) {
   const [editingOrder, setEditingOrder] = useState<VendorReorderRow | null>(
     null
   );
+  const [inboundStep, setInboundStep] = useState<InboundStep>("closed");
 
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle>Receive inventory</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 gap-4">
+          <div>
+            <CardTitle>Add inbound</CardTitle>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Receive stock that arrived, or log a PO placed in the corporate
+              system.
+            </p>
+          </div>
+          <Button onClick={() => setInboundStep("choose")}>
+            <PackagePlus className="mr-2 h-4 w-4" />
+            Add inbound
+          </Button>
         </CardHeader>
-        <CardContent>
-          <ReceiveDialog
-            supplies={supplies}
-            locations={locations}
-            openVendorReorders={openVendorReorders}
-          />
-        </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Log order placed in corporate system</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <LogOrderDialog supplies={supplies} />
-        </CardContent>
-      </Card>
+      <Dialog
+        open={inboundStep === "choose"}
+        onOpenChange={(open) => {
+          if (!open) setInboundStep("closed");
+        }}
+      >
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>What happened?</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <Button
+              variant="outline"
+              className="h-auto justify-start gap-3 px-4 py-3 text-left"
+              onClick={() => setInboundStep("receive")}
+            >
+              <PackagePlus className="h-5 w-5 shrink-0" />
+              <span>
+                <span className="block font-medium">Stock arrived</span>
+                <span className="block text-sm font-normal text-muted-foreground">
+                  Receive inventory into a location
+                </span>
+              </span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto justify-start gap-3 px-4 py-3 text-left"
+              onClick={() => setInboundStep("log")}
+            >
+              <ClipboardList className="h-5 w-5 shrink-0" />
+              <span>
+                <span className="block font-medium">
+                  PO placed in corporate system
+                </span>
+                <span className="block text-sm font-normal text-muted-foreground">
+                  Log an open order without changing stock
+                </span>
+              </span>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ReceiveDialog
+        supplies={supplies}
+        locations={locations}
+        openVendorReorders={openVendorReorders}
+        trigger={null}
+        open={inboundStep === "receive"}
+        onOpenChange={(open) => {
+          if (!open) setInboundStep("closed");
+        }}
+      />
+
+      <LogOrderDialog
+        supplies={supplies}
+        trigger={null}
+        open={inboundStep === "log"}
+        onOpenChange={(open) => {
+          if (!open) setInboundStep("closed");
+        }}
+      />
 
       <Card>
         <CardHeader>
@@ -321,6 +393,21 @@ export function ReceiptsClient({
           )}
         </CardContent>
       </Card>
+
+      {isAdmin && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Request approvals</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Approve or deny leftover supply requests. Staff no longer create
+              requests here.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <RequestsTable data={requests} isAdmin />
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

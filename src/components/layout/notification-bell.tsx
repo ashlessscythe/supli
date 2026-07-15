@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { hrefForNotification } from "@/lib/notification-href";
 
 type NotificationItem = {
   id: string;
@@ -24,24 +25,6 @@ type NotificationItem = {
   metadata: unknown;
   createdAt: string;
 };
-
-function hrefForNotification(n: NotificationItem): string {
-  const meta =
-    n.metadata && typeof n.metadata === "object"
-      ? (n.metadata as Record<string, unknown>)
-      : {};
-
-  if (n.type === NotificationType.USER_REGISTRATION && typeof meta.userId === "string") {
-    return `/admin/users?pending=${meta.userId}`;
-  }
-  if (n.type === NotificationType.LOW_STOCK || n.type === NotificationType.REORDER) {
-    return "/admin/supplies";
-  }
-  if (n.type === NotificationType.REQUEST_STATUS) {
-    return "/dashboard/requests";
-  }
-  return "/dashboard";
-}
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

@@ -3,6 +3,7 @@ const {
   Role,
   RequestStatus,
   StockMovementType,
+  VendorReorderStatus,
 } = require("@prisma/client");
 const { faker } = require("@faker-js/faker");
 const bcrypt = require("bcrypt");
@@ -83,8 +84,13 @@ const argv = yargs(hideBin(process.argv))
   })
   .option("requests", {
     type: "number",
-    description: "Number of requests to create",
-    default: 30,
+    description: "Number of admin-queue demo requests to create (faker path)",
+    default: 8,
+  })
+  .option("orders", {
+    type: "number",
+    description: "Number of open vendor orders to create (faker path)",
+    default: 12,
   })
   .help().argv;
 
@@ -99,6 +105,7 @@ async function clearDatabase() {
     await prisma.fileAttachment.deleteMany();
     await prisma.auditLog.deleteMany();
     await prisma.request.deleteMany();
+    await prisma.vendorReorder.deleteMany();
     await prisma.supply.deleteMany();
     await prisma.vendor.deleteMany();
     await prisma.location.deleteMany();
@@ -1042,20 +1049,19 @@ async function createFakeRequests(count: number) {
     return;
   }
 
-  // Generate unique request combinations
+  // Prefer PENDING so faker data exercises the admin approval queue.
   const existingRequests: FakeRequest[] = await prisma.request.findMany({
     select: { userId: true, supplyId: true },
   });
 
   const requests: FakeRequest[] = [];
   let attempts = 0;
-  const maxAttempts = count * 2; // Allow some room for retries
+  const maxAttempts = count * 2;
 
   while (requests.length < count && attempts < maxAttempts) {
     const userId = faker.helpers.arrayElement(users).id;
     const supplyId = faker.helpers.arrayElement(supplies).id;
 
-    // Check if this combination already exists
     const exists =
       existingRequests.some(
         (r) => r.userId === userId && r.supplyId === supplyId
@@ -1068,7 +1074,7 @@ async function createFakeRequests(count: number) {
         quantity: faker.number.int({ min: 1, max: 10 }),
         status: faker.helpers.arrayElement([
           RequestStatus.PENDING,
-          RequestStatus.APPROVED,
+          RequestStatus.PENDING,
           RequestStatus.DENIED,
         ]) as typeof RequestStatus,
       });
@@ -1077,7 +1083,6 @@ async function createFakeRequests(count: number) {
     attempts++;
   }
 
-  // Use transaction to ensure atomicity
   await prisma.$transaction(
     requests.map((request) =>
       prisma.request.create({
@@ -1086,7 +1091,82 @@ async function createFakeRequests(count: number) {
     )
   );
 
-  console.log(`✓ Created ${requests.length} fake requests`);
+  console.log(`✓ Created ${requests.length} fake admin-queue requests`);
+}
+
+async function createFakeOpenOrders(count: number) {
+  const [supplies, users] = await Promise.all([
+    prisma.supply.findMany({
+      include: {
+        itemVendors: { include: { vendor: true } },
+        vendorReorders: { select: { id: true } },
+      },
+    }),
+    prisma.user.findMany({ where: { role: { in: [Role.ADMIN, Role.STAFF] } } }),
+  ]);
+
+  if (!supplies.length || !users.length) {
+    console.log("⚠ No supplies or users found. Skipping open order creation.");
+    return;
+  }
+
+  const candidates = supplies.filter(
+    (s: { vendorReorders: { id: string }[] }) => s.vendorReorders.length === 0
+  );
+  const pool = candidates.length ? candidates : supplies;
+  let created = 0;
+
+  for (let i = 0; i < count && i < pool.length; i++) {
+    const supply = pool[i];
+    const preferred =
+      supply.itemVendors?.find(
+        (iv: { isPreferred: boolean }) => iv.isPreferred
+      ) ?? supply.itemVendors?.[0];
+    const creator = faker.helpers.arrayElement(users);
+    const status = faker.helpers.arrayElement([
+      VendorReorderStatus.ORDERED,
+      VendorReorderStatus.ORDERED,
+      VendorReorderStatus.PARTIALLY_RECEIVED,
+    ]);
+    const quantity = faker.number.int({ min: 2, max: 12 });
+
+    const reorder = await prisma.vendorReorder.create({
+      data: {
+        supplyId: supply.id,
+        vendorId: preferred?.vendorId ?? null,
+        quantity,
+        externalPoNumber: `PO-FKR-${faker.string.alphanumeric(6).toUpperCase()}`,
+        status,
+        notes: "Faker demo corporate PO",
+        createdById: creator.id,
+      },
+    });
+
+    if (status === VendorReorderStatus.PARTIALLY_RECEIVED) {
+      const location =
+        (await prisma.stockLevel.findFirst({
+          where: { supplyId: supply.id },
+        })) ?? null;
+      if (location) {
+        const partialQty = Math.max(1, Math.floor(quantity / 2));
+        await prisma.stockMovement.create({
+          data: {
+            supplyId: supply.id,
+            locationId: location.locationId,
+            quantity: partialQty,
+            type: StockMovementType.RECEIVE,
+            userId: creator.id,
+            notes: "Partial receipt against faker PO",
+            vendorReorderId: reorder.id,
+          },
+        });
+      }
+    }
+
+    created++;
+  }
+
+  console.log(`✓ Created ${created} fake open vendor orders`);
 }
 
 async function createAuditLogs() {
@@ -1095,10 +1175,11 @@ async function createAuditLogs() {
 
   const auditActions = [
     "Logged in",
-    "Created supply request",
+    "Logged corporate PO",
+    "Received inbound stock",
     "Updated inventory",
-    "Approved request",
-    "Denied request",
+    "Approved leftover request",
+    "Denied leftover request",
     "Modified supply details",
   ];
 
@@ -1250,16 +1331,26 @@ async function createDefaultRequests() {
     supplies.map((s: { name: string; id: string }) => [s.name, s.id])
   );
 
-  // Ravens requisitioning parts from the shop, across statuses.
+  // Small admin approval queue only — staff no longer create requests in-app.
   const wanted = [
-    { user: "raven", supply: "RaD Shotgun", quantity: 2, status: RequestStatus.APPROVED },
-    { user: "raven", supply: "Coral Laser Blade", quantity: 1, status: RequestStatus.PENDING },
-    { user: "raven", supply: "Schneider Booster", quantity: 2, status: RequestStatus.APPROVED },
-    { user: "rusty", supply: "Schneider Head Unit", quantity: 1, status: RequestStatus.APPROVED },
-    { user: "rusty", supply: "Arquebus Core Unit", quantity: 1, status: RequestStatus.PENDING },
-    { user: "rusty", supply: "Schneider Reverse-Joint Legs", quantity: 1, status: RequestStatus.PENDING },
-    { user: "iguazu", supply: "RaD Assault Rifle", quantity: 3, status: RequestStatus.DENIED },
-    { user: "iguazu", supply: "Balam Head Unit", quantity: 1, status: RequestStatus.PENDING },
+    {
+      user: "raven",
+      supply: "Coral Laser Blade",
+      quantity: 1,
+      status: RequestStatus.PENDING,
+    },
+    {
+      user: "rusty",
+      supply: "Arquebus Core Unit",
+      quantity: 1,
+      status: RequestStatus.PENDING,
+    },
+    {
+      user: "iguazu",
+      supply: "RaD Assault Rifle",
+      quantity: 3,
+      status: RequestStatus.DENIED,
+    },
   ];
 
   let created = 0;
@@ -1268,7 +1359,6 @@ async function createDefaultRequests() {
     const supplyId = supplyByName[r.supply];
     if (!userId || !supplyId) continue;
 
-    // Idempotency guard: one seeded request per user+supply pair.
     const existing = await prisma.request.findFirst({
       where: { userId, supplyId },
     });
@@ -1280,7 +1370,132 @@ async function createDefaultRequests() {
     created++;
   }
 
-  console.log(`✓ Created ${created} default requests`);
+  console.log(`✓ Created ${created} default admin-queue requests`);
+}
+
+async function createDefaultOpenOrders() {
+  const [users, supplies] = await Promise.all([
+    prisma.user.findMany({ select: { id: true, username: true } }),
+    prisma.supply.findMany({
+      select: {
+        id: true,
+        name: true,
+        itemVendors: {
+          select: {
+            vendorId: true,
+            isPreferred: true,
+            vendor: { select: { name: true } },
+          },
+        },
+      },
+    }),
+  ]);
+
+  const userByName = Object.fromEntries(
+    users.map((u: { username: string; id: string }) => [u.username, u.id])
+  );
+  const supplyByName = Object.fromEntries(
+    supplies.map((s: { name: string; id: string }) => [s.name, s])
+  );
+
+  const wanted = [
+    {
+      supply: "Balam Head Unit",
+      quantity: 4,
+      externalPoNumber: "PO-BLM-1102",
+      status: VendorReorderStatus.ORDERED,
+      createdBy: "carla",
+      notes: "Corporate replenishment",
+    },
+    {
+      supply: "RaD Shotgun",
+      quantity: 6,
+      externalPoNumber: "PO-RAD-8841",
+      status: VendorReorderStatus.PARTIALLY_RECEIVED,
+      createdBy: "walter",
+      notes: "Partial shipment expected",
+      partialReceiveQty: 2,
+    },
+    {
+      supply: "Schneider Booster",
+      quantity: 3,
+      externalPoNumber: "PO-ARQ-2209",
+      status: VendorReorderStatus.ORDERED,
+      createdBy: "carla",
+      notes: null,
+    },
+    {
+      supply: "Balam Core Unit",
+      quantity: 2,
+      externalPoNumber: "PO-BLM-1108",
+      status: VendorReorderStatus.RECEIVED,
+      createdBy: "walter",
+      notes: "Fully received seed order",
+      fullReceive: true,
+    },
+  ];
+
+  let created = 0;
+  for (const order of wanted) {
+    const supply = supplyByName[order.supply];
+    const createdById = userByName[order.createdBy];
+    if (!supply || !createdById) continue;
+
+    const existing = await prisma.vendorReorder.findFirst({
+      where: {
+        supplyId: supply.id,
+        externalPoNumber: order.externalPoNumber,
+      },
+    });
+    if (existing) continue;
+
+    const preferred =
+      supply.itemVendors.find(
+        (iv: { isPreferred: boolean }) => iv.isPreferred
+      ) ?? supply.itemVendors[0];
+
+    const reorder = await prisma.vendorReorder.create({
+      data: {
+        supplyId: supply.id,
+        vendorId: preferred?.vendorId ?? null,
+        quantity: order.quantity,
+        externalPoNumber: order.externalPoNumber,
+        status: order.status,
+        notes: order.notes,
+        createdById,
+        ...(order.status === VendorReorderStatus.RECEIVED
+          ? { receivedAt: new Date() }
+          : {}),
+      },
+    });
+
+    const receiveQty =
+      order.partialReceiveQty ??
+      (order.fullReceive ? order.quantity : null);
+
+    if (receiveQty) {
+      const stockLevel = await prisma.stockLevel.findFirst({
+        where: { supplyId: supply.id },
+      });
+      if (stockLevel) {
+        await prisma.stockMovement.create({
+          data: {
+            supplyId: supply.id,
+            locationId: stockLevel.locationId,
+            quantity: receiveQty,
+            type: StockMovementType.RECEIVE,
+            userId: createdById,
+            notes: `Seed receipt for ${order.externalPoNumber}`,
+            vendorReorderId: reorder.id,
+          },
+        });
+      }
+    }
+
+    created++;
+  }
+
+  console.log(`✓ Created ${created} default open/closed vendor orders`);
 }
 
 async function main() {
@@ -1300,6 +1515,7 @@ async function main() {
     await createDefaultVendors();
     await createDefaultSupplies();
     await createDefaultRequests();
+    await createDefaultOpenOrders();
     await createUsageHistory();
     await createDefaultNotifications();
 
@@ -1309,6 +1525,7 @@ async function main() {
       await createFakeVendors(Math.max(3, Math.floor(argv.products / 4)));
       await createFakeSupplies(argv.products);
       await createFakeRequests(argv.requests);
+      await createFakeOpenOrders(argv.orders);
       await createAuditLogs();
       // Faker path: always append fresh usage history (non-idempotent) so demo
       // runs accumulate richer consumption data, then refresh notifications.

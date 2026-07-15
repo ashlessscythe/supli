@@ -29,11 +29,13 @@ Update supply quantity. Admin only.
 
 ## Requests
 
+Leftover supply-request API (admin approval queue). Staff create-request is not exposed in the Inbound UI; prefer receive/log-order flows for warehouse inbound work.
+
 ### GET /api/requests
 List requests. Staff see own unless `ALLOW_ALL_REQUESTS_VISIBLE` is true.
 
 ### POST /api/requests
-Create request. Body: `{ supplyId, quantity }`.
+Create request. Body: `{ supplyId, quantity }`. Available via API; not used by the current Inbound UI.
 
 ### PUT /api/requests
 Update request status. Admin only. Body: `{ id, status: "APPROVED" | "DENIED" }`.

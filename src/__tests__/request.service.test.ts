@@ -56,6 +56,8 @@ vi.mock("@/server/services/notification.service", () => ({
   },
 }));
 
+// create remains available via the API/server action; the Inbound UI no longer
+// exposes staff create-request. Admin approve/deny is the supported UI path.
 describe("requestService.create", () => {
   const actorId = "user-1";
   const supply = {

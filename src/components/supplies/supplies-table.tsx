@@ -30,7 +30,6 @@ import { SupplyDialog } from "@/components/supplies/supply-dialog";
 import { SupplyDetailDialog } from "@/components/supplies/supply-detail-dialog";
 import { ReceiveDialog } from "@/components/inventory/receive-dialog";
 import { AdjustDialog } from "@/components/inventory/adjust-dialog";
-import { CreateRequestDialog } from "@/components/requests/create-request-dialog";
 import { formatBarcode } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +43,6 @@ import {
   ChevronRight,
   PackagePlus,
   SlidersHorizontal,
-  ClipboardList,
 } from "lucide-react";
 import { Supply } from "@/types";
 
@@ -79,9 +77,6 @@ export function SuppliesTable({
     null
   );
   const [adjustingSupplyId, setAdjustingSupplyId] = useState<string | null>(
-    null
-  );
-  const [requestingSupplyId, setRequestingSupplyId] = useState<string | null>(
     null
   );
   const [detailSupplyId, setDetailSupplyId] = useState<string | null>(null);
@@ -223,14 +218,6 @@ export function SuppliesTable({
           )}
         </>
       )}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setRequestingSupplyId(supply.id)}
-      >
-        <ClipboardList className="mr-1 h-3.5 w-3.5" />
-        Request
-      </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0">
@@ -517,18 +504,6 @@ export function SuppliesTable({
         />
       )}
 
-      {requestingSupplyId && (
-        <CreateRequestDialog
-          key={requestingSupplyId}
-          supplies={data}
-          defaultSupplyId={requestingSupplyId}
-          trigger={null}
-          open
-          onOpenChange={(open) => {
-            if (!open) setRequestingSupplyId(null);
-          }}
-        />
-      )}
     </div>
   );
 }

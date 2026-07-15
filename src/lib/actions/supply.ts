@@ -16,7 +16,8 @@ export async function createSupply(formData: SupplyInput) {
     if (result.success) {
       revalidatePath("/dashboard/supplies");
       revalidatePath("/admin/supplies");
-      revalidatePath("/admin/receipts");
+      revalidatePath("/admin/inbound");
+      revalidatePath("/dashboard/inbound");
     }
     return result;
   } catch {

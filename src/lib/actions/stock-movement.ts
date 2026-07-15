@@ -13,8 +13,8 @@ import type {
 } from "@/lib/validation/stock-movement";
 
 function revalidateInventoryPaths() {
-  revalidatePath("/admin/receipts");
-  revalidatePath("/dashboard/receipts");
+  revalidatePath("/admin/inbound");
+  revalidatePath("/dashboard/inbound");
   revalidatePath("/admin/supplies");
   revalidatePath("/dashboard/supplies");
   revalidatePath("/admin/locations");
