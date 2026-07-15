@@ -23,6 +23,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
+import {
+  parseOptionalNonNegativeNumber,
+  parseOptionalPositiveNumber,
+} from "@/lib/vendor-link";
 
 const linkFormSchema = z.object({
   entityId: z.string().min(1, "Selection is required"),
@@ -68,22 +72,6 @@ interface ItemVendorLinkFormProps {
     cost?: number;
   }) => Promise<void>;
   onCancel?: () => void;
-}
-
-function formatOptionalNumber(value: string | undefined) {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed);
-  if (Number.isNaN(parsed) || parsed <= 0) return undefined;
-  return parsed;
-}
-
-function formatOptionalCost(value: string | undefined) {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return undefined;
-  const parsed = Number(trimmed);
-  if (Number.isNaN(parsed) || parsed < 0) return undefined;
-  return parsed;
 }
 
 export function ItemVendorLinkForm({
@@ -169,9 +157,9 @@ export function ItemVendorLinkForm({
         vendorSku: values.vendorSku?.trim() || undefined,
         internalSku: values.internalSku?.trim() || undefined,
         isPreferred: values.isPreferred,
-        leadTimeDays: formatOptionalNumber(values.leadTimeDays),
-        moq: formatOptionalNumber(values.moq),
-        cost: formatOptionalCost(values.cost),
+        leadTimeDays: parseOptionalPositiveNumber(values.leadTimeDays),
+        moq: parseOptionalPositiveNumber(values.moq),
+        cost: parseOptionalNonNegativeNumber(values.cost),
       });
     } finally {
       setSubmitting(false);

@@ -112,6 +112,46 @@ describe("vendorService.listAll", () => {
   });
 });
 
+describe("vendorService.listItems", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("includes leadTimeDays for the linked-items modal", async () => {
+    vi.mocked(prisma.itemVendor.findMany).mockResolvedValue([
+      {
+        supplyId: "supply-1",
+        vendorSku: "SKU-1",
+        internalSku: null,
+        isPreferred: true,
+        leadTimeDays: 5,
+        moq: 2,
+        cost: 12.5,
+        supply: {
+          id: "supply-1",
+          name: "Widget",
+          quantity: 10,
+          minimumThreshold: 2,
+        },
+      },
+    ] as never);
+
+    const result = await vendorService.listItems("vendor-1");
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data[0]).toEqual(
+        expect.objectContaining({
+          supplyId: "supply-1",
+          leadTimeDays: 5,
+          moq: 2,
+          cost: 12.5,
+        })
+      );
+    }
+  });
+});
+
 describe("vendorService.linkItem", () => {
   const userId = "admin-1";
   const vendorId = "vendor-1";
@@ -276,6 +316,43 @@ describe("vendorService.updateItemLink", () => {
         cost: 9.99,
       }),
     });
+  });
+
+  it("clears leadTimeDays when the inline editor sends null", async () => {
+    tx.itemVendor.update.mockResolvedValue({
+      supplyId,
+      vendorId,
+      vendorSku: null,
+      internalSku: null,
+      isPreferred: false,
+      leadTimeDays: null,
+      moq: null,
+      cost: null,
+    });
+
+    const result = await vendorService.updateItemLink(vendorId, userId, {
+      supplyId,
+      leadTimeDays: null,
+    });
+
+    expect(result.success).toBe(true);
+    expect(tx.itemVendor.update).toHaveBeenCalledWith({
+      where: { supplyId_vendorId: { supplyId, vendorId } },
+      data: { leadTimeDays: null },
+    });
+    if (result.success) {
+      expect(result.data.leadTimeDays).toBeNull();
+    }
+  });
+
+  it("rejects non-positive leadTimeDays via zod", async () => {
+    const result = await vendorService.updateItemLink(vendorId, userId, {
+      supplyId,
+      leadTimeDays: 0,
+    });
+
+    expect(result.success).toBe(false);
+    expect(tx.itemVendor.update).not.toHaveBeenCalled();
   });
 
   it("returns an error when link is missing", async () => {

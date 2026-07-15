@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { ItemVendorLinkForm } from "@/components/admin/item-vendor-link-form";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  buildLeadTimePatch,
+  parseLeadTimeDaysInput,
+} from "@/lib/vendor-link";
 
 interface SupplyVendor {
   id: string;
@@ -153,11 +157,9 @@ function VendorLeadTimeRow({
   const handleSave = async () => {
     if (!isDirty) return;
 
-    if (
-      input.trim() !== "" &&
-      (Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed! <= 0)
-    ) {
-      toast.error("Enter a whole number of days (1+), or leave blank to clear.");
+    const parsedResult = parseLeadTimeDaysInput(input);
+    if (!parsedResult.ok) {
+      toast.error(parsedResult.error);
       return;
     }
 
@@ -166,7 +168,9 @@ function VendorLeadTimeRow({
       const res = await fetch(`/api/vendors/${vendor.id}/items`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ supplyId, leadTimeDays: parsed }),
+        body: JSON.stringify(
+          buildLeadTimePatch(supplyId, parsedResult.value)
+        ),
       });
 
       if (!res.ok) {
