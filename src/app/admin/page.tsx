@@ -1,21 +1,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { Users, Package, ClipboardList, AlertTriangle } from "lucide-react";
+import { Users, Package, AlertTriangle } from "lucide-react";
 import { forecastService } from "@/server/services/forecast.service";
 import {
-  getOverviewData,
-  getRequestsChartData,
   getReceiptsChartData,
   getSupplyChartData,
   getStats,
 } from "@/lib/actions/admin";
 
 export default async function AdminPage() {
-  const [stats, overviewData, requestsData, receiptsData, supplyData, metrics, depletion] =
+  const [stats, receiptsData, supplyData, metrics, depletion] =
     await Promise.all([
       getStats(),
-      getOverviewData(),
-      getRequestsChartData(),
       getReceiptsChartData(),
       getSupplyChartData(),
       forecastService.getDashboardMetrics(),
@@ -31,7 +27,7 @@ export default async function AdminPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -57,21 +53,6 @@ export default async function AdminPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Pending Requests
-            </CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingRequests}</div>
-            <p className="text-xs text-muted-foreground">
-              Out of {stats.totalRequests} total requests
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
               Low Stock Items
             </CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
@@ -86,9 +67,7 @@ export default async function AdminPage() {
       </div>
 
       <DashboardCharts
-        overviewData={overviewData}
         receiptsData={receiptsData}
-        requestsData={requestsData}
         supplyData={supplyData}
         metrics={metrics}
         depletion={depletion}

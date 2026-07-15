@@ -1,25 +1,10 @@
 import { Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Overview } from "@/components/admin/overview";
-import { RequestsChart } from "@/components/admin/requests-chart";
 import { ReceiptsChart } from "@/components/admin/receipts-chart";
 import { SupplyChart } from "@/components/admin/supply-chart";
 
 interface DashboardChartsProps {
-  overviewData: {
-    name: string;
-    total: number;
-    approved: number;
-    denied: number;
-    pending: number;
-  }[];
   receiptsData: {
-    name: string;
-    value: number;
-    color: string;
-    darkColor: string;
-  }[];
-  requestsData: {
     name: string;
     value: number;
     color: string;
@@ -43,41 +28,26 @@ interface DashboardChartsProps {
 }
 
 export function DashboardCharts({
-  overviewData,
   receiptsData,
-  requestsData,
   supplyData,
   metrics,
   depletion,
 }: DashboardChartsProps) {
   return (
     <>
-      <div className="grid gap-4 lg:grid-cols-7">
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle>Overview</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <Suspense fallback={<div>Loading...</div>}>
-              <Overview data={overviewData} />
-            </Suspense>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Recent Receipts</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Items received in the last 30 days
-            </p>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<div>Loading...</div>}>
-              <ReceiptsChart data={receiptsData} />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Receipts</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Items received in the last 30 days
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<div>Loading...</div>}>
+            <ReceiptsChart data={receiptsData} />
+          </Suspense>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -128,29 +98,16 @@ export function DashboardCharts({
         </Card>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-7">
-        <Card className="lg:col-span-4">
-          <CardHeader>
-            <CardTitle>Supply Levels</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<div>Loading...</div>}>
-              <SupplyChart data={supplyData} />
-            </Suspense>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Recent Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Suspense fallback={<div>Loading...</div>}>
-              <RequestsChart data={requestsData} />
-            </Suspense>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Supply Levels</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={<div>Loading...</div>}>
+            <SupplyChart data={supplyData} />
+          </Suspense>
+        </CardContent>
+      </Card>
     </>
   );
 }

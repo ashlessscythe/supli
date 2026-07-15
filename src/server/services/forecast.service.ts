@@ -69,18 +69,12 @@ export const forecastService = {
   },
 
   async getDashboardMetrics() {
-    const [
-      lowStock,
-      pendingRequests,
-      recentMovements,
-      fastMoving,
-    ] = await Promise.all([
+    const [lowStock, recentMovements, fastMoving] = await Promise.all([
       prisma.supply.count({
         where: {
           quantity: { lte: prisma.supply.fields.minimumThreshold },
         },
       }),
-      prisma.request.count({ where: { status: "PENDING" } }),
       prisma.stockMovement.count({
         where: {
           createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
@@ -111,7 +105,6 @@ export const forecastService = {
 
     return {
       lowStock,
-      pendingRequests,
       recentMovements,
       fastMoving: fastMoving.map((m) => ({
         name: nameMap[m.supplyId] ?? "Unknown",

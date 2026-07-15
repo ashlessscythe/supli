@@ -3,11 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { Package, AlertTriangle, ClipboardList } from "lucide-react";
+import { Package, AlertTriangle } from "lucide-react";
 import { forecastService } from "@/server/services/forecast.service";
 import {
-  getOverviewData,
-  getRequestsChartData,
   getReceiptsChartData,
   getSupplyChartData,
   getStats,
@@ -24,11 +22,9 @@ export default async function DashboardPage() {
     redirect("/admin");
   }
 
-  const [stats, overviewData, requestsData, receiptsData, supplyData, metrics, depletion] =
+  const [stats, receiptsData, supplyData, metrics, depletion] =
     await Promise.all([
       getStats(),
-      getOverviewData(),
-      getRequestsChartData(),
       getReceiptsChartData(),
       getSupplyChartData(),
       forecastService.getDashboardMetrics(),
@@ -40,11 +36,11 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         <p className="text-muted-foreground">
-          Overview of supplies, requests, and inventory activity
+          Overview of supplies and inventory activity
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -70,26 +66,10 @@ export default async function DashboardPage() {
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Pending Requests
-            </CardTitle>
-            <ClipboardList className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingRequests}</div>
-            <p className="text-xs text-muted-foreground">
-              Out of {stats.totalRequests} total requests
-            </p>
-          </CardContent>
-        </Card>
       </div>
 
       <DashboardCharts
-        overviewData={overviewData}
         receiptsData={receiptsData}
-        requestsData={requestsData}
         supplyData={supplyData}
         metrics={metrics}
         depletion={depletion}
