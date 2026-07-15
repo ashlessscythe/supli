@@ -42,4 +42,23 @@ describe("stockLevelRepository.syncSupplyTotals", () => {
       },
     });
   });
+
+  it("zeros quantity and threshold when no active location levels remain", async () => {
+    vi.mocked(prisma.stockLevel.findMany).mockResolvedValue([] as never);
+    vi.mocked(prisma.supply.update).mockResolvedValue({
+      id: "supply-1",
+      quantity: 0,
+      minimumThreshold: 0,
+    } as never);
+
+    await stockLevelRepository.syncSupplyTotals("supply-1");
+
+    expect(prisma.supply.update).toHaveBeenCalledWith({
+      where: { id: "supply-1" },
+      data: {
+        quantity: 0,
+        minimumThreshold: 0,
+      },
+    });
+  });
 });
