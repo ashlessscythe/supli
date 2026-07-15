@@ -7,8 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Package,
-  ClipboardList,
-  Settings,
   LogOut,
   Shield,
   PackagePlus,
@@ -16,33 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { staffNavigationItems } from "@/lib/nav-config";
 
-const navigation = [
-  {
-    name: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-    adminOnly: false,
-  },
-  {
-    name: "Supplies",
-    href: "/dashboard/supplies",
-    icon: Package,
-    adminOnly: false,
-  },
-  {
-    name: "Requests",
-    href: "/dashboard/requests",
-    icon: ClipboardList,
-    adminOnly: false,
-  },
-  {
-    name: "Receipts",
-    href: "/dashboard/receipts",
-    icon: PackagePlus,
-    adminOnly: false,
-  },
-];
+const navIcons = {
+  Dashboard: LayoutDashboard,
+  Supplies: Package,
+  Inbound: PackagePlus,
+} as const;
 
 export function Header() {
   const pathname = usePathname();
@@ -61,21 +39,24 @@ export function Header() {
             </span>
           </Link>
           <nav className="flex items-center space-x-6 text-sm font-medium">
-            {navigation.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
-                  pathname === item.href
-                    ? "text-foreground"
-                    : "text-foreground/60"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                <span>{item.name}</span>
-              </Link>
-            ))}
+            {staffNavigationItems.map((item) => {
+              const Icon = navIcons[item.name];
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center space-x-2 text-sm font-medium transition-colors hover:text-primary",
+                    pathname === item.href
+                      ? "text-foreground"
+                      : "text-foreground/60"
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.name}</span>
+                </Link>
+              );
+            })}
             {session?.user && (
               <Link
                 href="/kiosk"

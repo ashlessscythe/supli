@@ -1,26 +1,5 @@
-import { ReceiptsClient } from "./receipts-client";
-import { getReceiptsPageData } from "@/lib/receipts-page-data";
+import { redirect } from "next/navigation";
 
-export default async function AdminReceiptsPage() {
-  const { supplies, locations, receipts, openVendorReorders } =
-    await getReceiptsPageData();
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">Receipts</h2>
-        <p className="text-muted-foreground">
-          Receive inventory, log external orders, and review receipt history
-        </p>
-      </div>
-
-      <ReceiptsClient
-        supplies={supplies}
-        locations={locations}
-        receipts={receipts}
-        openVendorReorders={openVendorReorders}
-        suppliesPath="/admin/supplies"
-      />
-    </div>
-  );
+export default function AdminReceiptsPage() {
+  redirect("/admin/inbound");
 }

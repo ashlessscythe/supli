@@ -1,6 +1,6 @@
 # Supli Mart
 
-Inventory management for tracking supplies, approving requests, and recording consumption — with vendor lead times, MOQ, and a barcode **kiosk** for walk-up checkout.
+Inventory management for tracking supplies, logging inbound corporate POs, receiving stock, and recording consumption — with vendor lead times, MOQ, and a barcode **kiosk** for walk-up checkout.
 
 Built with **Next.js 14** (App Router), **Prisma**, **PostgreSQL (Neon)**, **NextAuth**, and **shadcn/ui**.
 
@@ -20,11 +20,11 @@ Click any supply to see on-hand quantity, stock by location, vendor lead times a
 
 ![Supply details](docs/images/supply_details_popup.png)
 
-### Supply requests
+### Inbound
 
-Staff submit requests; admins approve or deny. Statuses: **Pending**, **Approved**, **Denied**.
+Staff receive stock or log a PO placed in the corporate system from one **Inbound** surface. Admins can also approve or deny leftover supply requests.
 
-![Requests (mobile)](docs/images/request_mobile.png)
+![Inbound / requests (mobile)](docs/images/request_mobile.png)
 
 ### Kiosk mode
 
@@ -40,7 +40,7 @@ In-app bell with unread badge for registration approvals, low-stock alerts, and 
 
 ### Audit log
 
-Searchable activity trail for stock receipts, supply requests, and kiosk consumption — who did what and when.
+Searchable activity trail for stock receipts, inbound orders, leftover request approvals, and kiosk consumption — who did what and when.
 
 ![Audit log](docs/images/audit_log.png)
 
@@ -51,7 +51,7 @@ Searchable activity trail for stock receipts, supply requests, and kiosk consump
 | Area | What you get |
 |------|----------------|
 | **Inventory** | CRUD for supplies; barcode & SKU; min thresholds; item detail view with vendors & history; search |
-| **Requests** | Staff request workflow with admin approve/deny |
+| **Inbound** | Receive stock, log corporate POs, track open orders; admin approve/deny leftover requests |
 | **Kiosk** | PIN-gated barcode scan to consume stock (stock movement ledger) |
 | **Locations** | Warehouses, cages, tool rooms, and per-location stock levels |
 | **Vendors** | Vendor catalog with cost, lead time, MOQ, preferred links |
@@ -63,8 +63,8 @@ Searchable activity trail for stock receipts, supply requests, and kiosk consump
 
 Roles:
 
-- **ADMIN** — full inventory, users, locations, vendors, requests, settings, audit
-- **STAFF** — view supplies, submit/manage their requests, use shared app surface
+- **ADMIN** — full inventory, users, locations, vendors, inbound (including request approvals), settings, audit
+- **STAFF** — view supplies, receive/log inbound orders, use shared app surface
 
 ---
 
@@ -140,9 +140,9 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 | `/forgot-password` | Request password reset email |
 | `/dashboard` | Staff overview (admins are sent to `/admin`) |
 | `/dashboard/supplies` | Browse inventory |
-| `/dashboard/requests` | Create and track requests |
+| `/dashboard/inbound` | Receive stock, log corporate POs, review open orders |
 | `/kiosk` | Floor consume flow (PIN) |
-| `/admin` | Admin dashboard & management (users, supplies, locations, vendors, requests, audit, settings) |
+| `/admin` | Admin dashboard & management (users, supplies, locations, vendors, inbound, audit, settings) |
 
 ---
 

@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import {
   Users,
   BarChart3,
-  ClipboardList,
   Package,
   Settings,
   History,
@@ -14,54 +13,23 @@ import {
   Truck,
   PackagePlus,
 } from "lucide-react";
+import { adminNavigationItems } from "@/lib/nav-config";
 
-export const adminRoutes = [
-  {
-    title: "Overview",
-    href: "/admin",
-    icon: BarChart3,
-  },
-  {
-    title: "Supplies",
-    href: "/admin/supplies",
-    icon: Package,
-  },
-  {
-    title: "Receipts",
-    href: "/admin/receipts",
-    icon: PackagePlus,
-  },
-  {
-    title: "Locations",
-    href: "/admin/locations",
-    icon: MapPin,
-  },
-  {
-    title: "Vendors",
-    href: "/admin/vendors",
-    icon: Truck,
-  },
-  {
-    title: "Requests",
-    href: "/admin/requests",
-    icon: ClipboardList,
-  },
-  {
-    title: "Users",
-    href: "/admin/users",
-    icon: Users,
-  },
-  {
-    title: "Audit Log",
-    href: "/admin/audit",
-    icon: History,
-  },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
-];
+const adminIcons = {
+  Overview: BarChart3,
+  Supplies: Package,
+  Inbound: PackagePlus,
+  Locations: MapPin,
+  Vendors: Truck,
+  Users: Users,
+  "Audit Log": History,
+  Settings: Settings,
+} as const;
+
+export const adminRoutes = adminNavigationItems.map((route) => ({
+  ...route,
+  icon: adminIcons[route.title],
+}));
 
 export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();

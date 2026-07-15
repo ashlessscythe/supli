@@ -11,8 +11,8 @@ export async function createRequest(formData: RequestInput) {
     const session = await requireSession();
     const result = await requestService.create(session.user.id, formData);
     if (result.success) {
-      revalidatePath("/dashboard/requests");
-      revalidatePath("/admin/requests");
+      revalidatePath("/dashboard/inbound");
+      revalidatePath("/admin/inbound");
     }
     return result;
   } catch {
@@ -29,8 +29,8 @@ export async function updateRequestStatus(id: string, status: RequestStatus) {
       status
     );
     if (result.success) {
-      revalidatePath("/dashboard/requests");
-      revalidatePath("/admin/requests");
+      revalidatePath("/dashboard/inbound");
+      revalidatePath("/admin/inbound");
     }
     return result;
   } catch {
