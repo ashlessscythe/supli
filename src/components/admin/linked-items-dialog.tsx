@@ -38,6 +38,11 @@ interface LinkedItemsDialogProps {
   onLinksChanged?: (vendorId: string, newCount: number) => void;
 }
 
+type PanelMode =
+  | { type: "list" }
+  | { type: "link" }
+  | { type: "edit"; item: LinkedItem };
+
 function formatCost(value: number | null | undefined) {
   return value != null ? value.toString() : "";
 }
@@ -46,17 +51,23 @@ function LinkedItemRow({
   item,
   vendorId,
   onCostSaved,
+  onLeadTimeSaved,
   onEdit,
   onUnlinked,
 }: {
   item: LinkedItem;
   vendorId?: string;
   onCostSaved: (supplyId: string, cost: number | null) => void;
+  onLeadTimeSaved: (supplyId: string, leadTimeDays: number | null) => void;
   onEdit: () => void;
   onUnlinked: () => void;
 }) {
   const [costInput, setCostInput] = useState(formatCost(item.cost));
-  const [saving, setSaving] = useState(false);
+  const [leadInput, setLeadInput] = useState(
+    item.leadTimeDays != null ? String(item.leadTimeDays) : ""
+  );
+  const [savingCost, setSavingCost] = useState(false);
+  const [savingLead, setSavingLead] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
 
@@ -66,14 +77,25 @@ function LinkedItemRow({
 
   const parsedCost = costInput.trim() === "" ? null : Number(costInput);
   const currentCost = item.cost ?? null;
-  const isDirty =
+  const costDirty =
     vendorId != null &&
     (parsedCost !== currentCost ||
       (costInput.trim() === "" && currentCost != null) ||
       (costInput.trim() !== "" && Number.isNaN(parsedCost)));
 
+  const parsedLead = leadInput.trim() === "" ? null : Number(leadInput);
+  const currentLead = item.leadTimeDays ?? null;
+  const leadDirty =
+    vendorId != null &&
+    (parsedLead !== currentLead ||
+      (leadInput.trim() === "" && currentLead != null) ||
+      (leadInput.trim() !== "" &&
+        (Number.isNaN(parsedLead) ||
+          !Number.isInteger(parsedLead) ||
+          parsedLead! <= 0)));
+
   const handleSaveCost = async () => {
-    if (!vendorId || !isDirty) return;
+    if (!vendorId || !costDirty) return;
 
     if (
       costInput.trim() !== "" &&
@@ -83,7 +105,7 @@ function LinkedItemRow({
       return;
     }
 
-    setSaving(true);
+    setSavingCost(true);
     try {
       const res = await fetch(`/api/vendors/${vendorId}/items`, {
         method: "PATCH",
@@ -107,7 +129,54 @@ function LinkedItemRow({
         error instanceof Error ? error.message : "Failed to update cost"
       );
     } finally {
-      setSaving(false);
+      setSavingCost(false);
+    }
+  };
+
+  const handleSaveLeadTime = async () => {
+    if (!vendorId || !leadDirty) return;
+
+    if (
+      leadInput.trim() !== "" &&
+      (Number.isNaN(parsedLead) ||
+        !Number.isInteger(parsedLead) ||
+        parsedLead! <= 0)
+    ) {
+      toast.error("Enter a whole number of days (1+), or leave blank to clear.");
+      return;
+    }
+
+    setSavingLead(true);
+    try {
+      const res = await fetch(`/api/vendors/${vendorId}/items`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplyId: item.supplyId,
+          leadTimeDays: parsedLead,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof body.error === "string"
+            ? body.error
+            : "Failed to update lead time"
+        );
+      }
+
+      const updated = await res.json();
+      const next = updated.leadTimeDays ?? null;
+      onLeadTimeSaved(item.supplyId, next);
+      setLeadInput(next != null ? String(next) : "");
+      toast.success(`Updated lead time for ${item.name}`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update lead time"
+      );
+    } finally {
+      setSavingLead(false);
     }
   };
 
@@ -143,7 +212,7 @@ function LinkedItemRow({
 
   return (
     <li className="flex items-start justify-between gap-3 px-1 py-3">
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 space-y-2">
         <div className="flex flex-wrap items-center gap-1">
           <Link
             href={`/admin/supplies?q=${encodeURIComponent(item.name)}`}
@@ -165,6 +234,7 @@ function LinkedItemRow({
                 size="sm"
                 className="h-7 px-2"
                 onClick={onEdit}
+                aria-label={`Edit link for ${item.name}`}
               >
                 <Pencil className="h-3.5 w-3.5" />
               </Button>
@@ -209,59 +279,96 @@ function LinkedItemRow({
             </>
           )}
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
           {item.vendorSku && <span>Vendor SKU: {item.vendorSku}</span>}
           {item.internalSku && <span>Internal SKU: {item.internalSku}</span>}
-          {item.leadTimeDays != null && (
-            <span>Lead time: {item.leadTimeDays}d</span>
-          )}
           {item.moq != null && <span>MOQ: {item.moq}</span>}
         </div>
         {vendorId ? (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Unit cost</span>
-            <div className="relative w-28">
-              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                $
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="w-16 shrink-0 text-xs text-muted-foreground">
+                Lead days
               </span>
               <Input
                 type="number"
-                min={0}
-                step="0.01"
-                value={costInput}
-                onChange={(e) => setCostInput(e.target.value)}
+                min={1}
+                step={1}
+                value={leadInput}
+                onChange={(e) => setLeadInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    void handleSaveCost();
+                    void handleSaveLeadTime();
                   }
                 }}
-                className="h-8 pl-5 text-sm"
+                className="h-8 w-28 text-sm"
                 placeholder="—"
-                disabled={saving}
+                disabled={savingLead}
               />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={!leadDirty || savingLead}
+                onClick={() => void handleSaveLeadTime()}
+              >
+                {savingLead ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8"
-              disabled={!isDirty || saving}
-              onClick={() => void handleSaveCost()}
-            >
-              {saving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                "Save"
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <span className="w-16 shrink-0 text-xs text-muted-foreground">
+                Cost
+              </span>
+              <div className="relative w-28">
+                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  $
+                </span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={costInput}
+                  onChange={(e) => setCostInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void handleSaveCost();
+                    }
+                  }}
+                  className="h-8 pl-5 text-sm"
+                  placeholder="—"
+                  disabled={savingCost}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={!costDirty || savingCost}
+                onClick={() => void handleSaveCost()}
+              >
+                {savingCost ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
           </div>
         ) : (
-          item.cost != null && (
-            <p className="text-xs text-muted-foreground">
-              ${item.cost.toFixed(2)}
-            </p>
-          )
+          <div className="space-y-0.5 text-xs text-muted-foreground">
+            {item.leadTimeDays != null && (
+              <p>Lead time: {item.leadTimeDays}d</p>
+            )}
+            {item.cost != null && <p>${item.cost.toFixed(2)}</p>}
+          </div>
         )}
       </div>
       <span
@@ -288,8 +395,7 @@ export function LinkedItemsDialog({
   const [items, setItems] = useState<LinkedItem[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<LinkedItem | null>(null);
+  const [panel, setPanel] = useState<PanelMode>({ type: "list" });
   const [displayCount, setDisplayCount] = useState(count);
 
   useEffect(() => {
@@ -318,7 +424,10 @@ export function LinkedItemsDialog({
   const handleOpenChange = async (next: boolean) => {
     setOpen(next);
     if (next) {
+      setPanel({ type: "list" });
       await loadItems();
+    } else {
+      setPanel({ type: "list" });
     }
   };
 
@@ -327,6 +436,18 @@ export function LinkedItemsDialog({
       (prev) =>
         prev?.map((item) =>
           item.supplyId === supplyId ? { ...item, cost } : item
+        ) ?? null
+    );
+  };
+
+  const handleLeadTimeSaved = (
+    supplyId: string,
+    leadTimeDays: number | null
+  ) => {
+    setItems(
+      (prev) =>
+        prev?.map((item) =>
+          item.supplyId === supplyId ? { ...item, leadTimeDays } : item
         ) ?? null
     );
   };
@@ -363,7 +484,7 @@ export function LinkedItemsDialog({
     }
 
     toast.success("Supply linked");
-    setLinkDialogOpen(false);
+    setPanel({ type: "list" });
     await loadItems();
   };
 
@@ -399,7 +520,7 @@ export function LinkedItemsDialog({
     }
 
     toast.success("Link updated");
-    setEditingItem(null);
+    setPanel({ type: "list" });
     await loadItems();
   };
 
@@ -421,71 +542,14 @@ export function LinkedItemsDialog({
       </button>
 
       <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
-        <DialogContent className="max-h-[80vh] overflow-hidden sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            {description && (
-              <DialogDescription>{description}</DialogDescription>
-            )}
-          </DialogHeader>
-
-          {vendorId && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-fit"
-              onClick={() => setLinkDialogOpen(true)}
-            >
-              <Plus className="mr-1 h-3.5 w-3.5" />
-              Link supply
-            </Button>
-          )}
-
-          <div className="max-h-[50vh] overflow-y-auto">
-            {loading && (
-              <div className="flex items-center justify-center py-8 text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading…
-              </div>
-            )}
-
-            {error && (
-              <div className="py-6 text-center text-sm text-destructive">
-                {error}
-              </div>
-            )}
-
-            {!loading && !error && items && items.length === 0 && (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                No linked items yet.
-              </div>
-            )}
-
-            {!loading && !error && items && items.length > 0 && (
-              <ul className="divide-y">
-                {items.map((item) => (
-                  <LinkedItemRow
-                    key={item.supplyId}
-                    item={item}
-                    vendorId={vendorId}
-                    onCostSaved={handleCostSaved}
-                    onEdit={() => setEditingItem(item)}
-                    onUnlinked={() => void loadItems()}
-                  />
-                ))}
-              </ul>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {vendorId && (
-        <>
-          <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-            <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+          {panel.type === "link" && vendorId ? (
+            <>
               <DialogHeader>
                 <DialogTitle>Link supply</DialogTitle>
+                <DialogDescription>
+                  Set SKU, lead time, MOQ, and cost for this vendor link.
+                </DialogDescription>
               </DialogHeader>
               <ItemVendorLinkForm
                 mode="pick-supply"
@@ -493,43 +557,100 @@ export function LinkedItemsDialog({
                 excludeIds={linkedSupplyIds}
                 submitLabel="Link supply"
                 onSubmit={handleLinkSupply}
-                onCancel={() => setLinkDialogOpen(false)}
+                onCancel={() => setPanel({ type: "list" })}
               />
-            </DialogContent>
-          </Dialog>
-
-          <Dialog
-            open={editingItem != null}
-            onOpenChange={(open) => {
-              if (!open) setEditingItem(null);
-            }}
-          >
-            <DialogContent className="sm:max-w-lg">
+            </>
+          ) : panel.type === "edit" && vendorId ? (
+            <>
               <DialogHeader>
-                <DialogTitle>Edit link — {editingItem?.name}</DialogTitle>
+                <DialogTitle>Edit link — {panel.item.name}</DialogTitle>
+                <DialogDescription>
+                  Update lead time, MOQ, cost, and SKUs for this supply–vendor
+                  link.
+                </DialogDescription>
               </DialogHeader>
-              {editingItem && (
-                <ItemVendorLinkForm
-                  mode="pick-supply"
-                  vendorId={vendorId}
-                  supplyId={editingItem.supplyId}
-                  initialData={{
-                    vendorSku: editingItem.vendorSku,
-                    internalSku: editingItem.internalSku,
-                    isPreferred: editingItem.isPreferred,
-                    leadTimeDays: editingItem.leadTimeDays,
-                    moq: editingItem.moq,
-                    cost: editingItem.cost,
-                  }}
-                  submitLabel="Save changes"
-                  onSubmit={handleUpdateLink}
-                  onCancel={() => setEditingItem(null)}
-                />
+              <ItemVendorLinkForm
+                key={panel.item.supplyId}
+                mode="pick-supply"
+                vendorId={vendorId}
+                supplyId={panel.item.supplyId}
+                initialData={{
+                  vendorSku: panel.item.vendorSku,
+                  internalSku: panel.item.internalSku,
+                  isPreferred: panel.item.isPreferred,
+                  leadTimeDays: panel.item.leadTimeDays,
+                  moq: panel.item.moq,
+                  cost: panel.item.cost,
+                }}
+                submitLabel="Save changes"
+                onSubmit={handleUpdateLink}
+                onCancel={() => setPanel({ type: "list" })}
+              />
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>{title}</DialogTitle>
+                {description && (
+                  <DialogDescription>{description}</DialogDescription>
+                )}
+              </DialogHeader>
+
+              {vendorId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-fit"
+                  onClick={() => setPanel({ type: "link" })}
+                >
+                  <Plus className="mr-1 h-3.5 w-3.5" />
+                  Link supply
+                </Button>
               )}
-            </DialogContent>
-          </Dialog>
-        </>
-      )}
+
+              <div className="max-h-[50vh] overflow-y-auto">
+                {loading && (
+                  <div className="flex items-center justify-center py-8 text-muted-foreground">
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading…
+                  </div>
+                )}
+
+                {error && (
+                  <div className="py-6 text-center text-sm text-destructive">
+                    {error}
+                  </div>
+                )}
+
+                {!loading && !error && items && items.length === 0 && (
+                  <div className="py-6 text-center text-sm text-muted-foreground">
+                    No linked items yet.
+                    {vendorId &&
+                      " Link a supply to set lead time, MOQ, and cost."}
+                  </div>
+                )}
+
+                {!loading && !error && items && items.length > 0 && (
+                  <ul className="divide-y">
+                    {items.map((item) => (
+                      <LinkedItemRow
+                        key={item.supplyId}
+                        item={item}
+                        vendorId={vendorId}
+                        onCostSaved={handleCostSaved}
+                        onLeadTimeSaved={handleLeadTimeSaved}
+                        onEdit={() => setPanel({ type: "edit", item })}
+                        onUnlinked={() => void loadItems()}
+                      />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

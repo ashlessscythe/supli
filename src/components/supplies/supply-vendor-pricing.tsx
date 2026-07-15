@@ -3,12 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ItemVendorLinkForm } from "@/components/admin/item-vendor-link-form";
 import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -27,6 +21,11 @@ interface SupplyVendor {
 interface SupplyVendorLinksProps {
   supplyId: string;
 }
+
+type PanelMode =
+  | { type: "list" }
+  | { type: "link" }
+  | { type: "edit"; vendor: SupplyVendor };
 
 function formatCost(value: number | null) {
   return value != null ? value.toString() : "";
@@ -94,6 +93,7 @@ function VendorCostRow({
 
   return (
     <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-xs text-muted-foreground">Cost</span>
       <div className="relative w-28">
         <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
           $
@@ -129,6 +129,105 @@ function VendorCostRow({
   );
 }
 
+function VendorLeadTimeRow({
+  vendor,
+  supplyId,
+  onUpdated,
+}: {
+  vendor: SupplyVendor;
+  supplyId: string;
+  onUpdated: (vendorId: string, leadTimeDays: number | null) => void;
+}) {
+  const [input, setInput] = useState(
+    vendor.leadTimeDays != null ? String(vendor.leadTimeDays) : ""
+  );
+  const [saved, setSaved] = useState(vendor.leadTimeDays);
+  const [saving, setSaving] = useState(false);
+
+  const parsed = input.trim() === "" ? null : Number(input);
+  const isDirty =
+    parsed !== saved ||
+    (input.trim() === "" && saved != null) ||
+    (input.trim() !== "" && (Number.isNaN(parsed) || parsed! <= 0));
+
+  const handleSave = async () => {
+    if (!isDirty) return;
+
+    if (
+      input.trim() !== "" &&
+      (Number.isNaN(parsed) || !Number.isInteger(parsed) || parsed! <= 0)
+    ) {
+      toast.error("Enter a whole number of days (1+), or leave blank to clear.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/vendors/${vendor.id}/items`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supplyId, leadTimeDays: parsed }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          typeof body.error === "string"
+            ? body.error
+            : "Failed to update lead time"
+        );
+      }
+
+      const updated = await res.json();
+      const next = updated.leadTimeDays ?? null;
+      setSaved(next);
+      setInput(next != null ? String(next) : "");
+      onUpdated(vendor.id, next);
+      toast.success(`Updated ${vendor.name} lead time`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update lead time"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-16 shrink-0 text-xs text-muted-foreground">
+        Lead days
+      </span>
+      <Input
+        type="number"
+        min={1}
+        step={1}
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            void handleSave();
+          }
+        }}
+        className="h-8 w-28 text-sm"
+        placeholder="—"
+        disabled={saving}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8"
+        disabled={!isDirty || saving}
+        onClick={() => void handleSave()}
+      >
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
+      </Button>
+    </div>
+  );
+}
+
 function VendorLinkRow({
   vendor,
   supplyId,
@@ -143,6 +242,7 @@ function VendorLinkRow({
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [localCost, setLocalCost] = useState(vendor.cost);
+  const [localLeadTime, setLocalLeadTime] = useState(vendor.leadTimeDays);
 
   const handleRemove = async () => {
     setRemoving(true);
@@ -189,8 +289,8 @@ function VendorLinkRow({
             {vendor.internalSku && (
               <span>Internal SKU: {vendor.internalSku}</span>
             )}
-            {vendor.leadTimeDays != null && (
-              <span>Lead time: {vendor.leadTimeDays}d</span>
+            {localLeadTime != null && (
+              <span>Lead time: {localLeadTime}d</span>
             )}
             {vendor.moq != null && <span>MOQ: {vendor.moq}</span>}
           </div>
@@ -202,6 +302,7 @@ function VendorLinkRow({
             size="sm"
             className="h-8 px-2"
             onClick={onEdit}
+            aria-label={`Edit ${vendor.name} link`}
           >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
@@ -245,6 +346,11 @@ function VendorLinkRow({
           )}
         </div>
       </div>
+      <VendorLeadTimeRow
+        vendor={{ ...vendor, leadTimeDays: localLeadTime }}
+        supplyId={supplyId}
+        onUpdated={(_, leadTimeDays) => setLocalLeadTime(leadTimeDays)}
+      />
       <VendorCostRow
         vendor={{ ...vendor, cost: localCost }}
         supplyId={supplyId}
@@ -258,8 +364,7 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
   const [vendors, setVendors] = useState<SupplyVendor[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
-  const [editingVendor, setEditingVendor] = useState<SupplyVendor | null>(null);
+  const [panel, setPanel] = useState<PanelMode>({ type: "list" });
 
   const loadVendors = useCallback(async () => {
     setLoading(true);
@@ -312,7 +417,7 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
     }
 
     toast.success("Vendor linked");
-    setLinkDialogOpen(false);
+    setPanel({ type: "list" });
     await loadVendors();
   };
 
@@ -348,7 +453,7 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
     }
 
     toast.success("Vendor link updated");
-    setEditingVendor(null);
+    setPanel({ type: "list" });
     await loadVendors();
   };
 
@@ -367,6 +472,50 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
 
   const linkedVendorIds = vendors?.map((v) => v.id) ?? [];
 
+  if (panel.type === "link") {
+    return (
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">Link vendor</p>
+        <ItemVendorLinkForm
+          mode="pick-vendor"
+          vendorId=""
+          supplyId={supplyId}
+          excludeIds={linkedVendorIds}
+          submitLabel="Link vendor"
+          onSubmit={handleLinkVendor}
+          onCancel={() => setPanel({ type: "list" })}
+        />
+      </div>
+    );
+  }
+
+  if (panel.type === "edit") {
+    return (
+      <div className="space-y-3 rounded-md border p-3">
+        <p className="text-sm font-medium">
+          Edit link — {panel.vendor.name}
+        </p>
+        <ItemVendorLinkForm
+          key={panel.vendor.id}
+          mode="pick-vendor"
+          vendorId={panel.vendor.id}
+          supplyId={supplyId}
+          initialData={{
+            vendorSku: panel.vendor.vendorSku,
+            internalSku: panel.vendor.internalSku,
+            isPreferred: panel.vendor.isPreferred,
+            leadTimeDays: panel.vendor.leadTimeDays,
+            moq: panel.vendor.moq,
+            cost: panel.vendor.cost,
+          }}
+          submitLabel="Save changes"
+          onSubmit={handleUpdateLink}
+          onCancel={() => setPanel({ type: "list" })}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -376,7 +525,7 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
           variant="outline"
           size="sm"
           className="h-8"
-          onClick={() => setLinkDialogOpen(true)}
+          onClick={() => setPanel({ type: "link" })}
         >
           <Plus className="mr-1 h-3.5 w-3.5" />
           Link vendor
@@ -385,7 +534,8 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
 
       {!vendors?.length ? (
         <p className="text-sm text-muted-foreground">
-          No vendors linked to this supply.
+          No vendors linked to this supply. Link a vendor to set lead time,
+          MOQ, and cost.
         </p>
       ) : (
         <div className="space-y-2">
@@ -395,61 +545,11 @@ export function SupplyVendorLinks({ supplyId }: SupplyVendorLinksProps) {
               vendor={vendor}
               supplyId={supplyId}
               onChanged={() => void loadVendors()}
-              onEdit={() => setEditingVendor(vendor)}
+              onEdit={() => setPanel({ type: "edit", vendor })}
             />
           ))}
         </div>
       )}
-
-      <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Link vendor</DialogTitle>
-          </DialogHeader>
-          <ItemVendorLinkForm
-            mode="pick-vendor"
-            vendorId=""
-            supplyId={supplyId}
-            excludeIds={linkedVendorIds}
-            submitLabel="Link vendor"
-            onSubmit={handleLinkVendor}
-            onCancel={() => setLinkDialogOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={editingVendor != null}
-        onOpenChange={(open) => {
-          if (!open) setEditingVendor(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              Edit link — {editingVendor?.name}
-            </DialogTitle>
-          </DialogHeader>
-          {editingVendor && (
-            <ItemVendorLinkForm
-              mode="pick-vendor"
-              vendorId={editingVendor.id}
-              supplyId={supplyId}
-              initialData={{
-                vendorSku: editingVendor.vendorSku,
-                internalSku: editingVendor.internalSku,
-                isPreferred: editingVendor.isPreferred,
-                leadTimeDays: editingVendor.leadTimeDays,
-                moq: editingVendor.moq,
-                cost: editingVendor.cost,
-              }}
-              submitLabel="Save changes"
-              onSubmit={handleUpdateLink}
-              onCancel={() => setEditingVendor(null)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
