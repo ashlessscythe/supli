@@ -1,7 +1,6 @@
 const {
   PrismaClient,
   Role,
-  RequestStatus,
   StockMovementType,
   VendorReorderStatus,
 } = require("@prisma/client");
@@ -48,13 +47,6 @@ async function generateUniqueBarcode(used: Set<string>) {
   return code;
 }
 
-interface FakeRequest {
-  userId: string;
-  supplyId: string;
-  quantity: number;
-  status: typeof RequestStatus;
-}
-
 // Parse command line arguments
 const argv = yargs(hideBin(process.argv))
   .option("use-faker", {
@@ -81,11 +73,6 @@ const argv = yargs(hideBin(process.argv))
     type: "number",
     description: "Number of products to create",
     default: 20,
-  })
-  .option("requests", {
-    type: "number",
-    description: "Number of admin-queue demo requests to create (faker path)",
-    default: 8,
   })
   .option("orders", {
     type: "number",
@@ -1040,60 +1027,6 @@ async function createFakeSupplies(count: number) {
   console.log(`✓ Created ${uniqueSupplies.length} fake supplies`);
 }
 
-async function createFakeRequests(count: number) {
-  const users = await prisma.user.findMany();
-  const supplies = await prisma.supply.findMany();
-
-  if (!users.length || !supplies.length) {
-    console.log("⚠ No users or supplies found. Skipping request creation.");
-    return;
-  }
-
-  // Prefer PENDING so faker data exercises the admin approval queue.
-  const existingRequests: FakeRequest[] = await prisma.request.findMany({
-    select: { userId: true, supplyId: true },
-  });
-
-  const requests: FakeRequest[] = [];
-  let attempts = 0;
-  const maxAttempts = count * 2;
-
-  while (requests.length < count && attempts < maxAttempts) {
-    const userId = faker.helpers.arrayElement(users).id;
-    const supplyId = faker.helpers.arrayElement(supplies).id;
-
-    const exists =
-      existingRequests.some(
-        (r) => r.userId === userId && r.supplyId === supplyId
-      ) || requests.some((r) => r.userId === userId && r.supplyId === supplyId);
-
-    if (!exists) {
-      requests.push({
-        userId,
-        supplyId,
-        quantity: faker.number.int({ min: 1, max: 10 }),
-        status: faker.helpers.arrayElement([
-          RequestStatus.PENDING,
-          RequestStatus.PENDING,
-          RequestStatus.DENIED,
-        ]) as typeof RequestStatus,
-      });
-    }
-
-    attempts++;
-  }
-
-  await prisma.$transaction(
-    requests.map((request) =>
-      prisma.request.create({
-        data: request,
-      })
-    )
-  );
-
-  console.log(`✓ Created ${requests.length} fake admin-queue requests`);
-}
-
 async function createFakeOpenOrders(count: number) {
   const [supplies, users] = await Promise.all([
     prisma.supply.findMany({
@@ -1318,61 +1251,6 @@ async function createDefaultNotifications() {
   console.log(`✓ Created ${created} low-stock notifications`);
 }
 
-async function createDefaultRequests() {
-  const [users, supplies] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, username: true } }),
-    prisma.supply.findMany({ select: { id: true, name: true } }),
-  ]);
-
-  const userByName = Object.fromEntries(
-    users.map((u: { username: string; id: string }) => [u.username, u.id])
-  );
-  const supplyByName = Object.fromEntries(
-    supplies.map((s: { name: string; id: string }) => [s.name, s.id])
-  );
-
-  // Small admin approval queue only — staff no longer create requests in-app.
-  const wanted = [
-    {
-      user: "raven",
-      supply: "Coral Laser Blade",
-      quantity: 1,
-      status: RequestStatus.PENDING,
-    },
-    {
-      user: "rusty",
-      supply: "Arquebus Core Unit",
-      quantity: 1,
-      status: RequestStatus.PENDING,
-    },
-    {
-      user: "iguazu",
-      supply: "RaD Assault Rifle",
-      quantity: 3,
-      status: RequestStatus.DENIED,
-    },
-  ];
-
-  let created = 0;
-  for (const r of wanted) {
-    const userId = userByName[r.user];
-    const supplyId = supplyByName[r.supply];
-    if (!userId || !supplyId) continue;
-
-    const existing = await prisma.request.findFirst({
-      where: { userId, supplyId },
-    });
-    if (existing) continue;
-
-    await prisma.request.create({
-      data: { userId, supplyId, quantity: r.quantity, status: r.status },
-    });
-    created++;
-  }
-
-  console.log(`✓ Created ${created} default admin-queue requests`);
-}
-
 async function createDefaultOpenOrders() {
   const [users, supplies] = await Promise.all([
     prisma.user.findMany({ select: { id: true, username: true } }),
@@ -1514,7 +1392,6 @@ async function main() {
     await createDefaultLocations();
     await createDefaultVendors();
     await createDefaultSupplies();
-    await createDefaultRequests();
     await createDefaultOpenOrders();
     await createUsageHistory();
     await createDefaultNotifications();
@@ -1524,7 +1401,6 @@ async function main() {
       await createFakeUsers(argv.count);
       await createFakeVendors(Math.max(3, Math.floor(argv.products / 4)));
       await createFakeSupplies(argv.products);
-      await createFakeRequests(argv.requests);
       await createFakeOpenOrders(argv.orders);
       await createAuditLogs();
       // Faker path: always append fresh usage history (non-idempotent) so demo
