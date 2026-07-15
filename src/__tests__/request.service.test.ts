@@ -320,6 +320,75 @@ describe("requestService.updateStatus", () => {
       existing.supplyId
     );
   });
+
+  it("rejects approval when no default location is configured", async () => {
+    vi.mocked(locationRepository.findDefault).mockResolvedValue(null as never);
+
+    const result = await requestService.updateStatus(
+      actorId,
+      existing.id,
+      RequestStatus.APPROVED
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("No location configured");
+    }
+    expect(tx.stockLevel.update).not.toHaveBeenCalled();
+  });
+
+  it("rejects when default location stock is below request even if global qty is enough", async () => {
+    tx.stockLevel.findUnique.mockResolvedValue({
+      supplyId: existing.supplyId,
+      locationId: location.id,
+      quantity: 2,
+    });
+
+    const result = await requestService.updateStatus(
+      actorId,
+      existing.id,
+      RequestStatus.APPROVED
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Insufficient stock at default location");
+    }
+    expect(tx.stockLevel.update).not.toHaveBeenCalled();
+  });
+});
+
+describe("requestService.getById", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("scopes staff lookups to their own requests when setting is off", async () => {
+    vi.mocked(settingsService.shouldShowAllRequests).mockResolvedValue(false);
+    vi.mocked(requestRepository.findFirst).mockResolvedValue(null as never);
+
+    const result = await requestService.getById("user-1", "STAFF", "req-other");
+
+    expect(requestRepository.findFirst).toHaveBeenCalledWith({
+      id: "req-other",
+      userId: "user-1",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("Request not found");
+    }
+  });
+
+  it("allows admins to read any request id", async () => {
+    const request = { id: "req-1", userId: "other" };
+    vi.mocked(settingsService.shouldShowAllRequests).mockResolvedValue(false);
+    vi.mocked(requestRepository.findFirst).mockResolvedValue(request as never);
+
+    const result = await requestService.getById("admin-1", "ADMIN", "req-1");
+
+    expect(requestRepository.findFirst).toHaveBeenCalledWith({ id: "req-1" });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("requestService.list", () => {

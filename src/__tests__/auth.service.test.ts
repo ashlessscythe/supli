@@ -46,6 +46,17 @@ describe("rateLimitService", () => {
     expect(locked).toBe(true);
   });
 
+  it("returns false when lockedUntil is in the past", async () => {
+    vi.mocked(prisma.authAttempt.findUnique).mockResolvedValue({
+      identifier,
+      lockedUntil: new Date(Date.now() - 60_000),
+    } as never);
+
+    const locked = await rateLimitService.isLocked(identifier);
+
+    expect(locked).toBe(false);
+  });
+
   it("increments attempts and locks after max attempts", async () => {
     vi.mocked(prisma.authAttempt.upsert).mockResolvedValue({
       identifier,
