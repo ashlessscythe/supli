@@ -10,6 +10,7 @@ import {
   LogOut,
   Shield,
   PackagePlus,
+  Search,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
@@ -20,6 +21,7 @@ const navIcons = {
   Dashboard: LayoutDashboard,
   Supplies: Package,
   Inbound: PackagePlus,
+  History: Search,
 } as const;
 
 export function Header() {

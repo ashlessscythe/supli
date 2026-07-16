@@ -13,6 +13,8 @@ describe("inbound navigation surfaces", () => {
 
     expect(hrefs).toContain("/dashboard/inbound");
     expect(names).toContain("Inbound");
+    expect(hrefs).toContain("/dashboard/history");
+    expect(names).toContain("History");
     expect(hrefs).not.toContain("/dashboard/requests");
     expect(hrefs).not.toContain("/dashboard/receipts");
     expect(names).not.toContain("Requests");
@@ -25,6 +27,8 @@ describe("inbound navigation surfaces", () => {
 
     expect(hrefs).toContain("/admin/inbound");
     expect(titles).toContain("Inbound");
+    expect(hrefs).toContain("/admin/history");
+    expect(titles).toContain("History");
     expect(hrefs).not.toContain("/admin/requests");
     expect(hrefs).not.toContain("/admin/receipts");
     expect(titles).not.toContain("Requests");
