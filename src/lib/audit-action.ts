@@ -15,9 +15,10 @@ export function classifyAuditDirection(action: string): AuditDirection {
   }
 
   if (
-    normalized.startsWith("kiosk consumed ") ||
+    normalized.startsWith("consumed ") ||
     normalized.startsWith("checked out ") ||
-    normalized.startsWith("approved request ")
+    normalized.startsWith("approved request ") ||
+    normalized.startsWith("kiosk ")
   ) {
     return "out";
   }
