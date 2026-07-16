@@ -14,6 +14,7 @@ import { formatBarcode } from "@/lib/barcode";
 import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { useSupplyDetailViewMode } from "@/hooks/use-supply-detail-view-mode";
+import { SupplyQrDialog } from "@/components/supplies/supply-qr-dialog";
 import { LayoutList, Loader2, ScrollText } from "lucide-react";
 
 export interface SupplyDetails {
@@ -206,6 +207,11 @@ function OverviewContent({
             )
           }
         />
+      </div>
+
+      <div>
+        <p className="mb-1.5 text-xs text-muted-foreground">QR code</p>
+        <SupplyQrDialog barcode={details.barcode} supplyName={details.name} />
       </div>
 
       {details.itemType && (

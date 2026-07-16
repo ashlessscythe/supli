@@ -18,3 +18,8 @@ export function formatBarcode(value: string | null | undefined): string {
   const groups = normalized.match(/.{1,4}/g) ?? [normalized];
   return groups.join("-");
 }
+
+/** QR codes encode the canonical barcode; items without one cannot show a QR. */
+export function canShowSupplyQr(barcode: string | null | undefined): boolean {
+  return normalizeBarcode(barcode).length > 0;
+}
