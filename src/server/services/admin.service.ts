@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { StockMovementType } from "@prisma/client";
+import { toSupplyChartRow } from "@/lib/low-stock";
+
+const LOW_STOCK_WHERE = {
+  quantity: { lte: prisma.supply.fields.minimumThreshold },
+} as const;
 
 export const adminService = {
   async getReceiptsChartData() {
@@ -51,15 +56,21 @@ export const adminService = {
       take: 10,
     });
 
-    return supplies.map((supply) => ({
-      name: supply.name,
-      quantity: supply.quantity,
-      threshold: supply.minimumThreshold,
-      status:
-        supply.quantity <= supply.minimumThreshold
-          ? ("Low" as const)
-          : ("OK" as const),
-    }));
+    return supplies.map(toSupplyChartRow);
+  },
+
+  async getLowStockItems(limit = 5) {
+    return prisma.supply.findMany({
+      where: LOW_STOCK_WHERE,
+      select: {
+        id: true,
+        name: true,
+        quantity: true,
+        minimumThreshold: true,
+      },
+      orderBy: { quantity: "asc" },
+      take: limit,
+    });
   },
 
   async getStats() {
@@ -67,9 +78,7 @@ export const adminService = {
       prisma.user.count(),
       prisma.supply.count(),
       prisma.supply.count({
-        where: {
-          quantity: { lte: prisma.supply.fields.minimumThreshold },
-        },
+        where: LOW_STOCK_WHERE,
       }),
     ]);
 

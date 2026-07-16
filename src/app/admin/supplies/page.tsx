@@ -17,7 +17,7 @@ async function getSupplies() {
 export default async function AdminSuppliesPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: { q?: string; stock?: string };
 }) {
   const [supplies, locationsResult] = await Promise.all([
     getSupplies(),
@@ -27,6 +27,13 @@ export default async function AdminSuppliesPage({
   const locations = locationsResult.success
     ? locationsResult.data.map((l) => ({ id: l.id, name: l.name }))
     : [];
+
+  const initialStockFilter =
+    searchParams.stock === "low" ||
+    searchParams.stock === "ok" ||
+    searchParams.stock === "all"
+      ? searchParams.stock
+      : "all";
 
   return (
     <div className="space-y-6">
@@ -52,6 +59,7 @@ export default async function AdminSuppliesPage({
             isAdmin={true}
             locations={locations}
             initialSearch={searchParams.q ?? ""}
+            initialStockFilter={initialStockFilter}
           />
         </CardContent>
       </Card>

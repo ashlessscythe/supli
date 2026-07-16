@@ -51,24 +51,31 @@ interface LocationOption {
   name: string;
 }
 
+type SortKey = "name" | "quantity" | "minimumThreshold";
+type SortDirection = "asc" | "desc";
+export type StockFilter = "all" | "low" | "ok";
+
 interface SuppliesTableProps {
   data: Supply[];
   isAdmin: boolean;
   initialSearch?: string;
+  initialStockFilter?: StockFilter;
   locations?: LocationOption[];
 }
 
-type SortKey = "name" | "quantity" | "minimumThreshold";
-type SortDirection = "asc" | "desc";
-type StockFilter = "all" | "low" | "ok";
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 const ALL_PAGE_SIZE = -1;
+
+function parseStockFilter(value: string | undefined): StockFilter {
+  if (value === "low" || value === "ok" || value === "all") return value;
+  return "all";
+}
 
 export function SuppliesTable({
   data,
   isAdmin,
   initialSearch = "",
+  initialStockFilter = "all",
   locations = [],
 }: SuppliesTableProps) {
   const { handleDeleteSupply, isLoading } = useSupplies();
@@ -82,7 +89,9 @@ export function SuppliesTable({
   const [detailSupplyId, setDetailSupplyId] = useState<string | null>(null);
 
   const [search, setSearch] = useState(initialSearch);
-  const [stockFilter, setStockFilter] = useState<StockFilter>("all");
+  const [stockFilter, setStockFilter] = useState<StockFilter>(() =>
+    parseStockFilter(initialStockFilter)
+  );
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [pageSize, setPageSize] = useState<number>(25);

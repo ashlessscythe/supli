@@ -101,6 +101,11 @@ export function DashboardCharts({
       <Card>
         <CardHeader>
           <CardTitle>Supply Levels</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Lowest 10 supplies by current quantity. Red bars are at or below
+            their minimum threshold; yellow ticks mark each item&apos;s
+            threshold.
+          </p>
         </CardHeader>
         <CardContent>
           <Suspense fallback={<div>Loading...</div>}>
