@@ -12,6 +12,7 @@ import {
 } from "@/server/audit";
 import { normalizeBarcode } from "@/lib/barcode";
 import { notificationService } from "@/server/services/notification.service";
+import { fileService } from "@/server/services/file.service";
 import {
   receiveStockSchema,
   adjustStockSchema,
@@ -438,6 +439,13 @@ export const stockMovementService = {
         vendorName,
       });
 
+      const parsedAttachments = fileService.parseUploads(
+        data.attachments ?? []
+      );
+      if (!parsedAttachments.success) {
+        return failure(parsedAttachments.error);
+      }
+
       const result = await executeWithAudit(
         userId,
         `Received ${data.quantity} ${supply.name} at ${location.name}`,
@@ -472,7 +480,7 @@ export const stockMovementService = {
             });
           }
 
-          await tx.stockMovement.create({
+          const movement = await tx.stockMovement.create({
             data: {
               supplyId: supply.id,
               locationId: location.id,
@@ -483,6 +491,20 @@ export const stockMovementService = {
               vendorReorderId: data.vendorReorderId ?? null,
             },
           });
+
+          if (parsedAttachments.data.length > 0) {
+            await fileService.insertParsed(
+              userId,
+              parsedAttachments.data,
+              {
+                supplyId: supply.id,
+                stockMovementId: movement.id,
+                vendorReorderId: data.vendorReorderId ?? null,
+                category: "receipt",
+              },
+              tx
+            );
+          }
 
           if (data.vendorReorderId) {
             const reorder = await tx.vendorReorder.findUnique({
@@ -644,6 +666,17 @@ export const stockMovementService = {
           : [];
       const userMap = new Map(users.map((u) => [u.id, u.username]));
 
+      const attachments = await fileService.listMetadataForMovements(
+        movements.map((m) => m.id)
+      );
+      const attachmentsByMovement = new Map<string, typeof attachments>();
+      for (const attachment of attachments) {
+        if (!attachment.stockMovementId) continue;
+        const list = attachmentsByMovement.get(attachment.stockMovementId) ?? [];
+        list.push(attachment);
+        attachmentsByMovement.set(attachment.stockMovementId, list);
+      }
+
       return success(
         movements.map((m) => {
           const legacyVendorId = extractLegacyVendorId(m.notes);
@@ -664,6 +697,12 @@ export const stockMovementService = {
             externalPoNumber: m.vendorReorder?.externalPoNumber ?? null,
             vendorName,
             userNotes: extractUserNotes(m.notes),
+            attachments: (attachmentsByMovement.get(m.id) ?? []).map((a) => ({
+              id: a.id,
+              filename: a.filename,
+              mimeType: a.mimeType,
+              size: a.size,
+            })),
           };
         })
       );
@@ -678,11 +717,18 @@ export const stockMovementService = {
       const supply = await supplyRepository.findById(data.supplyId);
       if (!supply) return failure("Supply not found");
 
+      const parsedAttachments = fileService.parseUploads(
+        data.attachments ?? []
+      );
+      if (!parsedAttachments.success) {
+        return failure(parsedAttachments.error);
+      }
+
       const reorder = await executeWithAudit(
         userId,
         `Logged external order for ${data.quantity} ${supply.name}`,
-        (tx) =>
-          tx.vendorReorder.create({
+        async (tx) => {
+          const created = await tx.vendorReorder.create({
             data: {
               supplyId: data.supplyId,
               vendorId: data.vendorId ?? null,
@@ -691,7 +737,23 @@ export const stockMovementService = {
               notes: data.notes?.trim() || null,
               createdById: userId,
             },
-          })
+          });
+
+          if (parsedAttachments.data.length > 0) {
+            await fileService.insertParsed(
+              userId,
+              parsedAttachments.data,
+              {
+                supplyId: data.supplyId,
+                vendorReorderId: created.id,
+                category: "order",
+              },
+              tx
+            );
+          }
+
+          return created;
+        }
       );
 
       return success(reorder);
@@ -719,6 +781,19 @@ export const stockMovementService = {
           },
         },
       });
+
+      const attachments = await fileService.listMetadataForReorders(
+        reorders.map((reorder) => reorder.id)
+      );
+      const attachmentsByReorder = new Map<string, typeof attachments>();
+      for (const attachment of attachments) {
+        if (!attachment.vendorReorderId) continue;
+        const list =
+          attachmentsByReorder.get(attachment.vendorReorderId) ?? [];
+        list.push(attachment);
+        attachmentsByReorder.set(attachment.vendorReorderId, list);
+      }
+
       return success(
         reorders.map((reorder) => {
           const receivedQuantity = reorder.stockMovements.reduce(
@@ -737,6 +812,14 @@ export const stockMovementService = {
             vendor: reorder.vendor,
             receivedQuantity,
             remainingQuantity: Math.max(0, reorder.quantity - receivedQuantity),
+            attachments: (attachmentsByReorder.get(reorder.id) ?? []).map(
+              (a) => ({
+                id: a.id,
+                filename: a.filename,
+                mimeType: a.mimeType,
+                size: a.size,
+              })
+            ),
           };
         })
       );

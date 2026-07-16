@@ -23,6 +23,10 @@ import {
   EditOrderDialog,
   type OpenOrderForEdit,
 } from "@/components/inventory/edit-order-dialog";
+import {
+  AttachmentLinks,
+  type AttachmentMeta,
+} from "@/components/inventory/attachment-links";
 import { RequestsTable } from "@/components/requests/requests-table";
 import { ClipboardList, Edit, PackagePlus } from "lucide-react";
 import Link from "next/link";
@@ -55,6 +59,7 @@ interface ReceiptRow {
   externalPoNumber: string | null;
   vendorName?: string | null;
   userNotes?: string | null;
+  attachments?: AttachmentMeta[];
 }
 
 function formatReceiptDetails(receipt: ReceiptRow) {
@@ -71,6 +76,7 @@ function formatReceiptDetails(receipt: ReceiptRow) {
 
 interface VendorReorderRow extends OpenOrderForEdit {
   orderedAt: Date;
+  attachments?: AttachmentMeta[];
 }
 
 type InboundStep = "closed" | "choose" | "receive" | "log";
@@ -199,6 +205,7 @@ export function InboundClient({
                       <TableHead className="text-right">Ordered</TableHead>
                       <TableHead className="text-right">Received</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Docs</TableHead>
                       <TableHead className="w-[90px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -218,6 +225,9 @@ export function InboundClient({
                         </TableCell>
                         <TableCell className="capitalize">
                           {reorder.status.toLowerCase().replace("_", " ")}
+                        </TableCell>
+                        <TableCell>
+                          <AttachmentLinks attachments={reorder.attachments} />
                         </TableCell>
                         <TableCell>
                           <Button
@@ -271,6 +281,10 @@ export function InboundClient({
                           {reorder.status.toLowerCase().replace("_", " ")}
                         </p>
                       </div>
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Docs</p>
+                        <AttachmentLinks attachments={reorder.attachments} />
+                      </div>
                     </div>
                     <Button
                       variant="outline"
@@ -318,6 +332,7 @@ export function InboundClient({
                       <TableHead className="text-right">Qty</TableHead>
                       <TableHead>By</TableHead>
                       <TableHead>Notes / PO</TableHead>
+                      <TableHead>Docs</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -341,6 +356,9 @@ export function InboundClient({
                         <TableCell>{receipt.username}</TableCell>
                         <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                           {formatReceiptDetails(receipt)}
+                        </TableCell>
+                        <TableCell>
+                          <AttachmentLinks attachments={receipt.attachments} />
                         </TableCell>
                       </TableRow>
                     ))}
@@ -384,6 +402,10 @@ export function InboundClient({
                         <p className="font-medium break-words">
                           {formatReceiptDetails(receipt)}
                         </p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Docs</p>
+                        <AttachmentLinks attachments={receipt.attachments} />
                       </div>
                     </div>
                   </div>

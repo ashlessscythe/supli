@@ -29,6 +29,11 @@ vi.mock("@/lib/prisma", () => ({
       aggregate: vi.fn(),
       findMany: vi.fn(),
     },
+    fileAttachment: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+    },
   },
 }));
 
@@ -89,6 +94,9 @@ describe("stockMovementService.receive", () => {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
+    fileAttachment: {
+      create: vi.fn(),
+    },
   };
 
   beforeEach(() => {
@@ -127,6 +135,43 @@ describe("stockMovementService.receive", () => {
       name: "Balam Industries",
     } as never);
     tx.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 12 } });
+  });
+
+  it("stores receipt document blobs linked to the stock movement", async () => {
+    tx.fileAttachment.create.mockResolvedValue({
+      id: "file-1",
+      filename: "slip.png",
+      mimeType: "image/png",
+      size: 4,
+      category: "receipt",
+      createdAt: new Date(),
+    });
+
+    const result = await stockMovementService.receive(userId, {
+      supplyId: supply.id,
+      locationId: location.id,
+      quantity: 2,
+      attachments: [
+        {
+          filename: "slip.png",
+          mimeType: "image/png",
+          contentBase64: Buffer.from("png!").toString("base64"),
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    expect(tx.fileAttachment.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          filename: "slip.png",
+          mimeType: "image/png",
+          stockMovementId: "movement-1",
+          category: "receipt",
+          data: Buffer.from("png!"),
+        }),
+      })
+    );
   });
 
   it("records received stock and marks a fully received vendor reorder", async () => {

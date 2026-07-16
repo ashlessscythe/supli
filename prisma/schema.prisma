@@ -215,6 +215,7 @@ model StockMovement {
   supply          Supply            @relation(fields: [supplyId], references: [id])
   location        Location          @relation(fields: [locationId], references: [id])
   vendorReorder   VendorReorder?    @relation(fields: [vendorReorderId], references: [id])
+  attachments     FileAttachment[]
   createdAt       DateTime          @default(now())
 
   @@index([supplyId, createdAt])
@@ -237,6 +238,7 @@ model VendorReorder {
   vendor           Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   createdBy        User                @relation(fields: [createdById], references: [id])
   stockMovements   StockMovement[]
+  attachments      FileAttachment[]
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -259,17 +261,24 @@ model Notification {
 }
 
 model FileAttachment {
-  id           String   @id @default(cuid())
-  supplyId     String?
-  filename     String
-  mimeType     String
-  size         Int
-  storageKey   String
-  category     String
-  uploadedById String
-  createdAt    DateTime @default(now())
+  id              String         @id @default(cuid())
+  supplyId        String?
+  stockMovementId String?
+  vendorReorderId String?
+  filename        String
+  mimeType        String
+  size            Int
+  data            Bytes?
+  storageKey      String?
+  category        String
+  uploadedById    String
+  createdAt       DateTime       @default(now())
+  stockMovement   StockMovement? @relation(fields: [stockMovementId], references: [id], onDelete: Cascade)
+  vendorReorder   VendorReorder? @relation(fields: [vendorReorderId], references: [id], onDelete: Cascade)
 
   @@index([supplyId])
+  @@index([stockMovementId])
+  @@index([vendorReorderId])
 }
 
 enum StockMovementType {
