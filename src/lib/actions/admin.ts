@@ -13,3 +13,7 @@ export async function getSupplyChartData() {
 export async function getStats() {
   return adminService.getStats();
 }
+
+export async function getLowStockItems(limit = 5) {
+  return adminService.getLowStockItems(limit);
+}

@@ -3,12 +3,14 @@ import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { Package, AlertTriangle } from "lucide-react";
+import { LowStockCard } from "@/components/dashboard/low-stock-card";
+import { Package } from "lucide-react";
 import { forecastService } from "@/server/services/forecast.service";
 import {
   getReceiptsChartData,
   getSupplyChartData,
   getStats,
+  getLowStockItems,
 } from "@/lib/actions/admin";
 
 export default async function DashboardPage() {
@@ -22,13 +24,14 @@ export default async function DashboardPage() {
     redirect("/admin");
   }
 
-  const [stats, receiptsData, supplyData, metrics, depletion] =
+  const [stats, receiptsData, supplyData, metrics, depletion, lowStockItems] =
     await Promise.all([
       getStats(),
       getReceiptsChartData(),
       getSupplyChartData(),
       forecastService.getDashboardMetrics(),
       forecastService.getDepletionEstimates(),
+      getLowStockItems(5),
     ]);
 
   return (
@@ -52,20 +55,11 @@ export default async function DashboardPage() {
             <div className="text-2xl font-bold">{stats.totalSupplies}</div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Low Stock Items
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.lowStockItems}</div>
-            <p className="text-xs text-muted-foreground">
-              Items below minimum threshold
-            </p>
-          </CardContent>
-        </Card>
+        <LowStockCard
+          count={stats.lowStockItems}
+          items={lowStockItems}
+          suppliesHref="/dashboard/supplies"
+        />
       </div>
 
       <DashboardCharts

@@ -11,7 +11,7 @@ import { CheckoutDialog } from "@/components/inventory/checkout-dialog";
 export default async function SuppliesPage({
   searchParams,
 }: {
-  searchParams: { q?: string };
+  searchParams: { q?: string; stock?: string };
 }) {
   const session = await getServerSession(authOptions);
 
@@ -32,6 +32,12 @@ export default async function SuppliesPage({
     locations.find((location) => location.name === "Watchpoint Delta")?.id ??
     locations[0]?.id;
   const initialSearch = searchParams.q ?? "";
+  const initialStockFilter =
+    searchParams.stock === "low" ||
+    searchParams.stock === "ok" ||
+    searchParams.stock === "all"
+      ? searchParams.stock
+      : "all";
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -51,6 +57,7 @@ export default async function SuppliesPage({
           data={supplies || []}
           isAdmin={session.user.role === "ADMIN"}
           initialSearch={initialSearch}
+          initialStockFilter={initialStockFilter}
           locations={locations}
         />
       </Suspense>
