@@ -12,6 +12,7 @@ import {
   MapPin,
   Truck,
   PackagePlus,
+  Search,
 } from "lucide-react";
 import { adminNavigationItems } from "@/lib/nav-config";
 
@@ -19,6 +20,7 @@ const adminIcons = {
   Overview: BarChart3,
   Supplies: Package,
   Inbound: PackagePlus,
+  History: Search,
   Locations: MapPin,
   Vendors: Truck,
   Users: Users,
