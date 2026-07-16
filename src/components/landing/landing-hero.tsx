@@ -26,7 +26,7 @@ export function LandingHero({ session }: LandingHeroProps) {
             Track supplies.
           </span>
           <br />
-          <span className="text-foreground">Approve requests.</span>
+          <span className="text-foreground">Track orders.</span>
           <br />
           <span className="bg-gradient-to-r from-blue-600 via-primary to-blue-600 bg-clip-text text-transparent">
             Run the floor.
@@ -34,7 +34,7 @@ export function LandingHero({ session }: LandingHeroProps) {
         </h1>
 
         <p className="mt-8 max-w-2xl text-lg text-muted-foreground sm:text-xl">
-          Real-time stock levels, supply requests, and vendor details like lead
+          Real-time stock levels, purchase orders, and vendor details like lead
           time and MOQ — plus a barcode kiosk for walk-up checkout. Built for
           the storeroom, ready to scale as you grow.
         </p>

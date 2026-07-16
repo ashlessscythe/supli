@@ -24,9 +24,9 @@ const features = [
   },
   {
     icon: ClipboardList,
-    title: "Request workflow",
+    title: "Inbound workflow",
     description:
-      "Staff submit supply requests; admins approve or deny with full status tracking from pending to fulfilled.",
+      "Log purchase orders, track open quantities, and receive arriving stock into the right location.",
   },
   {
     icon: ScanLine,
@@ -44,7 +44,7 @@ const features = [
     icon: BarChart3,
     title: "Dashboards & alerts",
     description:
-      "Admin overview charts, depletion forecasting signals, and an in-app notification bell for low stock and request updates.",
+      "Admin overview charts, depletion forecasting signals, and an in-app notification bell for low-stock alerts.",
   },
   {
     icon: Shield,
@@ -64,7 +64,7 @@ export function LandingFeatures() {
               Supplies, stock, and vendors
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Inventory, requests, and purchasing context in one place — from
+              Inventory, receiving, and purchasing context in one place — from
               back office to the floor.
             </p>
           </div>

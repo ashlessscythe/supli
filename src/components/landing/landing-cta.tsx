@@ -27,7 +27,7 @@ export function LandingCta({ session }: LandingCtaProps) {
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               {isLoggedIn
-                ? "Jump back into your dashboard to manage supplies, requests, and alerts."
+                ? "Jump back into your dashboard to manage supplies, inbound orders, and alerts."
                 : "Create an account and get admin approval to start tracking supplies, vendors, and stock levels."}
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">

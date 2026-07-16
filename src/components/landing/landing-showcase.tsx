@@ -5,7 +5,7 @@ import { Reveal } from "@/components/landing/reveal";
 const screenshots = [
   {
     src: "/landing/dashboard.png",
-    alt: "Admin dashboard with stats, request trends, and low-stock visibility",
+    alt: "Admin dashboard with inventory stats and low-stock visibility",
     title: "Admin dashboard",
     description: "Stats, trends, and low-stock visibility at a glance.",
   },
@@ -16,10 +16,10 @@ const screenshots = [
     description: "Click any item for vendors, lead times, and receipt history.",
   },
   {
-    src: "/landing/request_mobile.png",
-    alt: "Supply request workflow on mobile with pending and approved statuses",
-    title: "Supply requests",
-    description: "Staff submit; admins approve or deny.",
+    src: "/landing/supply_edit.png",
+    alt: "Supply editor with item details and inventory settings",
+    title: "Supply management",
+    description: "Keep item details and inventory settings up to date.",
   },
   {
     src: "/landing/kiosk.png",
@@ -31,13 +31,13 @@ const screenshots = [
     src: "/landing/notifications.png",
     alt: "In-app notification bell with unread badge for alerts",
     title: "Notifications",
-    description: "Low stock, requests, and registration alerts.",
+    description: "Low-stock and registration alerts.",
   },
   {
     src: "/landing/audit_log.png",
     alt: "Audit log table listing system actions, users, and timestamps",
     title: "Audit log",
-    description: "Full activity trail — receipts, requests, and consumption.",
+    description: "Full activity trail — receipts, adjustments, and consumption.",
   },
 ];
 
@@ -51,7 +51,7 @@ export function LandingShowcase() {
               See it in action
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              How teams manage supplies, requests, and floor consumption every
+              How teams manage supplies, inbound orders, and floor consumption every
               day.
             </p>
           </div>
