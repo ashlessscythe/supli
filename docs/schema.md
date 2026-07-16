@@ -27,7 +27,9 @@ Ledger for consume, receive, adjust, and transfer events. Supports badge attribu
 In-app notifications for low stock, reorders, and system events.
 
 ### FileAttachment
-Metadata for uploaded files (manuals, SDS, receipts) via swappable storage provider.
+Uploaded documents (receipt scans, PO photos) stored as DB blobs (max 1 MB),
+optionally linked to a `StockMovement` and/or `VendorReorder`. Legacy
+`storageKey` filesystem paths remain nullable for older rows.
 
 ### Request, AuditLog, SystemSetting
 Existing workflow and configuration models.

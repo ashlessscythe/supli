@@ -33,6 +33,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ClipboardList } from "lucide-react";
 import { logVendorReorder } from "@/lib/actions/stock-movement";
+import { DocumentUploadField } from "@/components/inventory/document-upload-field";
+import { readFilesAsAttachments } from "@/lib/read-files-as-attachments";
 
 const logOrderSchema = z.object({
   supplyId: z.string().min(1, "Supply is required"),
@@ -75,6 +77,7 @@ export function LogOrderDialog({
   const router = useRouter();
   const [internalOpen, setInternalOpen] = useState(false);
   const [isLogging, setIsLogging] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
 
   const isControlled = open !== undefined;
   const dialogOpen = isControlled ? open : internalOpen;
@@ -104,6 +107,7 @@ export function LogOrderDialog({
         externalPoNumber: "",
         notes: "",
       });
+      setFiles([]);
     }
   };
 
@@ -117,12 +121,19 @@ export function LogOrderDialog({
   const onSubmit = async (data: LogOrderFormData) => {
     try {
       setIsLogging(true);
+      const fileResult = await readFilesAsAttachments(files);
+      if (fileResult.error) {
+        toast.error(fileResult.error);
+        return;
+      }
+
       const result = await logVendorReorder({
         supplyId: data.supplyId,
         quantity: data.quantity,
         vendorId: data.vendorId || undefined,
         externalPoNumber: data.externalPoNumber || undefined,
         notes: data.notes || undefined,
+        attachments: fileResult.attachments,
       });
 
       if (!result.success) {
@@ -141,6 +152,7 @@ export function LogOrderDialog({
         externalPoNumber: "",
         notes: "",
       });
+      setFiles([]);
       setDialogOpen(false);
       router.refresh();
     } catch {
@@ -266,6 +278,13 @@ export function LogOrderDialog({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <DocumentUploadField
+              files={files}
+              onChange={setFiles}
+              disabled={isLogging}
+              label="PO / packing slip (optional)"
             />
 
             <div className="flex justify-end gap-2">

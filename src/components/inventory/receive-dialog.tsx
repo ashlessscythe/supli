@@ -35,6 +35,8 @@ import { Label } from "@/components/ui/label";
 import { PackagePlus } from "lucide-react";
 import { useStockMovements } from "@/hooks/use-stock-movements";
 import { createSupply } from "@/lib/actions/supply";
+import { DocumentUploadField } from "@/components/inventory/document-upload-field";
+import { readFilesAsAttachments } from "@/lib/read-files-as-attachments";
 
 const receiveFormSchema = z.object({
   supplyId: z.string().optional(),
@@ -100,6 +102,7 @@ export function ReceiveDialog({
 }: ReceiveDialogProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [createNew, setCreateNew] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const { handleReceive, isLoading } = useStockMovements();
 
   const isControlled = open !== undefined;
@@ -110,7 +113,10 @@ export function ReceiveDialog({
     } else {
       setInternalOpen(next);
     }
-    if (!next) setCreateNew(false);
+    if (!next) {
+      setCreateNew(false);
+      setFiles([]);
+    }
   };
 
   const defaultLocationId = locations[0]?.id ?? "";
@@ -187,6 +193,12 @@ export function ReceiveDialog({
       return;
     }
 
+    const fileResult = await readFilesAsAttachments(files);
+    if (fileResult.error) {
+      toast.error(fileResult.error);
+      return;
+    }
+
     const success = await handleReceive({
       supplyId,
       quantity: data.quantity,
@@ -195,6 +207,7 @@ export function ReceiveDialog({
       vendorId: data.vendorId || undefined,
       externalPoRef: data.externalPoRef || undefined,
       vendorReorderId: data.vendorReorderId || undefined,
+      attachments: fileResult.attachments,
     });
 
     if (success) {
@@ -208,6 +221,7 @@ export function ReceiveDialog({
         vendorReorderId: "",
       });
       setCreateNew(false);
+      setFiles([]);
       setDialogOpen(false);
     }
   };
@@ -461,6 +475,12 @@ export function ReceiveDialog({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <DocumentUploadField
+              files={files}
+              onChange={setFiles}
+              disabled={isLoading}
             />
 
             <div className="flex justify-end gap-2">

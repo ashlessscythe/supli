@@ -1,4 +1,20 @@
 import { z } from "zod";
+import {
+  ALLOWED_ATTACHMENT_MIME_TYPES,
+  MAX_ATTACHMENTS_PER_UPLOAD,
+  MAX_ATTACHMENT_BYTES,
+} from "@/lib/file-attachment";
+
+export const attachmentInputSchema = z.object({
+  filename: z.string().min(1, "Filename is required"),
+  mimeType: z.enum(ALLOWED_ATTACHMENT_MIME_TYPES),
+  contentBase64: z.string().min(1, "File content is required"),
+});
+
+export const attachmentsFieldSchema = z
+  .array(attachmentInputSchema)
+  .max(MAX_ATTACHMENTS_PER_UPLOAD, `At most ${MAX_ATTACHMENTS_PER_UPLOAD} files`)
+  .optional();
 
 export const receiveStockSchema = z.object({
   supplyId: z.string().min(1, "Supply is required"),
@@ -8,6 +24,7 @@ export const receiveStockSchema = z.object({
   vendorId: z.string().optional(),
   externalPoRef: z.string().optional(),
   vendorReorderId: z.string().optional(),
+  attachments: attachmentsFieldSchema,
 });
 
 export const adjustStockSchema = z.object({
@@ -23,6 +40,7 @@ export const logVendorReorderSchema = z.object({
   vendorId: z.string().optional(),
   externalPoNumber: z.string().optional(),
   notes: z.string().optional(),
+  attachments: attachmentsFieldSchema,
 });
 
 export const updateVendorReorderSchema = z.object({
