@@ -1,6 +1,6 @@
 # Supli Mart
 
-Inventory management for tracking supplies, logging inbound corporate POs, receiving stock, and recording consumption — with vendor lead times, MOQ, and a barcode **kiosk** for walk-up checkout.
+Inventory management for tracking supplies, logging inbound corporate POs, receiving stock (with photo/document attachments), searching history, and recording consumption — with vendor lead times, MOQ, barcode **QR** codes, and a **kiosk** for walk-up checkout.
 
 Built with **Next.js 14** (App Router), **Prisma**, **PostgreSQL (Neon)**, **NextAuth**, and **shadcn/ui**.
 
@@ -20,11 +20,29 @@ Click any supply to see on-hand quantity, stock by location, vendor lead times a
 
 ![Supply details](docs/images/supply_details_popup.png)
 
+### QR code
+
+From any supply detail popup, open **Show QR** to scan, copy, or download the item barcode as a QR image.
+
+![Supply QR code](docs/images/supply_qr_popup.png)
+
 ### Inbound
 
 Staff receive stock or log a PO placed in the corporate system from one **Inbound** surface. Admins can also approve or deny leftover supply requests.
 
 ![Inbound / requests (mobile)](docs/images/request_mobile.png)
+
+### Receive attachments
+
+When receiving stock, attach a scan, photo, or PDF (invoice, packing slip, etc.) alongside optional notes.
+
+![Inbound receive upload](docs/images/inbound_receive_upload.png)
+
+### History
+
+Search past purchase orders, receipts, and consumptions by PO #, supply, vendor, notes, user, type, status, or date range.
+
+![History search](docs/images/history_search.png)
 
 ### Kiosk mode
 
@@ -50,8 +68,9 @@ Searchable activity trail for stock receipts, inbound orders, leftover request a
 
 | Area | What you get |
 |------|----------------|
-| **Inventory** | CRUD for supplies; barcode & SKU; min thresholds; item detail view with vendors & history; search |
-| **Inbound** | Receive stock, log corporate POs, track open orders; admin approve/deny leftover requests |
+| **Inventory** | CRUD for supplies; barcode & SKU; QR from item detail; min thresholds; vendors & activity; search |
+| **Inbound** | Receive stock (with photo/document attachments), log corporate POs, track open orders; admin approve/deny leftover requests |
+| **History** | Search past POs, receipts, and consumptions by text, type, status, and date |
 | **Kiosk** | PIN-gated barcode scan to consume stock (stock movement ledger) |
 | **Locations** | Warehouses, cages, tool rooms, and per-location stock levels |
 | **Vendors** | Vendor catalog with cost, lead time, MOQ, preferred links |
@@ -140,7 +159,8 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 | `/forgot-password` | Request password reset email |
 | `/dashboard` | Staff overview (admins are sent to `/admin`) |
 | `/dashboard/supplies` | Browse inventory |
-| `/dashboard/inbound` | Receive stock, log corporate POs, review open orders |
+| `/dashboard/inbound` | Receive stock (optional attachments), log corporate POs, review open orders |
+| `/dashboard/history` | Search past orders, receipts, and consumptions |
 | `/kiosk` | Floor consume flow (PIN) |
 | `/admin` | Admin dashboard & management (users, supplies, locations, vendors, inbound, audit, settings) |
 
