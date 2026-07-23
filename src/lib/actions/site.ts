@@ -115,3 +115,16 @@ export async function assignUserToSite(
     return { success: false as const, error: "Unauthorized" };
   }
 }
+
+export async function listAssignableUsers() {
+  try {
+    await requireSuperAdmin();
+    const { userRepository } = await import(
+      "@/server/repositories/user.repository"
+    );
+    const users = await userRepository.findAllForSuperAdmin();
+    return { success: true as const, data: users };
+  } catch {
+    return { success: false as const, error: "Unauthorized" };
+  }
+}

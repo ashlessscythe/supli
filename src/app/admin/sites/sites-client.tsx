@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  assignUserToSite,
   createSite,
   deleteSite,
   switchActiveSite,
@@ -25,11 +26,22 @@ type SiteRow = {
   };
 };
 
+type UserRow = {
+  id: string;
+  username: string;
+  email: string | null;
+  role: string;
+  siteId: string | null;
+  siteName: string | null;
+};
+
 export function SitesClient({
   initialSites,
+  initialUsers,
   activeSiteId,
 }: {
   initialSites: SiteRow[];
+  initialUsers: UserRow[];
   activeSiteId: string | null;
 }) {
   const router = useRouter();
@@ -37,6 +49,11 @@ export function SitesClient({
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [assignUserId, setAssignUserId] = useState("");
+  const [assignSiteId, setAssignSiteId] = useState("");
+  const [assignRole, setAssignRole] = useState<"ADMIN" | "STAFF" | "PENDING">(
+    "STAFF"
+  );
 
   function refresh() {
     router.refresh();
@@ -99,18 +116,40 @@ export function SitesClient({
     refresh();
   }
 
+  async function handleAssign(e: React.FormEvent) {
+    e.preventDefault();
+    if (!assignUserId || !assignSiteId) return;
+    setError(null);
+    const result = await assignUserToSite(
+      assignUserId,
+      assignSiteId,
+      assignRole
+    );
+    if (!result.success) {
+      setError(
+        typeof result.error === "string"
+          ? result.error
+          : "Failed to assign user"
+      );
+      return;
+    }
+    refresh();
+  }
+
+  const assignableUsers = initialUsers.filter(
+    (user) => user.role !== "SUPERADMIN"
+  );
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Sites</h2>
         <p className="text-muted-foreground">
-          Manage sites and switch the active site for administration
+          Manage sites, assign people, and switch the active site
         </p>
       </div>
 
-      {error && (
-        <p className="text-sm text-destructive">{error}</p>
-      )}
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <Card>
         <CardHeader>
@@ -135,6 +174,63 @@ export function SitesClient({
             />
             <Button type="submit" disabled={pending || !name || !slug}>
               Create
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Assign user to site</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={(e) => startTransition(() => void handleAssign(e))}
+            className="grid gap-3 sm:grid-cols-4"
+          >
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={assignUserId}
+              onChange={(e) => setAssignUserId(e.target.value)}
+              required
+            >
+              <option value="">Select user</option>
+              {assignableUsers.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.username}
+                  {user.siteName ? ` (${user.siteName})` : ""}
+                </option>
+              ))}
+            </select>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={assignSiteId}
+              onChange={(e) => setAssignSiteId(e.target.value)}
+              required
+            >
+              <option value="">Select site</option>
+              {initialSites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name}
+                </option>
+              ))}
+            </select>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={assignRole}
+              onChange={(e) =>
+                setAssignRole(e.target.value as "ADMIN" | "STAFF" | "PENDING")
+              }
+            >
+              <option value="ADMIN">Admin</option>
+              <option value="STAFF">Staff</option>
+              <option value="PENDING">Pending</option>
+            </select>
+            <Button
+              type="submit"
+              disabled={pending || !assignUserId || !assignSiteId}
+            >
+              Assign
             </Button>
           </form>
         </CardContent>
@@ -167,7 +263,9 @@ export function SitesClient({
                 <Button
                   size="sm"
                   variant={activeSiteId === site.id ? "secondary" : "default"}
-                  disabled={pending || activeSiteId === site.id || !site.isActive}
+                  disabled={
+                    pending || activeSiteId === site.id || !site.isActive
+                  }
                   onClick={() =>
                     startTransition(() => void handleSwitch(site.id))
                   }
