@@ -3,6 +3,8 @@ import { StockMovementType, VendorReorderStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { inventoryHistoryService } from "@/server/services/inventory-history.service";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     vendorReorder: { findMany: vi.fn() },
@@ -67,7 +69,9 @@ describe("inventoryHistoryService.search", () => {
       { id: "u2", username: "staff" },
     ] as never);
 
-    const result = await inventoryHistoryService.search({ kind: "all" });
+    const result = await inventoryHistoryService.search(SITE_ID, {
+      kind: "all",
+    });
 
     expect(result.success).toBe(true);
     if (!result.success) return;
@@ -88,6 +92,11 @@ describe("inventoryHistoryService.search", () => {
       externalPoNumber: "PO-100",
       status: VendorReorderStatus.ORDERED,
     });
+    expect(prisma.vendorReorder.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ supply: { siteId: SITE_ID } }),
+      })
+    );
   });
 
   it("searches only orders when an order status filter is set", async () => {
@@ -105,7 +114,7 @@ describe("inventoryHistoryService.search", () => {
       },
     ] as never);
 
-    const result = await inventoryHistoryService.search({
+    const result = await inventoryHistoryService.search(SITE_ID, {
       kind: "all",
       status: VendorReorderStatus.RECEIVED,
     });
@@ -119,13 +128,14 @@ describe("inventoryHistoryService.search", () => {
   });
 
   it("limits movement search to consumptions when kind=consumption", async () => {
-    await inventoryHistoryService.search({ kind: "consumption" });
+    await inventoryHistoryService.search(SITE_ID, { kind: "consumption" });
 
     expect(prisma.vendorReorder.findMany).not.toHaveBeenCalled();
     expect(prisma.stockMovement.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           type: { in: [StockMovementType.CONSUME] },
+          supply: { siteId: SITE_ID },
         }),
       })
     );

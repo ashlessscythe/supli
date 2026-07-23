@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Role } from "@prisma/client";
+import { Role, TokenType } from "@prisma/client";
 import bcrypt from "bcrypt";
 import {
   isIntegrationEnabled,

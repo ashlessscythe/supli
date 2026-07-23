@@ -7,6 +7,8 @@ import { supplyRepository } from "@/server/repositories/supply.repository";
 import { stockLevelRepository } from "@/server/repositories/stock-level.repository";
 import { notificationService } from "@/server/services/notification.service";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
@@ -18,11 +20,13 @@ vi.mock("@/lib/prisma", () => ({
     },
     vendorReorder: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       update: vi.fn(),
     },
     vendor: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
     },
     stockMovement: {
@@ -121,19 +125,23 @@ describe("stockMovementService.receive", () => {
       quantity: 12,
       status: VendorReorderStatus.ORDERED,
     });
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+    const openReorder = {
       id: "reorder-1",
       supplyId: supply.id,
       quantity: 12,
       status: VendorReorderStatus.ORDERED,
-    } as never);
+    };
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue(openReorder as never);
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue(openReorder as never);
     vi.mocked(prisma.stockMovement.aggregate).mockResolvedValue({
       _sum: { quantity: 0 },
     } as never);
-    vi.mocked(prisma.vendor.findUnique).mockResolvedValue({
+    const vendor = {
       id: "vendor-1",
       name: "Balam Industries",
-    } as never);
+    };
+    vi.mocked(prisma.vendor.findUnique).mockResolvedValue(vendor as never);
+    vi.mocked(prisma.vendor.findFirst).mockResolvedValue(vendor as never);
     tx.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 12 } });
   });
 
@@ -147,7 +155,7 @@ describe("stockMovementService.receive", () => {
       createdAt: new Date(),
     });
 
-    const result = await stockMovementService.receive(userId, {
+    const result = await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 2,
@@ -175,7 +183,7 @@ describe("stockMovementService.receive", () => {
   });
 
   it("records received stock and marks a fully received vendor reorder", async () => {
-    const result = await stockMovementService.receive(userId, {
+    const result = await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 12,
@@ -220,6 +228,7 @@ describe("stockMovementService.receive", () => {
       data: {
         userId,
         action: "Received 12 Nitrile gloves at Receiving dock",
+        siteId: SITE_ID,
       },
     });
   });
@@ -227,7 +236,7 @@ describe("stockMovementService.receive", () => {
   it("rejects receiving stock at an inactive location", async () => {
     vi.mocked(locationRepository.findActiveById).mockResolvedValue(null as never);
 
-    const result = await stockMovementService.receive(userId, {
+    const result = await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: "inactive-loc",
       quantity: 4,
@@ -247,7 +256,7 @@ describe("stockMovementService.receive", () => {
       quantity: 8,
     });
 
-    await stockMovementService.receive(userId, {
+    await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 4,
@@ -266,7 +275,7 @@ describe("stockMovementService.receive", () => {
   });
 
   it("marks a vendor reorder as partially received when quantity is short", async () => {
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue({
       id: "reorder-1",
       supplyId: supply.id,
       quantity: 20,
@@ -283,7 +292,7 @@ describe("stockMovementService.receive", () => {
     });
     tx.stockMovement.aggregate.mockResolvedValue({ _sum: { quantity: 8 } });
 
-    await stockMovementService.receive(userId, {
+    await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 8,
@@ -300,14 +309,14 @@ describe("stockMovementService.receive", () => {
   });
 
   it("rejects linking a receipt to an open order for a different supply", async () => {
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue({
       id: "reorder-1",
       supplyId: "other-supply",
       quantity: 12,
       status: VendorReorderStatus.ORDERED,
     } as never);
 
-    const result = await stockMovementService.receive(userId, {
+    const result = await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 4,
@@ -322,7 +331,7 @@ describe("stockMovementService.receive", () => {
   });
 
   it("rejects receiving more than the remaining quantity on a linked open order", async () => {
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue({
       id: "reorder-1",
       supplyId: supply.id,
       quantity: 20,
@@ -332,7 +341,7 @@ describe("stockMovementService.receive", () => {
       _sum: { quantity: 15 },
     } as never);
 
-    const result = await stockMovementService.receive(userId, {
+    const result = await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 8,
@@ -349,9 +358,9 @@ describe("stockMovementService.receive", () => {
   });
 
   it("rejects linking a receipt when the open order is not found", async () => {
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue(null);
 
-    const result = await stockMovementService.receive(userId, {
+    const result = await stockMovementService.receive(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       quantity: 4,
@@ -401,7 +410,7 @@ describe("stockMovementService.consume", () => {
       quantity: 10,
     } as never);
 
-    const result = await stockMovementService.consume(userId, {
+    const result = await stockMovementService.consume(userId, SITE_ID, {
       barcode: "PAPR-TWL-123",
       quantity: 3,
       locationId: location.id,
@@ -410,7 +419,7 @@ describe("stockMovementService.consume", () => {
 
     expect(result.success).toBe(true);
     expect(prisma.supply.findFirst).toHaveBeenCalledWith({
-      where: { barcode: "PAPRTWL123" },
+      where: { barcode: "PAPRTWL123", siteId: SITE_ID },
     });
     expect(tx.stockLevel.update).toHaveBeenCalledWith({
       where: {
@@ -441,7 +450,7 @@ describe("stockMovementService.consume", () => {
       quantity: 2,
     } as never);
 
-    const result = await stockMovementService.consume(userId, {
+    const result = await stockMovementService.consume(userId, SITE_ID, {
       barcode: supply.barcode,
       quantity: 3,
       locationId: location.id,
@@ -456,7 +465,7 @@ describe("stockMovementService.consume", () => {
   it("rejects consumption when barcode does not match a supply", async () => {
     vi.mocked(prisma.supply.findFirst).mockResolvedValue(null as never);
 
-    const result = await stockMovementService.consume(userId, {
+    const result = await stockMovementService.consume(userId, SITE_ID, {
       barcode: "UNKNOWN",
       quantity: 1,
       locationId: location.id,
@@ -480,13 +489,14 @@ describe("stockMovementService.consume", () => {
       minimumThreshold: 5,
     } as never);
 
-    await stockMovementService.consume(userId, {
+    await stockMovementService.consume(userId, SITE_ID, {
       barcode: supply.barcode,
       quantity: 6,
       locationId: location.id,
     });
 
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+      SITE_ID,
       supply.name,
       4,
       supply.id
@@ -505,7 +515,7 @@ describe("stockMovementService.consume", () => {
       minimumThreshold: 5,
     } as never);
 
-    await stockMovementService.consume(userId, {
+    await stockMovementService.consume(userId, SITE_ID, {
       barcode: supply.barcode,
       quantity: 2,
       locationId: location.id,
@@ -569,7 +579,7 @@ describe("stockMovementService.consumeBulk", () => {
       }
     );
 
-    const result = await stockMovementService.consumeBulk(userId, {
+    const result = await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [
         { supplyId: supplyA.id, quantity: 1 },
         { supplyId: supplyB.id, quantity: 2 },
@@ -606,7 +616,7 @@ describe("stockMovementService.consumeBulk", () => {
       quantity: 6,
     } as never);
 
-    await stockMovementService.consumeBulk(userId, {
+    await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [
         { supplyId: supplyB.id, quantity: 2 },
         { supplyId: supplyB.id, quantity: 2 },
@@ -646,7 +656,7 @@ describe("stockMovementService.consumeBulk", () => {
       return [{ quantity: 10 }] as never;
     }) as never);
 
-    const result = await stockMovementService.consumeBulk(userId, {
+    const result = await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [
         { supplyId: supplyA.id, quantity: 1 },
         { supplyId: supplyB.id, quantity: 2 },
@@ -685,7 +695,7 @@ describe("stockMovementService.consumeBulk", () => {
       }
     );
 
-    await stockMovementService.consumeBulk(userId, {
+    await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [
         { supplyId: supplyA.id, quantity: 1 },
         { supplyId: supplyB.id, quantity: 2 },
@@ -694,6 +704,8 @@ describe("stockMovementService.consumeBulk", () => {
 
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledTimes(1);
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+
+      SITE_ID,
       supplyA.name,
       2,
       supplyA.id
@@ -726,7 +738,7 @@ describe("stockMovementService.consumeBulk", () => {
       quantity: 5,
     } as never);
 
-    const result = await stockMovementService.consumeBulk(userId, {
+    const result = await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [{ supplyId: supplyB.id, quantity: 1 }],
     });
 
@@ -744,7 +756,7 @@ describe("stockMovementService.consumeBulk", () => {
     vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
     vi.mocked(locationRepository.findActiveById).mockResolvedValue(null as never);
 
-    const result = await stockMovementService.consumeBulk(userId, {
+    const result = await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [{ supplyId: supplyB.id, quantity: 1 }],
       locationId: "inactive-loc",
     });
@@ -768,7 +780,7 @@ describe("stockMovementService.consumeBulk", () => {
       quantity: 8,
     } as never);
 
-    const result = await stockMovementService.consumeBulk(userId, {
+    const result = await stockMovementService.consumeBulk(userId, SITE_ID, {
       items: [{ supplyId: supplyB.id, quantity: 11 }],
       locationId: location.id,
     });
@@ -793,10 +805,11 @@ describe("stockMovementService.getCheckoutStockLevels", () => {
       { supplyId: "supply-a", quantity: 8 },
     ] as never);
 
-    const result = await stockMovementService.getCheckoutStockLevels("loc-1", [
-      "supply-a",
-      "supply-b",
-    ]);
+    const result = await stockMovementService.getCheckoutStockLevels(
+      SITE_ID,
+      "loc-1",
+      ["supply-a", "supply-b"]
+    );
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -845,7 +858,7 @@ describe("stockMovementService.adjust", () => {
   });
 
   it("records a cycle-count adjustment and alerts admins when stock is low", async () => {
-    const result = await stockMovementService.adjust(userId, {
+    const result = await stockMovementService.adjust(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       newQuantity: 4,
@@ -870,6 +883,8 @@ describe("stockMovementService.adjust", () => {
       },
     });
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+
+      SITE_ID,
       supply.name,
       4,
       supply.id
@@ -877,7 +892,7 @@ describe("stockMovementService.adjust", () => {
   });
 
   it("rejects adjustment when quantity is unchanged", async () => {
-    const result = await stockMovementService.adjust(userId, {
+    const result = await stockMovementService.adjust(userId, SITE_ID, {
       supplyId: supply.id,
       locationId: location.id,
       newQuantity: 10,
@@ -909,7 +924,7 @@ describe("stockMovementService.updateVendorReorder", () => {
   });
 
   it("updates an open order when quantity is still above received amount", async () => {
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue({
       id: "reorder-1",
       supplyId: "supply-1",
       quantity: 20,
@@ -927,6 +942,7 @@ describe("stockMovementService.updateVendorReorder", () => {
 
     const result = await stockMovementService.updateVendorReorder(
       userId,
+      SITE_ID,
       "reorder-1",
       {
         quantity: 25,
@@ -948,7 +964,7 @@ describe("stockMovementService.updateVendorReorder", () => {
   });
 
   it("rejects reducing quantity below what has already been received", async () => {
-    vi.mocked(prisma.vendorReorder.findUnique).mockResolvedValue({
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue({
       id: "reorder-1",
       supplyId: "supply-1",
       quantity: 20,
@@ -959,6 +975,7 @@ describe("stockMovementService.updateVendorReorder", () => {
 
     const result = await stockMovementService.updateVendorReorder(
       userId,
+      SITE_ID,
       "reorder-1",
       { quantity: 10 }
     );

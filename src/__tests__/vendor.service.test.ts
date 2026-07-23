@@ -2,15 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { vendorService } from "@/server/services/vendor.service";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
     vendor: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
     },
     supply: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
     itemVendor: {
       findUnique: vi.fn(),
@@ -43,11 +45,11 @@ describe("vendorService.update", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
       operation(tx as never)
     );
-    vi.mocked(prisma.vendor.findUnique).mockResolvedValue(existing as never);
+    vi.mocked(prisma.vendor.findFirst).mockResolvedValue(existing as never);
   });
 
   it("deactivates a vendor when isActive is false", async () => {
-    const result = await vendorService.update(userId, {
+    const result = await vendorService.update(userId, SITE_ID, {
       id: existing.id,
       name: existing.name,
       isActive: false,
@@ -65,6 +67,7 @@ describe("vendorService.update", () => {
       data: {
         userId,
         action: `Updated vendor: ${existing.name}`,
+        siteId: SITE_ID,
       },
     });
   });
@@ -80,11 +83,11 @@ describe("vendorService.list", () => {
       { id: "vendor-1", name: "Active Vendor", isActive: true },
     ] as never);
 
-    const result = await vendorService.list();
+    const result = await vendorService.list(SITE_ID);
 
     expect(result.success).toBe(true);
     expect(prisma.vendor.findMany).toHaveBeenCalledWith({
-      where: { isActive: true },
+      where: { siteId: SITE_ID, isActive: true },
       orderBy: { name: "asc" },
       include: { _count: { select: { itemVendors: true } } },
     });
@@ -102,10 +105,11 @@ describe("vendorService.listAll", () => {
       { id: "vendor-2", name: "Inactive Vendor", isActive: false },
     ] as never);
 
-    const result = await vendorService.listAll();
+    const result = await vendorService.listAll(SITE_ID);
 
     expect(result.success).toBe(true);
     expect(prisma.vendor.findMany).toHaveBeenCalledWith({
+      where: { siteId: SITE_ID },
       orderBy: { name: "asc" },
       include: { _count: { select: { itemVendors: true } } },
     });
@@ -136,7 +140,7 @@ describe("vendorService.listItems", () => {
       },
     ] as never);
 
-    const result = await vendorService.listItems("vendor-1");
+    const result = await vendorService.listItems(SITE_ID, "vendor-1");
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -170,11 +174,11 @@ describe("vendorService.linkItem", () => {
     vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
       operation(tx as never)
     );
-    vi.mocked(prisma.supply.findUnique).mockResolvedValue({
+    vi.mocked(prisma.supply.findFirst).mockResolvedValue({
       id: supplyId,
       name: "Widget",
     } as never);
-    vi.mocked(prisma.vendor.findUnique).mockResolvedValue({
+    vi.mocked(prisma.vendor.findFirst).mockResolvedValue({
       id: vendorId,
       name: "Acme",
     } as never);
@@ -192,7 +196,7 @@ describe("vendorService.linkItem", () => {
   });
 
   it("creates a link and clears other preferred vendors", async () => {
-    const result = await vendorService.linkItem(vendorId, userId, {
+    const result = await vendorService.linkItem(vendorId, userId, SITE_ID, {
       supplyId,
       vendorSku: "SKU-1",
       isPreferred: true,
@@ -215,9 +219,9 @@ describe("vendorService.linkItem", () => {
   });
 
   it("returns an error when supply is missing", async () => {
-    vi.mocked(prisma.supply.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.supply.findFirst).mockResolvedValue(null);
 
-    const result = await vendorService.linkItem(vendorId, userId, { supplyId });
+    const result = await vendorService.linkItem(vendorId, userId, SITE_ID, { supplyId });
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -226,9 +230,9 @@ describe("vendorService.linkItem", () => {
   });
 
   it("returns an error when vendor is missing", async () => {
-    vi.mocked(prisma.vendor.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.vendor.findFirst).mockResolvedValue(null);
 
-    const result = await vendorService.linkItem(vendorId, userId, { supplyId });
+    const result = await vendorService.linkItem(vendorId, userId, SITE_ID, { supplyId });
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -242,7 +246,7 @@ describe("vendorService.linkItem", () => {
       vendorId,
     } as never);
 
-    const result = await vendorService.linkItem(vendorId, userId, { supplyId });
+    const result = await vendorService.linkItem(vendorId, userId, SITE_ID, { supplyId });
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -272,8 +276,8 @@ describe("vendorService.updateItemLink", () => {
     vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue({
       supplyId,
       vendorId,
-      supply: { name: "Widget" },
-      vendor: { name: "Acme" },
+      supply: { name: "Widget", siteId: SITE_ID },
+      vendor: { name: "Acme", siteId: SITE_ID },
     } as never);
     tx.itemVendor.update.mockResolvedValue({
       supplyId,
@@ -288,7 +292,7 @@ describe("vendorService.updateItemLink", () => {
   });
 
   it("updates link metadata and clears other preferred vendors", async () => {
-    const result = await vendorService.updateItemLink(vendorId, userId, {
+    const result = await vendorService.updateItemLink(vendorId, userId, SITE_ID, {
       supplyId,
       vendorSku: "NEW-SKU",
       isPreferred: true,
@@ -330,7 +334,7 @@ describe("vendorService.updateItemLink", () => {
       cost: null,
     });
 
-    const result = await vendorService.updateItemLink(vendorId, userId, {
+    const result = await vendorService.updateItemLink(vendorId, userId, SITE_ID, {
       supplyId,
       leadTimeDays: null,
     });
@@ -346,7 +350,7 @@ describe("vendorService.updateItemLink", () => {
   });
 
   it("rejects non-positive leadTimeDays via zod", async () => {
-    const result = await vendorService.updateItemLink(vendorId, userId, {
+    const result = await vendorService.updateItemLink(vendorId, userId, SITE_ID, {
       supplyId,
       leadTimeDays: 0,
     });
@@ -358,7 +362,7 @@ describe("vendorService.updateItemLink", () => {
   it("returns an error when link is missing", async () => {
     vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue(null);
 
-    const result = await vendorService.updateItemLink(vendorId, userId, {
+    const result = await vendorService.updateItemLink(vendorId, userId, SITE_ID, {
       supplyId,
       cost: 1,
     });
@@ -390,14 +394,14 @@ describe("vendorService.unlinkItem", () => {
     vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue({
       supplyId,
       vendorId,
-      supply: { name: "Widget" },
-      vendor: { name: "Acme" },
+      supply: { name: "Widget", siteId: SITE_ID },
+      vendor: { name: "Acme", siteId: SITE_ID },
     } as never);
     tx.itemVendor.delete.mockResolvedValue({ supplyId, vendorId });
   });
 
   it("deletes an existing link", async () => {
-    const result = await vendorService.unlinkItem(vendorId, supplyId, userId);
+    const result = await vendorService.unlinkItem(vendorId, supplyId, userId, SITE_ID);
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -412,7 +416,7 @@ describe("vendorService.unlinkItem", () => {
   it("returns an error when link is missing", async () => {
     vi.mocked(prisma.itemVendor.findUnique).mockResolvedValue(null);
 
-    const result = await vendorService.unlinkItem(vendorId, supplyId, userId);
+    const result = await vendorService.unlinkItem(vendorId, supplyId, userId, SITE_ID);
 
     expect(result.success).toBe(false);
     if (!result.success) {

@@ -76,6 +76,7 @@ describe("authOptions jwt callback", () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       username: "promoted",
       role: Role.ADMIN,
+      siteId: "site-1",
     } as never);
 
     const token = await jwt({
@@ -124,7 +125,7 @@ describe("authOptions session callback", () => {
         user: { name: null, email: null, image: null },
         expires: "2099-01-01",
       },
-      token: { sub: "user-1", username: "walter", role: Role.ADMIN },
+      token: { sub: "user-1", username: "walter", role: Role.ADMIN, siteId: "site-1" },
       user: undefined as never,
       newSession: undefined,
       trigger: "update",
@@ -135,6 +136,7 @@ describe("authOptions session callback", () => {
         id: "user-1",
         username: "walter",
         role: Role.ADMIN,
+        siteId: "site-1",
       })
     );
   });

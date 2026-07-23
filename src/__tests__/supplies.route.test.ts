@@ -13,8 +13,10 @@ vi.mock("@/server/services/supply.service", () => ({
   },
 }));
 
+const SITE_ID = "site-1";
+
 const adminSession = {
-  user: { id: "admin-1", role: "ADMIN" },
+  user: { id: "admin-1", role: "ADMIN", siteId: SITE_ID },
 };
 
 function createDeleteRequest(id: string) {
@@ -40,7 +42,7 @@ describe("DELETE /api/supplies", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Cannot delete supply with pending requests");
-    expect(supplyService.delete).toHaveBeenCalledWith("admin-1", "supply-1");
+    expect(supplyService.delete).toHaveBeenCalledWith("admin-1", SITE_ID, "supply-1");
   });
 
   it("returns 400 when remaining quantity blocks deletion", async () => {
