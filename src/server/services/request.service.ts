@@ -11,11 +11,13 @@ import { executeWithAudit } from "@/server/audit";
 import { notificationService } from "@/server/services/notification.service";
 
 export const requestService = {
-  async list(userId: string, role: string) {
+  async list(userId: string, siteId: string, role: string) {
     try {
-      const showAll = await settingsService.shouldShowAllRequests();
-      const where =
-        role !== "ADMIN" && !showAll ? { userId } : {};
+      const showAll = await settingsService.shouldShowAllRequests(siteId);
+      const where = {
+        siteId,
+        ...(role !== "ADMIN" && !showAll ? { userId } : {}),
+      };
 
       const requests = await requestRepository.findMany(where);
       return success(requests);
@@ -24,11 +26,12 @@ export const requestService = {
     }
   },
 
-  async getById(userId: string, role: string, id: string) {
+  async getById(userId: string, siteId: string, role: string, id: string) {
     try {
-      const showAll = await settingsService.shouldShowAllRequests();
+      const showAll = await settingsService.shouldShowAllRequests(siteId);
       const where = {
         id,
+        siteId,
         ...(role !== "ADMIN" && !showAll ? { userId } : {}),
       };
 
@@ -40,10 +43,10 @@ export const requestService = {
     }
   },
 
-  async create(actorId: string, input: RequestInput) {
+  async create(actorId: string, siteId: string, input: RequestInput) {
     try {
       const data = requestSchema.parse(input);
-      const supply = await supplyRepository.findById(data.supplyId);
+      const supply = await supplyRepository.findById(data.supplyId, siteId);
 
       if (!supply) return failure("Supply not found");
       if (data.quantity > supply.quantity) {
@@ -56,12 +59,14 @@ export const requestService = {
         (tx) =>
           requestRepository.create(
             {
+              siteId,
               userId: actorId,
               supplyId: data.supplyId,
               quantity: data.quantity,
             },
             tx
-          )
+          ),
+        siteId
       );
 
       return success(request);
@@ -71,13 +76,18 @@ export const requestService = {
     }
   },
 
-  async updateStatus(actorId: string, id: string, status: RequestStatus) {
+  async updateStatus(
+    actorId: string,
+    siteId: string,
+    id: string,
+    status: RequestStatus
+  ) {
     try {
       if (![RequestStatus.APPROVED, RequestStatus.DENIED].includes(status as "APPROVED" | "DENIED")) {
         return failure("Invalid status");
       }
 
-      const existing = await requestRepository.findById(id);
+      const existing = await requestRepository.findById(id, siteId);
       if (!existing) return failure("Request not found");
       if (existing.status !== RequestStatus.PENDING) {
         return failure("Request has already been processed");
@@ -90,7 +100,7 @@ export const requestService = {
         return failure("Insufficient supply quantity");
       }
 
-      const { request, syncedSupply } = await executeWithAudit(
+      const syncedSupply = await executeWithAudit(
         actorId,
         `${status} request for ${existing.quantity} ${existing.supply.name}`,
         async (tx) => {
@@ -102,7 +112,7 @@ export const requestService = {
           } | null = null;
 
           if (status === RequestStatus.APPROVED) {
-            const location = await locationRepository.findDefault();
+            const location = await locationRepository.findDefault(siteId);
             if (!location) {
               throw new Error("No location configured");
             }
@@ -158,15 +168,23 @@ export const requestService = {
             );
           }
 
-          const updatedRequest = await requestRepository.updateStatus(
+          const result = await requestRepository.updateStatus(
             id,
+            siteId,
             status,
             tx
           );
+          if (result.count === 0) {
+            throw new Error("Request not found");
+          }
 
-          return { request: updatedRequest, syncedSupply: updatedSupply };
-        }
+          return updatedSupply;
+        },
+        siteId
       );
+
+      const request = await requestRepository.findById(id, siteId);
+      if (!request) return failure("Request not found");
 
       await notificationService.notifyRequestStatus(
         existing.userId,
@@ -178,6 +196,7 @@ export const requestService = {
       if (status === RequestStatus.APPROVED && syncedSupply) {
         if (syncedSupply.quantity <= syncedSupply.minimumThreshold) {
           await notificationService.notifyAdminsLowStock(
+            siteId,
             syncedSupply.name,
             syncedSupply.quantity,
             syncedSupply.id

@@ -77,10 +77,10 @@ async function clearOtherPreferredVendors(
 }
 
 export const vendorService = {
-  async list() {
+  async list(siteId: string) {
     try {
       const vendors = await prisma.vendor.findMany({
-        where: { isActive: true },
+        where: { siteId, isActive: true },
         orderBy: { name: "asc" },
         include: { _count: { select: { itemVendors: true } } },
       });
@@ -90,9 +90,10 @@ export const vendorService = {
     }
   },
 
-  async listAll() {
+  async listAll(siteId: string) {
     try {
       const vendors = await prisma.vendor.findMany({
+        where: { siteId },
         orderBy: { name: "asc" },
         include: { _count: { select: { itemVendors: true } } },
       });
@@ -102,11 +103,26 @@ export const vendorService = {
     }
   },
 
-  async listItems(vendorId: string) {
+  async listItems(siteId: string, vendorId: string) {
     try {
+      const vendor = await prisma.vendor.findFirst({
+        where: { id: vendorId, siteId },
+        select: { id: true },
+      });
+      if (!vendor) return failure("Vendor not found");
+
       const items = await prisma.itemVendor.findMany({
-        where: { vendorId },
-        include: { supply: { select: { id: true, name: true, quantity: true, minimumThreshold: true } } },
+        where: { vendorId, supply: { siteId } },
+        include: {
+          supply: {
+            select: {
+              id: true,
+              name: true,
+              quantity: true,
+              minimumThreshold: true,
+            },
+          },
+        },
         orderBy: { supply: { name: "asc" } },
       });
       return success(
@@ -128,7 +144,7 @@ export const vendorService = {
     }
   },
 
-  async create(userId: string, input: z.infer<typeof vendorSchema>) {
+  async create(userId: string, siteId: string, input: z.infer<typeof vendorSchema>) {
     try {
       const data = vendorSchema.parse(input);
       const vendor = await executeWithAudit(
@@ -137,12 +153,14 @@ export const vendorService = {
         (tx) =>
           tx.vendor.create({
             data: {
+              siteId,
               name: data.name,
               contact: data.contact,
               website: data.website || null,
               notes: data.notes,
             },
-          })
+          }),
+        siteId
       );
       return success(vendor);
     } catch (error) {
@@ -151,10 +169,16 @@ export const vendorService = {
     }
   },
 
-  async update(userId: string, input: z.infer<typeof vendorUpdateSchema>) {
+  async update(
+    userId: string,
+    siteId: string,
+    input: z.infer<typeof vendorUpdateSchema>
+  ) {
     try {
       const { id, ...fields } = vendorUpdateSchema.parse(input);
-      const existing = await prisma.vendor.findUnique({ where: { id } });
+      const existing = await prisma.vendor.findFirst({
+        where: { id, siteId },
+      });
       if (!existing) return failure("Vendor not found");
 
       const vendor = await executeWithAudit(
@@ -172,7 +196,8 @@ export const vendorService = {
                 ? { isActive: fields.isActive }
                 : {}),
             },
-          })
+          }),
+        siteId
       );
       return success(vendor);
     } catch (error) {
@@ -184,14 +209,15 @@ export const vendorService = {
   async linkItem(
     vendorId: string,
     userId: string,
+    siteId: string,
     input: z.infer<typeof itemVendorLinkSchema>
   ) {
     try {
       const data = itemVendorLinkSchema.parse(input);
 
       const [supply, vendor, existing] = await Promise.all([
-        prisma.supply.findUnique({ where: { id: data.supplyId } }),
-        prisma.vendor.findUnique({ where: { id: vendorId } }),
+        prisma.supply.findFirst({ where: { id: data.supplyId, siteId } }),
+        prisma.vendor.findFirst({ where: { id: vendorId, siteId } }),
         prisma.itemVendor.findUnique({
           where: {
             supplyId_vendorId: { supplyId: data.supplyId, vendorId },
@@ -223,7 +249,8 @@ export const vendorService = {
               cost: data.cost ?? null,
             },
           });
-        }
+        },
+        siteId
       );
 
       return success(mapItemVendorLink(link));
@@ -236,6 +263,7 @@ export const vendorService = {
   async updateItemLink(
     vendorId: string,
     userId: string,
+    siteId: string,
     input: z.infer<typeof itemVendorUpdateSchema>
   ) {
     try {
@@ -245,11 +273,17 @@ export const vendorService = {
           supplyId_vendorId: { supplyId: data.supplyId, vendorId },
         },
         include: {
-          supply: { select: { name: true } },
-          vendor: { select: { name: true } },
+          supply: { select: { name: true, siteId: true } },
+          vendor: { select: { name: true, siteId: true } },
         },
       });
-      if (!existing) return failure("Item link not found");
+      if (
+        !existing ||
+        existing.supply.siteId !== siteId ||
+        existing.vendor.siteId !== siteId
+      ) {
+        return failure("Item link not found");
+      }
 
       const link = await executeWithAudit(
         userId,
@@ -280,7 +314,8 @@ export const vendorService = {
               ...(data.cost !== undefined ? { cost: data.cost } : {}),
             },
           });
-        }
+        },
+        siteId
       );
 
       return success(mapItemVendorLink(link));
@@ -290,18 +325,29 @@ export const vendorService = {
     }
   },
 
-  async unlinkItem(vendorId: string, supplyId: string, userId: string) {
+  async unlinkItem(
+    vendorId: string,
+    supplyId: string,
+    userId: string,
+    siteId: string
+  ) {
     try {
       const existing = await prisma.itemVendor.findUnique({
         where: {
           supplyId_vendorId: { supplyId, vendorId },
         },
         include: {
-          supply: { select: { name: true } },
-          vendor: { select: { name: true } },
+          supply: { select: { name: true, siteId: true } },
+          vendor: { select: { name: true, siteId: true } },
         },
       });
-      if (!existing) return failure("Item link not found");
+      if (
+        !existing ||
+        existing.supply.siteId !== siteId ||
+        existing.vendor.siteId !== siteId
+      ) {
+        return failure("Item link not found");
+      }
 
       await executeWithAudit(
         userId,
@@ -311,7 +357,8 @@ export const vendorService = {
             where: {
               supplyId_vendorId: { supplyId, vendorId },
             },
-          })
+          }),
+        siteId
       );
 
       return success({ supplyId });
