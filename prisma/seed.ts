@@ -12,6 +12,10 @@ const { hideBin } = require("yargs/helpers");
 
 const prisma = new PrismaClient();
 
+// Keep in sync with src/lib/sites.ts (CommonJS seed cannot import that module cleanly).
+const MAIN_SITE_SLUG = "main";
+const MAIN_SITE_NAME = "Main";
+
 // Crockford-style alphabet (no ambiguous 0/O/1/I) for good-looking barcodes.
 const BARCODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -34,12 +38,12 @@ function generateBarcode() {
   return `${randomBarcodeGroup(4)}${randomBarcodeGroup(4)}${randomBarcodeGroup(4)}`;
 }
 
-// barcode is @unique, so guard against both in-memory and DB collisions.
-async function generateUniqueBarcode(used: Set<string>) {
+// barcode is unique per site, so guard against both in-memory and DB collisions.
+async function generateUniqueBarcode(used: Set<string>, siteId: string) {
   let code = generateBarcode();
   while (
     used.has(code) ||
-    (await prisma.supply.findUnique({ where: { barcode: code } }))
+    (await prisma.supply.findFirst({ where: { siteId, barcode: code } }))
   ) {
     code = generateBarcode();
   }
@@ -99,11 +103,82 @@ async function clearDatabase() {
     await prisma.itemType.deleteMany();
     await prisma.systemSetting.deleteMany();
     await prisma.user.deleteMany();
+    await prisma.site.deleteMany();
     console.log("✓ Database cleared");
   }
 }
 
-async function createDefaultUsers() {
+async function ensureMainSite() {
+  const kioskPasswordHash = await bcrypt.hash("kiosk1234", 10);
+  const existing = await prisma.site.findUnique({
+    where: { slug: MAIN_SITE_SLUG },
+  });
+
+  if (existing) {
+    const site = await prisma.site.update({
+      where: { id: existing.id },
+      data: {
+        name: MAIN_SITE_NAME,
+        isActive: true,
+        kioskPasswordHash: existing.kioskPasswordHash ?? kioskPasswordHash,
+      },
+    });
+    console.log(`✓ Main site ensured (${site.slug})`);
+    return site;
+  }
+
+  const site = await prisma.site.create({
+    data: {
+      name: MAIN_SITE_NAME,
+      slug: MAIN_SITE_SLUG,
+      isActive: true,
+      kioskPasswordHash,
+    },
+  });
+  console.log(`✓ Main site ensured (${site.slug})`);
+  return site;
+}
+
+async function ensureSuperAdmin() {
+  const email = process.env.SUPERADMIN_EMAIL?.trim();
+  if (!email) return;
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: { role: Role.SUPERADMIN, siteId: null },
+    });
+    console.log(`✓ Superadmin role ensured for ${email}`);
+    return;
+  }
+
+  const initialPassword = process.env.SUPERADMIN_INITIAL_PASSWORD;
+  if (!initialPassword) {
+    console.warn(
+      "SUPERADMIN_EMAIL is set but SUPERADMIN_INITIAL_PASSWORD is missing; skipping superadmin creation"
+    );
+    return;
+  }
+
+  const localPart = email.split("@")[0] ?? "superadmin";
+  const username =
+    localPart.replace(/[^a-zA-Z0-9._-]/g, "").toLowerCase() || "superadmin";
+
+  await prisma.user.create({
+    data: {
+      username,
+      email,
+      emailVerified: new Date(),
+      password: await bcrypt.hash(initialPassword, 10),
+      role: Role.SUPERADMIN,
+      siteId: null,
+    },
+  });
+  console.log(`✓ Superadmin created for ${email}`);
+}
+
+async function createDefaultUsers(siteId: string) {
   // Armored Core VI handlers & mercs. Admin-role users are handlers/command;
   // staff-role users are contracted Ravens (independent mercenaries).
   const defaultUsers = [
@@ -146,6 +221,7 @@ async function createDefaultUsers() {
       update: {
         email: user.email,
         emailVerified: new Date(),
+        siteId,
       },
       create: {
         username: user.username,
@@ -153,30 +229,32 @@ async function createDefaultUsers() {
         emailVerified: new Date(),
         password: hashedPassword,
         role: user.role,
+        siteId,
       },
     });
   }
 
-  // Dedicated kiosk system user. Kiosk consumption is attributed to this user
-  // for the audit trail. It is not meant to be logged into directly, so it gets
-  // a random, unknown password.
+  // Dedicated kiosk system user for the main site. Kiosk consumption is
+  // attributed to this user for the audit trail. It is not meant to be logged
+  // into directly, so it gets a random, unknown password.
   await prisma.user.upsert({
-    where: { username: "kiosk" },
-    update: {},
+    where: { username: "kiosk-main" },
+    update: { siteId },
     create: {
-      username: "kiosk",
+      username: "kiosk-main",
       password: await bcrypt.hash(
         nodeCrypto.randomBytes(24).toString("hex"),
         10
       ),
       role: Role.STAFF,
+      siteId,
     },
   });
 
   console.log("✓ Default users created");
 }
 
-async function createDefaultSettings() {
+async function createDefaultSettings(siteId: string) {
   const defaultSettings = [
     {
       key: "ALLOW_ALL_REQUESTS_VISIBLE",
@@ -193,26 +271,20 @@ async function createDefaultSettings() {
       value: "100",
       description: "Maximum quantity allowed per request",
     },
-    {
-      key: "KIOSK_PASSWORD_HASH",
-      // Default kiosk password: "kiosk1234" (change it in Admin → Settings)
-      value: await bcrypt.hash("kiosk1234", 10),
-      description: "Password required to access the kiosk terminal",
-    },
   ];
 
   for (const setting of defaultSettings) {
     await prisma.systemSetting.upsert({
-      where: { key: setting.key },
+      where: { siteId_key: { siteId, key: setting.key } },
       update: {},
-      create: setting,
+      create: { siteId, ...setting },
     });
   }
 
   console.log("✓ Default system settings created");
 }
 
-async function createDefaultItemTypes() {
+async function createDefaultItemTypes(siteId: string) {
   const itemTypes = [
     {
       slug: "frame",
@@ -233,19 +305,19 @@ async function createDefaultItemTypes() {
 
   for (const itemType of itemTypes) {
     await prisma.itemType.upsert({
-      where: { slug: itemType.slug },
+      where: { siteId_slug: { siteId, slug: itemType.slug } },
       update: {
         name: itemType.name,
         description: itemType.description,
       },
-      create: itemType,
+      create: { siteId, ...itemType },
     });
   }
 
   console.log("✓ Default item types created");
 }
 
-async function createDefaultLocations() {
+async function createDefaultLocations(siteId: string) {
   // Mission destinations on Rubicon 3.
   const locations = [
     {
@@ -266,15 +338,15 @@ async function createDefaultLocations() {
   ];
 
   for (const location of locations) {
-    // name is @unique, so upsert keeps this idempotent
+    // name is unique per site, so upsert keeps this idempotent
     await prisma.location.upsert({
-      where: { name: location.name },
+      where: { siteId_name: { siteId, name: location.name } },
       update: {
         type: location.type,
         description: location.description,
         isActive: true,
       },
-      create: location,
+      create: { siteId, ...location },
     });
   }
 
@@ -282,6 +354,7 @@ async function createDefaultLocations() {
   // so only the three mission destinations remain active.
   await prisma.location.updateMany({
     where: {
+      siteId,
       name: { in: ["Main Office", "Central Warehouse", "Storage Room A"] },
     },
     data: { isActive: false },
@@ -290,7 +363,7 @@ async function createDefaultLocations() {
   console.log("✓ Default locations created");
 }
 
-async function createDefaultVendors() {
+async function createDefaultVendors(siteId: string) {
   // Corporations & mercenary groups operating on Rubicon 3.
   const vendors = [
     {
@@ -332,9 +405,9 @@ async function createDefaultVendors() {
   ];
 
   for (const vendor of vendors) {
-    // Vendor.name is not unique in the schema, so guard by name to stay idempotent
+    // Vendor.name is not unique in the schema, so guard by name+siteId
     const existing = await prisma.vendor.findFirst({
-      where: { name: vendor.name },
+      where: { name: vendor.name, siteId },
     });
     if (existing) {
       await prisma.vendor.update({
@@ -342,18 +415,18 @@ async function createDefaultVendors() {
         data: vendor,
       });
     } else {
-      await prisma.vendor.create({ data: vendor });
+      await prisma.vendor.create({ data: { siteId, ...vendor } });
     }
   }
 
   console.log("✓ Default vendors created");
 }
 
-async function createDefaultSupplies() {
+async function createDefaultSupplies(siteId: string) {
   const [itemTypes, locations, vendors] = await Promise.all([
-    prisma.itemType.findMany(),
-    prisma.location.findMany(),
-    prisma.vendor.findMany(),
+    prisma.itemType.findMany({ where: { siteId } }),
+    prisma.location.findMany({ where: { siteId } }),
+    prisma.vendor.findMany({ where: { siteId } }),
   ]);
 
   const itemTypeBySlug = Object.fromEntries(
@@ -752,7 +825,7 @@ async function createDefaultSupplies() {
   ];
 
   const kioskUser = await prisma.user.findUnique({
-    where: { username: "kiosk" },
+    where: { username: "kiosk-main" },
   });
 
   for (const supply of defaultSupplies) {
@@ -761,14 +834,15 @@ async function createDefaultSupplies() {
 
     const data = {
       ...supplyData,
+      siteId,
       // Store the canonical (dash-free) barcode; the app formats it for display.
       barcode: normalizeBarcode(supplyData.barcode),
       itemTypeId: itemTypeBySlug[itemTypeSlug] ?? null,
     };
 
-    // Supply.name is not unique, so guard by name to stay idempotent
+    // Supply.name is not unique, so guard by name+siteId to stay idempotent
     const existing = await prisma.supply.findFirst({
-      where: { name: supply.name },
+      where: { name: supply.name, siteId },
     });
     const record = existing
       ? await prisma.supply.update({ where: { id: existing.id }, data })
@@ -853,7 +927,7 @@ async function createDefaultSupplies() {
   console.log("✓ Default supplies (with stock, vendors & movements) created");
 }
 
-async function createFakeUsers(count: number) {
+async function createFakeUsers(count: number, siteId: string) {
   const fakeUsers = Array.from({ length: count }, () => ({
     username: faker.internet.username().toLowerCase(),
     email: faker.internet.email().toLowerCase(),
@@ -875,6 +949,7 @@ async function createFakeUsers(count: number) {
       update: {
         email: user.email,
         emailVerified: new Date(),
+        siteId,
       },
       create: {
         username: user.username,
@@ -882,6 +957,7 @@ async function createFakeUsers(count: number) {
         emailVerified: new Date(),
         password: hashedPassword,
         role: user.role,
+        siteId,
       },
     });
   }
@@ -889,13 +965,16 @@ async function createFakeUsers(count: number) {
   console.log(`✓ Created ${uniqueUsers.length} fake users`);
 }
 
-async function createFakeVendors(count: number) {
+async function createFakeVendors(count: number, siteId: string) {
   for (let i = 0; i < count; i++) {
     const name = faker.company.name();
-    const existing = await prisma.vendor.findFirst({ where: { name } });
+    const existing = await prisma.vendor.findFirst({
+      where: { name, siteId },
+    });
     if (existing) continue;
     await prisma.vendor.create({
       data: {
+        siteId,
         name,
         contact: faker.internet.email().toLowerCase(),
         website: faker.internet.url(),
@@ -906,7 +985,7 @@ async function createFakeVendors(count: number) {
   console.log(`✓ Created up to ${count} fake vendors`);
 }
 
-async function createFakeSupplies(count: number) {
+async function createFakeSupplies(count: number, siteId: string) {
   const officeSupplies = [
     "Stapler",
     "Paper Clips",
@@ -943,16 +1022,16 @@ async function createFakeSupplies(count: number) {
   );
 
   const [itemTypes, locations, vendors, existingSupplies] = await Promise.all([
-    prisma.itemType.findMany(),
-    prisma.location.findMany(),
-    prisma.vendor.findMany(),
+    prisma.itemType.findMany({ where: { siteId } }),
+    prisma.location.findMany({ where: { siteId } }),
+    prisma.vendor.findMany({ where: { siteId } }),
     prisma.supply.findMany({
-      where: { barcode: { not: null } },
+      where: { siteId, barcode: { not: null } },
       select: { barcode: true },
     }),
   ]);
 
-  // Track used barcodes to keep generated ones unique (barcode is @unique).
+  // Track used barcodes to keep generated ones unique (per-site).
   const usedBarcodes = new Set<string>(
     existingSupplies
       .map((s: { barcode: string | null }) => s.barcode)
@@ -961,14 +1040,15 @@ async function createFakeSupplies(count: number) {
 
   for (const supply of uniqueSupplies) {
     const existing = await prisma.supply.findFirst({
-      where: { name: supply.name },
+      where: { name: supply.name, siteId },
     });
     if (existing) continue;
 
     const created = await prisma.supply.create({
       data: {
         ...supply,
-        barcode: await generateUniqueBarcode(usedBarcodes),
+        siteId,
+        barcode: await generateUniqueBarcode(usedBarcodes, siteId),
         itemTypeId: itemTypes.length
           ? faker.helpers.arrayElement(itemTypes).id
           : null,
@@ -1102,8 +1182,8 @@ async function createFakeOpenOrders(count: number) {
   console.log(`✓ Created ${created} fake open vendor orders`);
 }
 
-async function createAuditLogs() {
-  const users = await prisma.user.findMany();
+async function createAuditLogs(siteId: string) {
+  const users = await prisma.user.findMany({ where: { siteId } });
   if (!users.length) return;
 
   const auditActions = [
@@ -1120,6 +1200,7 @@ async function createAuditLogs() {
   for (let i = 0; i < 50; i++) {
     await prisma.auditLog.create({
       data: {
+        siteId,
         userId: faker.helpers.arrayElement(users).id,
         action: faker.helpers.arrayElement(auditActions),
       },
@@ -1129,12 +1210,18 @@ async function createAuditLogs() {
   console.log("✓ Created audit logs");
 }
 
-async function createUsageHistory({ force = false } = {}) {
+async function createUsageHistory({
+  force = false,
+  siteId,
+}: { force?: boolean; siteId?: string } = {}) {
   const [supplies, users] = await Promise.all([
     prisma.supply.findMany({
+      where: siteId ? { siteId } : undefined,
       include: { stockLevels: { include: { location: true } } },
     }),
-    prisma.user.findMany(),
+    prisma.user.findMany({
+      where: siteId ? { siteId } : undefined,
+    }),
   ]);
 
   if (!supplies.length || !users.length) {
@@ -1143,7 +1230,7 @@ async function createUsageHistory({ force = false } = {}) {
   }
 
   const consumers = users.filter(
-    (u: { username: string }) => u.username !== "kiosk"
+    (u: { username: string }) => u.username !== "kiosk-main"
   );
   const actorPool = consumers.length ? consumers : users;
   const channels = ["kiosk", "manual adjustment", "request fulfillment"];
@@ -1193,6 +1280,7 @@ async function createUsageHistory({ force = false } = {}) {
       // Paired audit-log entry for each consumption event.
       await prisma.auditLog.create({
         data: {
+          siteId: supply.siteId,
           userId: actor.id,
           action: `Consumed ${quantity} × ${supply.name} (${channel})`,
           createdAt,
@@ -1379,33 +1467,37 @@ async function createDefaultOpenOrders() {
 async function main() {
   console.log("🌱 Starting seed...");
 
-  // Create default system settings regardless of flags
-  await createDefaultSettings();
+  await clearDatabase();
+  const site = await ensureMainSite();
 
-  if (!argv["settings-only"]) {
-    // Clear database if --clear flag is provided
-    await clearDatabase();
-
+  if (argv["settings-only"]) {
+    await createDefaultSettings(site.id);
+  } else {
     // Sane, idempotent defaults (safe to run repeatedly via `npx prisma db seed`)
-    await createDefaultUsers();
-    await createDefaultItemTypes();
-    await createDefaultLocations();
-    await createDefaultVendors();
-    await createDefaultSupplies();
+    await createDefaultUsers(site.id);
+    await ensureSuperAdmin();
+    await createDefaultSettings(site.id);
+    await createDefaultItemTypes(site.id);
+    await createDefaultLocations(site.id);
+    await createDefaultVendors(site.id);
+    await createDefaultSupplies(site.id);
     await createDefaultOpenOrders();
-    await createUsageHistory();
+    await createUsageHistory({ siteId: site.id });
     await createDefaultNotifications();
 
     if (argv["use-faker"]) {
       // Additional randomized demo data (opt-in; non-deterministic)
-      await createFakeUsers(argv.count);
-      await createFakeVendors(Math.max(3, Math.floor(argv.products / 4)));
-      await createFakeSupplies(argv.products);
+      await createFakeUsers(argv.count, site.id);
+      await createFakeVendors(
+        Math.max(3, Math.floor(argv.products / 4)),
+        site.id
+      );
+      await createFakeSupplies(argv.products, site.id);
       await createFakeOpenOrders(argv.orders);
-      await createAuditLogs();
+      await createAuditLogs(site.id);
       // Faker path: always append fresh usage history (non-idempotent) so demo
       // runs accumulate richer consumption data, then refresh notifications.
-      await createUsageHistory({ force: true });
+      await createUsageHistory({ force: true, siteId: site.id });
       await createDefaultNotifications();
     }
   }
