@@ -75,7 +75,10 @@ export async function updateSite(
   try {
     const session = await requireSuperAdmin();
     const result = await siteService.update(session.user.id, id, fields);
-    if (result.success) revalidatePath("/admin/sites");
+    if (result.success) {
+      revalidatePath("/admin/sites");
+      revalidatePath("/admin");
+    }
     return result;
   } catch {
     return { success: false as const, error: "Unauthorized" };
