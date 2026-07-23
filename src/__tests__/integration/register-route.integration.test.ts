@@ -17,7 +17,7 @@ describe.skipIf(!isIntegrationEnabled())("POST /api/auth/register (database)", (
   });
 
   it("persists a pending user through the HTTP route", async () => {
-    await createAdminUser();
+    const admin = await createAdminUser();
 
     const { POST } = await import("@/app/api/auth/register/route");
     const response = await POST(
@@ -25,6 +25,7 @@ describe.skipIf(!isIntegrationEnabled())("POST /api/auth/register (database)", (
         username: "routeuser",
         email: "routeuser@example.com",
         password: "Password1",
+        siteId: admin.siteId,
       })
     );
     const body = await response.json();
@@ -39,6 +40,7 @@ describe.skipIf(!isIntegrationEnabled())("POST /api/auth/register (database)", (
 
     expect(user?.role).toBe(Role.PENDING);
     expect(user?.email).toBe("routeuser@example.com");
+    expect(user?.siteId).toBe(admin.siteId);
     expect(await bcrypt.compare("Password1", user!.password)).toBe(true);
   });
 
