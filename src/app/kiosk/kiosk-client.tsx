@@ -11,7 +11,7 @@ import { formatBarcode } from "@/lib/barcode";
 
 type Step = "scan" | "quantity" | "complete";
 
-export function KioskClient() {
+export function KioskClient({ siteName }: { siteName: string }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("scan");
   const [barcode, setBarcode] = useState("");
@@ -79,9 +79,9 @@ export function KioskClient() {
       </Button>
       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Supli Mart Kiosk</CardTitle>
+          <CardTitle className="text-2xl">{siteName}</CardTitle>
           <p className="text-muted-foreground text-sm">
-            Scan item → Enter quantity → Complete
+            Supli Mart kiosk · Scan item → Enter quantity → Complete
           </p>
         </CardHeader>
         <CardContent className="space-y-6">

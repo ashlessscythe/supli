@@ -38,6 +38,7 @@ describe("password rules", () => {
         username: "u",
         email: "u@example.com",
         password: "short1A",
+        siteId: "site-1",
       }).success
     ).toBe(false);
 
@@ -46,6 +47,7 @@ describe("password rules", () => {
         username: "u",
         email: "u@example.com",
         password: "nouppercase1",
+        siteId: "site-1",
       }).success
     ).toBe(false);
 
@@ -54,6 +56,7 @@ describe("password rules", () => {
         username: "u",
         email: "u@example.com",
         password: "NOLOWERCASE1",
+        siteId: "site-1",
       }).success
     ).toBe(false);
 
@@ -62,6 +65,7 @@ describe("password rules", () => {
         username: "u",
         email: "u@example.com",
         password: "NoDigitsHere",
+        siteId: "site-1",
       }).success
     ).toBe(false);
   });
@@ -72,6 +76,7 @@ describe("password rules", () => {
         username: "u",
         email: "u@example.com",
         password: "Password1",
+        siteId: "site-1",
       }).success
     ).toBe(true);
     expect(

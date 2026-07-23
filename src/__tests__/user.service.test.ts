@@ -30,6 +30,7 @@ vi.mock("@/server/repositories/user.repository", () => ({
     update: vi.fn(),
     delete: vi.fn(),
     countAdmins: vi.fn(),
+    isSystemKiosk: vi.fn(),
   },
 }));
 
@@ -64,6 +65,7 @@ describe("userService.register", () => {
     username: "newuser",
     email: "newuser@example.com",
     password: "Password1",
+    siteId: "site-1",
   };
 
   beforeEach(() => {
@@ -219,7 +221,7 @@ describe("userService.invite", () => {
   it("fails when username already exists", async () => {
     vi.mocked(userRepository.findByUsername).mockResolvedValue({ id: "1" } as never);
 
-    const result = await userService.invite(actorId, input);
+    const result = await userService.invite(actorId, "site-1", input);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -231,7 +233,7 @@ describe("userService.invite", () => {
     vi.mocked(userRepository.findByUsername).mockResolvedValue(null as never);
     vi.mocked(userRepository.findByEmail).mockResolvedValue({ id: "1" } as never);
 
-    const result = await userService.invite(actorId, input);
+    const result = await userService.invite(actorId, "site-1", input);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -246,7 +248,7 @@ describe("userService.invite", () => {
     vi.mocked(userRepository.create).mockResolvedValue(created as never);
     vi.mocked(tokenService.create).mockResolvedValue("invite-token");
 
-    const result = await userService.invite(actorId, input);
+    const result = await userService.invite(actorId, "site-1", input);
 
     expect(result.success).toBe(true);
     expect(tokenService.create).toHaveBeenCalledWith(
@@ -371,9 +373,10 @@ describe("userService last-admin guards", () => {
       id: "admin-1",
       role: Role.ADMIN,
       username: "walter",
+      siteId: "site-1",
     } as never);
 
-    const result = await userService.update("actor", {
+    const result = await userService.update("actor", "site-1", {
       id: "admin-1",
       username: "walter",
       role: Role.STAFF,
@@ -391,13 +394,14 @@ describe("userService last-admin guards", () => {
       id: "admin-1",
       role: Role.ADMIN,
       username: "walter",
+      siteId: "site-1",
     } as never);
     vi.mocked(userRepository.update).mockResolvedValue({
       id: "admin-1",
       role: Role.STAFF,
     } as never);
 
-    const result = await userService.update("actor", {
+    const result = await userService.update("actor", "site-1", {
       id: "admin-1",
       username: "walter",
       role: Role.STAFF,
@@ -411,10 +415,11 @@ describe("userService last-admin guards", () => {
       id: "admin-1",
       role: Role.ADMIN,
       username: "walter",
+      siteId: "site-1",
     } as never);
     vi.mocked(userRepository.countAdmins).mockResolvedValue(1);
 
-    const result = await userService.delete("actor", "admin-1");
+    const result = await userService.delete("actor", "site-1", "admin-1");
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -438,9 +443,10 @@ describe("userService registration approval", () => {
       id: "u1",
       role: Role.STAFF,
       username: "already",
+      siteId: "site-1",
     } as never);
 
-    const result = await userService.approveRegistration("admin", "u1");
+    const result = await userService.approveRegistration("admin", "u1", "site-1");
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -454,13 +460,14 @@ describe("userService registration approval", () => {
       role: Role.PENDING,
       username: "newbie",
       email: "newbie@example.com",
+      siteId: "site-1",
     } as never);
     vi.mocked(userRepository.update).mockResolvedValue({
       id: "u1",
       role: Role.STAFF,
     } as never);
 
-    const result = await userService.approveRegistration("admin", "u1");
+    const result = await userService.approveRegistration("admin", "u1", "site-1");
 
     expect(result.success).toBe(true);
     expect(notificationService.deleteRegistrationNotifications).toHaveBeenCalledWith(
@@ -478,9 +485,10 @@ describe("userService registration approval", () => {
       role: Role.PENDING,
       username: "newbie",
       email: "newbie@example.com",
+      siteId: "site-1",
     } as never);
 
-    const result = await userService.rejectRegistration("admin", "u1");
+    const result = await userService.rejectRegistration("admin", "u1", "site-1");
 
     expect(result.success).toBe(true);
     expect(userRepository.delete).toHaveBeenCalledWith("u1", tx);

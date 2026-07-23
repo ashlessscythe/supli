@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { requireSiteContext } from "@/lib/auth/session";
 import { getSupplies } from "@/lib/actions/supply";
 import { locationService } from "@/server/services/location.service";
 import { SuppliesTable } from "@/components/supplies/supplies-table";
@@ -13,15 +13,16 @@ export default async function SuppliesPage({
 }: {
   searchParams: { q?: string; stock?: string };
 }) {
-  const session = await getServerSession(authOptions);
-
-  if (!session) {
+  let ctx;
+  try {
+    ctx = await requireSiteContext();
+  } catch {
     redirect("/login");
   }
 
   const [result, locationsResult] = await Promise.all([
     getSupplies(),
-    locationService.list(),
+    locationService.list(ctx.siteId),
   ]);
   const supplies = result.success ? result.data : [];
   const locations =
@@ -39,6 +40,9 @@ export default async function SuppliesPage({
       ? searchParams.stock
       : "all";
 
+  const isAdmin =
+    ctx.role === Role.ADMIN || ctx.role === Role.SUPERADMIN;
+
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
       <div className="flex items-center justify-between">
@@ -49,13 +53,13 @@ export default async function SuppliesPage({
             locations={locations}
             defaultLocationId={defaultLocationId}
           />
-          {session.user.role === "ADMIN" && <SupplyDialog isAdmin />}
+          {isAdmin && <SupplyDialog isAdmin />}
         </div>
       </div>
       <Suspense fallback={<div>Loading...</div>}>
         <SuppliesTable
           data={supplies || []}
-          isAdmin={session.user.role === "ADMIN"}
+          isAdmin={isAdmin}
           initialSearch={initialSearch}
           initialStockFilter={initialStockFilter}
           locations={locations}

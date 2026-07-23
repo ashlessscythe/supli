@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { adminService } from "@/server/services/admin.service";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     supply: {
@@ -25,9 +27,10 @@ describe("adminService.getSupplyChartData", () => {
       { name: "B", quantity: 10, minimumThreshold: 2 },
     ] as never);
 
-    const rows = await adminService.getSupplyChartData();
+    const rows = await adminService.getSupplyChartData(SITE_ID);
 
     expect(prisma.supply.findMany).toHaveBeenCalledWith({
+      where: { siteId: SITE_ID },
       select: { name: true, quantity: true, minimumThreshold: true },
       orderBy: { quantity: "asc" },
       take: 10,
@@ -50,10 +53,11 @@ describe("adminService.getLowStockItems", () => {
     ];
     vi.mocked(prisma.supply.findMany).mockResolvedValue(items as never);
 
-    const result = await adminService.getLowStockItems(5);
+    const result = await adminService.getLowStockItems(SITE_ID, 5);
 
     expect(prisma.supply.findMany).toHaveBeenCalledWith({
       where: {
+        siteId: SITE_ID,
         quantity: { lte: prisma.supply.fields.minimumThreshold },
       },
       select: {

@@ -4,6 +4,8 @@ import { locationRepository } from "@/server/repositories/location.repository";
 import { stockLevelRepository } from "@/server/repositories/stock-level.repository";
 import { prisma } from "@/lib/prisma";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
@@ -51,22 +53,32 @@ describe("locationService.create", () => {
       type: "CAGE",
     });
 
-    const result = await locationService.create("admin-1", {
+    const result = await locationService.create("admin-1", SITE_ID, {
       name: "Cage A",
       type: "CAGE",
     });
 
     expect(result.success).toBe(true);
-    expect(tx.location.create).toHaveBeenCalled();
+    expect(tx.location.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        siteId: SITE_ID,
+        name: "Cage A",
+        type: "CAGE",
+      }),
+    });
     expect(tx.auditLog.create).toHaveBeenCalledWith({
-      data: { userId: "admin-1", action: "Created location: Cage A" },
+      data: {
+        userId: "admin-1",
+        action: "Created location: Cage A",
+        siteId: SITE_ID,
+      },
     });
   });
 
   it("maps unique name violations to a friendly error", async () => {
     vi.mocked(prisma.$transaction).mockRejectedValue({ code: "P2002" });
 
-    const result = await locationService.create("admin-1", {
+    const result = await locationService.create("admin-1", SITE_ID, {
       name: "Cage A",
       type: "CAGE",
     });
@@ -111,7 +123,7 @@ describe("locationService.update deactivate", () => {
       {} as never
     );
 
-    const result = await locationService.update("admin-1", {
+    const result = await locationService.update("admin-1", SITE_ID, {
       id: "loc-1",
       name: "Old cage",
       type: "CAGE",
@@ -119,6 +131,7 @@ describe("locationService.update deactivate", () => {
     });
 
     expect(result.success).toBe(true);
+    expect(locationRepository.findById).toHaveBeenCalledWith("loc-1", SITE_ID);
     expect(prisma.stockLevel.findMany).toHaveBeenCalledWith({
       where: { locationId: "loc-1" },
       select: { supplyId: true },
@@ -139,7 +152,7 @@ describe("locationService.update deactivate", () => {
       isActive: false,
     });
 
-    await locationService.update("admin-1", {
+    await locationService.update("admin-1", SITE_ID, {
       id: "loc-1",
       name: "Old cage",
       type: "CAGE",
@@ -152,7 +165,7 @@ describe("locationService.update deactivate", () => {
   it("fails when location is missing", async () => {
     vi.mocked(locationRepository.findById).mockResolvedValue(null as never);
 
-    const result = await locationService.update("admin-1", {
+    const result = await locationService.update("admin-1", SITE_ID, {
       id: "missing",
       name: "X",
       type: "CAGE",

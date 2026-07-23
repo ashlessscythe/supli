@@ -2,3 +2,10 @@
 # Build: npm install && npx prisma generate && npm run build
 # Run: npm start
 # Port: 3000
+#
+# Required:
+#   DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+# Optional bootstrap:
+#   SUPERADMIN_EMAIL, SUPERADMIN_INITIAL_PASSWORD
+# Optional email:
+#   RESEND_API_KEY, EMAIL_FROM

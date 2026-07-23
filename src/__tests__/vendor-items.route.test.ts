@@ -17,8 +17,10 @@ vi.mock("@/server/services/vendor.service", () => ({
   },
 }));
 
+const SITE_ID = "site-1";
+
 const adminSession = {
-  user: { id: "admin-1", role: "ADMIN" },
+  user: { id: "admin-1", role: "ADMIN", siteId: SITE_ID },
 };
 
 const params = { id: "vendor-1" };
@@ -61,7 +63,7 @@ describe("GET /api/vendors/[id]/items", () => {
 
     expect(response.status).toBe(200);
     expect(body[0].leadTimeDays).toBe(5);
-    expect(vendorService.listItems).toHaveBeenCalledWith("vendor-1");
+    expect(vendorService.listItems).toHaveBeenCalledWith(SITE_ID, "vendor-1");
   });
 
   it("returns 401 when not an admin", async () => {
@@ -109,6 +111,7 @@ describe("POST /api/vendors/[id]/items (link form with lead time)", () => {
     expect(vendorService.linkItem).toHaveBeenCalledWith(
       "vendor-1",
       "admin-1",
+      SITE_ID,
       payload
     );
   });
@@ -145,6 +148,7 @@ describe("PATCH /api/vendors/[id]/items (inline lead days + edit form)", () => {
     expect(vendorService.updateItemLink).toHaveBeenCalledWith(
       "vendor-1",
       "admin-1",
+      SITE_ID,
       payload
     );
   });
@@ -174,6 +178,7 @@ describe("PATCH /api/vendors/[id]/items (inline lead days + edit form)", () => {
     expect(vendorService.updateItemLink).toHaveBeenCalledWith(
       "vendor-1",
       "admin-1",
+      SITE_ID,
       payload
     );
   });

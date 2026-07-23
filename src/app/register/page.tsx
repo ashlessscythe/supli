@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { registerSchema } from "@/lib/validation/user";
+import { listActiveSites } from "@/lib/actions/site";
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
@@ -23,6 +24,9 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [sites, setSites] = useState<
+    Array<{ id: string; name: string; slug: string }>
+  >([]);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -30,8 +34,18 @@ export default function RegisterPage() {
       username: "",
       email: "",
       password: "",
+      siteId: "",
     },
   });
+
+  useEffect(() => {
+    void listActiveSites().then((result) => {
+      if (result.success && result.data.length > 0) {
+        setSites(result.data);
+        form.setValue("siteId", result.data[0].id);
+      }
+    });
+  }, [form]);
 
   async function onSubmit(values: RegisterFormValues) {
     setLoading(true);
@@ -57,7 +71,12 @@ export default function RegisterPage() {
         return;
       }
       setMessage(data.message);
-      form.reset();
+      form.reset({
+        username: "",
+        email: "",
+        password: "",
+        siteId: sites[0]?.id ?? "",
+      });
     } catch {
       setError("An error occurred. Please try again.");
     } finally {
@@ -69,10 +88,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-md space-y-8 p-6 bg-card rounded-lg shadow-lg border">
         <div className="text-center">
-          <Link
-            href="/"
-            className="text-sm text-primary hover:underline"
-          >
+          <Link href="/" className="text-sm text-primary hover:underline">
             Back to home
           </Link>
           <h2 className="mt-4 text-3xl font-bold tracking-tight text-foreground">
@@ -94,6 +110,31 @@ export default function RegisterPage() {
         ) : (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="siteId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Site</FormLabel>
+                    <FormControl>
+                      <select
+                        {...field}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        {sites.length === 0 && (
+                          <option value="">No sites available</option>
+                        )}
+                        {sites.map((site) => (
+                          <option key={site.id} value={site.id}>
+                            {site.name}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="username"
@@ -149,7 +190,9 @@ export default function RegisterPage() {
               />
 
               {error && (
-                <div className="text-sm text-destructive text-center">{error}</div>
+                <div className="text-sm text-destructive text-center">
+                  {error}
+                </div>
               )}
 
               <Button type="submit" className="w-full" disabled={loading}>

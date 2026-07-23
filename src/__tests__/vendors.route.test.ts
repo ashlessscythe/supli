@@ -14,8 +14,10 @@ vi.mock("@/server/services/vendor.service", () => ({
   },
 }));
 
+const SITE_ID = "site-1";
+
 const adminSession = {
-  user: { id: "admin-1", role: "ADMIN" },
+  user: { id: "admin-1", role: "ADMIN", siteId: SITE_ID },
 };
 
 function createPutRequest(body: unknown) {
@@ -53,7 +55,7 @@ describe("PUT /api/vendors", () => {
 
     expect(response.status).toBe(200);
     expect(body.isActive).toBe(false);
-    expect(vendorService.update).toHaveBeenCalledWith("admin-1", {
+    expect(vendorService.update).toHaveBeenCalledWith("admin-1", SITE_ID, {
       id: "vendor-1",
       name: "Balam Industries",
       isActive: false,
@@ -94,7 +96,7 @@ describe("GET /api/vendors", () => {
     expect(response.status).toBe(200);
     expect(body).toHaveLength(1);
     expect(body[0].isActive).toBe(true);
-    expect(vendorService.list).toHaveBeenCalled();
+    expect(vendorService.list).toHaveBeenCalledWith(SITE_ID);
     expect(vendorService.update).not.toHaveBeenCalled();
   });
 });

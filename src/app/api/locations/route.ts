@@ -1,35 +1,37 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth/session";
 import { locationService } from "@/server/services/location.service";
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
+  try {
+    const ctx = await requireAdmin();
+    const result = await locationService.list(ctx.siteId);
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 500 });
+    }
+    return NextResponse.json(result.data);
+  } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const result = await locationService.list();
-  if (!result.success) {
-    return NextResponse.json({ error: result.error }, { status: 500 });
-  }
-  return NextResponse.json(result.data);
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const ctx = await requireAdmin();
     const json = await request.json();
-    const result = await locationService.create(session.user.id, json);
+    const result = await locationService.create(ctx.userId, ctx.siteId, json);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
     return NextResponse.json(result.data, { status: 201 });
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Unauthorized" ||
+        error.message === "No active site selected")
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }
@@ -38,19 +40,22 @@ export async function POST(request: Request) {
 }
 
 export async function PUT(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
+    const ctx = await requireAdmin();
     const json = await request.json();
-    const result = await locationService.update(session.user.id, json);
+    const result = await locationService.update(ctx.userId, ctx.siteId, json);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
     return NextResponse.json(result.data);
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.message === "Unauthorized" ||
+        error.message === "No active site selected")
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

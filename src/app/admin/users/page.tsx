@@ -1,9 +1,14 @@
-import { Suspense } from "react";
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { UsersClient } from "./users-client";
+import { Suspense } from "react";
 
-async function getUsers() {
+async function getUsers(siteId: string) {
   const users = await prisma.user.findMany({
+    where: {
+      siteId,
+      NOT: { username: { startsWith: "kiosk-" } },
+    },
     select: {
       id: true,
       username: true,
@@ -26,7 +31,8 @@ async function getUsers() {
 }
 
 export default async function AdminUsersPage() {
-  const users = await getUsers();
+  const ctx = await requireAdmin();
+  const users = await getUsers(ctx.siteId);
 
   return (
     <Suspense fallback={<div className="p-6">Loading users…</div>}>

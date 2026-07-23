@@ -74,6 +74,7 @@ describe("credentials login (NextAuth authorize)", () => {
       username: "staffuser",
       password: "hashed-password",
       role: Role.STAFF,
+      siteId: "site-1",
     } as never);
     vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
 
@@ -86,6 +87,7 @@ describe("credentials login (NextAuth authorize)", () => {
       id: "user-1",
       username: "staffuser",
       role: Role.STAFF,
+      siteId: "site-1",
     });
     expect(rateLimitService.reset).toHaveBeenCalledWith("staffuser");
     expect(rateLimitService.recordFailure).not.toHaveBeenCalled();

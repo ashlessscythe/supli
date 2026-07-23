@@ -26,24 +26,27 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 export const locationService = {
-  async list() {
+  async list(siteId: string) {
     try {
-      return success(await locationRepository.findAll());
+      return success(await locationRepository.findAll(siteId));
     } catch {
       return failure("Failed to fetch locations");
     }
   },
 
-  async listAll() {
+  async listAll(siteId: string) {
     try {
-      return success(await locationRepository.findAllAdmin());
+      return success(await locationRepository.findAllAdmin(siteId));
     } catch {
       return failure("Failed to fetch locations");
     }
   },
 
-  async listStockItems(locationId: string) {
+  async listStockItems(siteId: string, locationId: string) {
     try {
+      const location = await locationRepository.findById(locationId, siteId);
+      if (!location) return failure("Location not found");
+
       const stockLevels = await prisma.stockLevel.findMany({
         where: { locationId },
         include: { supply: { select: { id: true, name: true } } },
@@ -62,13 +65,26 @@ export const locationService = {
     }
   },
 
-  async create(userId: string, input: z.infer<typeof locationSchema>) {
+  async create(
+    userId: string,
+    siteId: string,
+    input: z.infer<typeof locationSchema>
+  ) {
     try {
       const data = locationSchema.parse(input);
       const location = await executeWithAudit(
         userId,
         `Created location: ${data.name}`,
-        (tx) => tx.location.create({ data })
+        (tx) =>
+          tx.location.create({
+            data: {
+              siteId,
+              name: data.name,
+              type: data.type,
+              description: data.description,
+            },
+          }),
+        siteId
       );
       return success(location);
     } catch (error) {
@@ -80,10 +96,14 @@ export const locationService = {
     }
   },
 
-  async update(userId: string, input: z.infer<typeof locationUpdateSchema>) {
+  async update(
+    userId: string,
+    siteId: string,
+    input: z.infer<typeof locationUpdateSchema>
+  ) {
     try {
       const { id, ...fields } = locationUpdateSchema.parse(input);
-      const existing = await locationRepository.findById(id);
+      const existing = await locationRepository.findById(id, siteId);
       if (!existing) return failure("Location not found");
 
       const location = await executeWithAudit(
@@ -100,7 +120,8 @@ export const locationService = {
                 ? { isActive: fields.isActive }
                 : {}),
             },
-          })
+          }),
+        siteId
       );
 
       if (fields.isActive === false && existing.isActive) {

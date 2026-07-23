@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin, requireSiteContext } from "@/lib/auth/session";
 import { supplyService } from "@/server/services/supply.service";
 import { supplySchema } from "@/lib/validation/supply";
 import { z } from "zod";
@@ -9,7 +8,11 @@ function unauthorized() {
   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 }
 
-function handleResult<T>(result: { success: boolean; data?: T; error?: unknown }) {
+function handleResult<T>(result: {
+  success: boolean;
+  data?: T;
+  error?: unknown;
+}) {
   if (!result.success) {
     const status =
       typeof result.error === "string" && result.error.includes("not found")
@@ -21,20 +24,21 @@ function handleResult<T>(result: { success: boolean; data?: T; error?: unknown }
 }
 
 export async function GET() {
-  const session = await getServerSession(authOptions);
-  if (!session) return unauthorized();
-  const result = await supplyService.list();
-  return handleResult(result);
+  try {
+    const ctx = await requireSiteContext();
+    const result = await supplyService.list(ctx.siteId);
+    return handleResult(result);
+  } catch {
+    return unauthorized();
+  }
 }
 
 export async function POST(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") return unauthorized();
-
   try {
+    const ctx = await requireAdmin();
     const json = await request.json();
     const data = supplySchema.parse(json);
-    const result = await supplyService.create(session.user.id, data);
+    const result = await supplyService.create(ctx.userId, ctx.siteId, data);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
@@ -43,40 +47,71 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    if (
+      error instanceof Error &&
+      (error.message === "Unauthorized" ||
+        error.message === "No active site selected")
+    ) {
+      return unauthorized();
+    }
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
 export async function PUT(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") return unauthorized();
-
   try {
+    const ctx = await requireAdmin();
     const json = await request.json();
     const { id, ...data } = json;
     if (!id) {
-      return NextResponse.json({ error: "Supply ID is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Supply ID is required" },
+        { status: 400 }
+      );
     }
     const validated = supplySchema.parse(data);
-    const result = await supplyService.update(session.user.id, id, validated);
+    const result = await supplyService.update(
+      ctx.userId,
+      ctx.siteId,
+      id,
+      validated
+    );
     return handleResult(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
     }
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    if (
+      error instanceof Error &&
+      (error.message === "Unauthorized" ||
+        error.message === "No active site selected")
+    ) {
+      return unauthorized();
+    }
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(request: Request) {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") return unauthorized();
+  try {
+    const ctx = await requireAdmin();
+    const id = new URL(request.url).searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { error: "Supply ID is required" },
+        { status: 400 }
+      );
+    }
 
-  const id = new URL(request.url).searchParams.get("id");
-  if (!id) {
-    return NextResponse.json({ error: "Supply ID is required" }, { status: 400 });
+    const result = await supplyService.delete(ctx.userId, ctx.siteId, id);
+    return handleResult(result);
+  } catch {
+    return unauthorized();
   }
-
-  const result = await supplyService.delete(session.user.id, id);
-  return handleResult(result);
 }

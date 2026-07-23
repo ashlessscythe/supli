@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -9,15 +9,29 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock } from "lucide-react";
 import { kioskLogin } from "@/lib/actions/kiosk";
+import { listActiveSites } from "@/lib/actions/site";
 import { getAppHomeHref } from "@/lib/landing";
 
 export default function KioskLoginPage() {
   const router = useRouter();
   const { data: session } = useSession();
   const [password, setPassword] = useState("");
+  const [siteId, setSiteId] = useState("");
+  const [sites, setSites] = useState<
+    Array<{ id: string; name: string; slug: string }>
+  >([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    void listActiveSites().then((result) => {
+      if (result.success && result.data.length > 0) {
+        setSites(result.data);
+        setSiteId(result.data[0].id);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -25,12 +39,12 @@ export default function KioskLoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!password.trim()) return;
+    if (!password.trim() || !siteId) return;
 
     setLoading(true);
     setError(null);
 
-    const result = await kioskLogin(password);
+    const result = await kioskLogin(siteId, password);
     setLoading(false);
 
     if (!result.success) {
@@ -58,6 +72,21 @@ export default function KioskLoginPage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <select
+              value={siteId}
+              onChange={(e) => setSiteId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+              required
+            >
+              {sites.length === 0 && (
+                <option value="">No sites available</option>
+              )}
+              {sites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name}
+                </option>
+              ))}
+            </select>
             <Input
               ref={inputRef}
               type="password"
@@ -73,7 +102,7 @@ export default function KioskLoginPage() {
             <Button
               type="submit"
               className="w-full h-12 text-lg"
-              disabled={loading || !password.trim()}
+              disabled={loading || !password.trim() || !siteId}
             >
               {loading ? "Unlocking..." : "Unlock"}
             </Button>

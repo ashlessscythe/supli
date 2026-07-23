@@ -11,6 +11,7 @@ import {
   registerSchema,
 } from "@/lib/validation/user";
 import { failure, success } from "@/lib/result";
+import { isKioskUsername } from "@/lib/sites";
 import { userRepository } from "@/server/repositories/user.repository";
 import { executeWithAudit } from "@/server/audit";
 import { tokenService } from "@/server/services/auth.service";
@@ -18,18 +19,18 @@ import { emailService } from "@/server/email/email.service";
 import { notificationService } from "@/server/services/notification.service";
 
 export const userService = {
-  async list() {
+  async list(siteId: string) {
     try {
-      const users = await userRepository.findAll();
+      const users = await userRepository.findAll(siteId);
       return success(users);
     } catch {
       return failure("Failed to fetch users");
     }
   },
 
-  async listPending() {
+  async listPending(siteId: string) {
     try {
-      const users = await userRepository.findPending();
+      const users = await userRepository.findPending(siteId);
       return success(users);
     } catch {
       return failure("Failed to fetch pending users");
@@ -51,10 +52,11 @@ export const userService = {
         email: data.email,
         password: hashedPassword,
         role: Role.PENDING,
+        siteId: data.siteId,
       });
 
       await emailService.sendRegistrationReceived(data.email, data.username);
-      await notificationService.notifyAdminsOfRegistration({
+      await notificationService.notifyAdminsOfRegistration(data.siteId, {
         id: user.id,
         username: user.username,
         email: user.email,
@@ -70,10 +72,11 @@ export const userService = {
     }
   },
 
-  async approveRegistration(actorId: string, userId: string) {
+  async approveRegistration(actorId: string, userId: string, siteId: string) {
     try {
       const user = await userRepository.findById(userId);
       if (!user) return failure("User not found");
+      if (user.siteId !== siteId) return failure("User not found");
       if (user.role !== Role.PENDING) {
         return failure("User is not pending approval");
       }
@@ -90,7 +93,8 @@ export const userService = {
               role: Role.STAFF,
             },
             tx
-          )
+          ),
+        siteId
       );
 
       await notificationService.deleteRegistrationNotifications(userId);
@@ -105,10 +109,11 @@ export const userService = {
     }
   },
 
-  async rejectRegistration(actorId: string, userId: string) {
+  async rejectRegistration(actorId: string, userId: string, siteId: string) {
     try {
       const user = await userRepository.findById(userId);
       if (!user) return failure("User not found");
+      if (user.siteId !== siteId) return failure("User not found");
       if (user.role !== Role.PENDING) {
         return failure("User is not pending approval");
       }
@@ -119,7 +124,8 @@ export const userService = {
       await executeWithAudit(
         actorId,
         `Rejected registration: ${username}`,
-        (tx) => userRepository.delete(userId, tx)
+        (tx) => userRepository.delete(userId, tx),
+        siteId
       );
 
       await notificationService.deleteRegistrationNotifications(userId);
@@ -134,9 +140,17 @@ export const userService = {
     }
   },
 
-  async create(actorId: string, input: z.infer<typeof userSchema>) {
+  async create(
+    actorId: string,
+    siteId: string,
+    input: z.infer<typeof userSchema>
+  ) {
     try {
       const data = userSchema.parse(input);
+      if (data.role === (Role.SUPERADMIN as Role)) {
+        return failure("Cannot create a SUPERADMIN from site administration");
+      }
+
       const existing = await userRepository.findByUsername(data.username);
       if (existing) return failure("Username already exists");
 
@@ -156,9 +170,11 @@ export const userService = {
               email: data.email ?? null,
               password: hashedPassword,
               role: data.role,
+              siteId,
             },
             tx
-          )
+          ),
+        siteId
       );
 
       if (data.email) {
@@ -177,7 +193,11 @@ export const userService = {
     }
   },
 
-  async invite(actorId: string, input: z.infer<typeof inviteSchema>) {
+  async invite(
+    actorId: string,
+    siteId: string,
+    input: z.infer<typeof inviteSchema>
+  ) {
     try {
       const data = inviteSchema.parse(input);
       const existing = await userRepository.findByUsername(data.username);
@@ -201,9 +221,11 @@ export const userService = {
               email: data.email,
               password: tempPassword,
               role: data.role,
+              siteId,
             },
             tx
-          )
+          ),
+        siteId
       );
 
       const token = await tokenService.create(
@@ -220,15 +242,28 @@ export const userService = {
     }
   },
 
-  async update(actorId: string, input: z.infer<typeof userUpdateSchema>) {
+  async update(
+    actorId: string,
+    siteId: string,
+    input: z.infer<typeof userUpdateSchema>
+  ) {
     try {
       const data = userUpdateSchema.parse(input);
       const { id, ...rest } = data;
 
+      const existing = await userRepository.findById(id);
+      if (!existing) return failure("User not found");
+      if (existing.siteId !== siteId) return failure("User not found");
+      if (existing.role === Role.SUPERADMIN) {
+        return failure("Cannot modify SUPERADMIN users");
+      }
+      if (isKioskUsername(existing.username)) {
+        return failure("Cannot modify kiosk users");
+      }
+
       if (rest.role === Role.STAFF) {
-        const adminCount = await userRepository.countAdmins();
-        const user = await userRepository.findById(id);
-        if (adminCount === 1 && user?.role === Role.ADMIN) {
+        const adminCount = await userRepository.countAdmins(siteId);
+        if (adminCount === 1 && existing.role === Role.ADMIN) {
           return failure("Cannot change role of the last admin");
         }
       }
@@ -257,7 +292,8 @@ export const userService = {
       const user = await executeWithAudit(
         actorId,
         `Updated user: ${rest.username}`,
-        (tx) => userRepository.update(id, updateData, tx)
+        (tx) => userRepository.update(id, updateData, tx),
+        siteId
       );
 
       return success(user);
@@ -267,13 +303,20 @@ export const userService = {
     }
   },
 
-  async delete(actorId: string, id: string) {
+  async delete(actorId: string, siteId: string, id: string) {
     try {
       const user = await userRepository.findById(id);
       if (!user) return failure("User not found");
+      if (user.siteId !== siteId) return failure("User not found");
+      if (user.role === Role.SUPERADMIN) {
+        return failure("Cannot delete SUPERADMIN users");
+      }
+      if (isKioskUsername(user.username)) {
+        return failure("Cannot delete kiosk users");
+      }
 
       if (user.role === Role.ADMIN) {
-        const adminCount = await userRepository.countAdmins();
+        const adminCount = await userRepository.countAdmins(siteId);
         if (adminCount === 1) {
           return failure("Cannot delete the last admin");
         }
@@ -282,7 +325,8 @@ export const userService = {
       await executeWithAudit(
         actorId,
         `Deleted user: ${user.username}`,
-        (tx) => userRepository.delete(id, tx)
+        (tx) => userRepository.delete(id, tx),
+        siteId
       );
 
       return success({ success: true });

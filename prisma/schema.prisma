@@ -37,33 +37,57 @@ model Session {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model Site {
+  id                String          @id @default(cuid())
+  name              String
+  slug              String          @unique
+  isActive          Boolean         @default(true)
+  kioskPasswordHash String?
+  users             User[]
+  supplies          Supply[]
+  locations         Location[]
+  itemTypes         ItemType[]
+  vendors           Vendor[]
+  requests          Request[]
+  auditLogs         AuditLog[]
+  settings          SystemSetting[]
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
 model User {
-  id            String      @id @default(cuid())
-  username      String      @unique
-  email         String?     @unique
-  emailVerified DateTime?
-  themePreference String?   @default("system")
-  password      String
-  role          Role        @default(STAFF)
-  accounts      Account[]
-  sessions      Session[]
-  requests      Request[]
-  auditLogs     AuditLog[]
-  authTokens    AuthToken[]
-  notifications Notification[]
-  vendorReorders VendorReorder[]
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id              String      @id @default(cuid())
+  username        String      @unique
+  email           String?     @unique
+  emailVerified   DateTime?
+  themePreference String?     @default("system")
+  password        String
+  role            Role        @default(STAFF)
+  siteId          String?
+  site            Site?       @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  accounts        Account[]
+  sessions        Session[]
+  requests        Request[]
+  auditLogs       AuditLog[]
+  authTokens      AuthToken[]
+  notifications   Notification[]
+  vendorReorders  VendorReorder[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([siteId])
 }
 
 model Supply {
   id               String       @id @default(cuid())
+  siteId           String
+  site             Site         @relation(fields: [siteId], references: [id], onDelete: Cascade)
   name             String
   description      String
   quantity         Int          @default(0)
   minimumThreshold Int          @default(0)
-  barcode          String?      @unique
-  internalSku      String?      @unique
+  barcode          String?
+  internalSku      String?
   itemTypeId       String?
   itemType         ItemType?    @relation(fields: [itemTypeId], references: [id])
   requests         Request[]
@@ -74,36 +98,51 @@ model Supply {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  @@index([name])
+  @@unique([siteId, barcode])
+  @@unique([siteId, internalSku])
+  @@index([siteId, name])
 }
 
 model Request {
   id        String        @id @default(cuid())
+  siteId    String
+  site      Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
   userId    String
   supplyId  String
   quantity  Int
   status    RequestStatus @default(PENDING)
-  user      User         @relation(fields: [userId], references: [id])
-  supply    Supply       @relation(fields: [supplyId], references: [id])
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  user      User          @relation(fields: [userId], references: [id])
+  supply    Supply        @relation(fields: [supplyId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([siteId])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
+  siteId    String?
+  site      Site?    @relation(fields: [siteId], references: [id], onDelete: SetNull)
   userId    String
   action    String
   user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
+
+  @@index([siteId])
 }
 
 model SystemSetting {
   id          String   @id @default(cuid())
-  key         String   @unique
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  key         String
   value       String
   description String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([siteId, key])
+  @@index([siteId])
 }
 
 model AuthToken {
@@ -135,7 +174,9 @@ enum TokenType {
 
 model Location {
   id             String          @id @default(cuid())
-  name           String          @unique
+  siteId         String
+  site           Site            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name           String
   type           String
   description    String?
   isActive       Boolean         @default(true)
@@ -143,17 +184,25 @@ model Location {
   stockMovements StockMovement[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  @@unique([siteId, name])
+  @@index([siteId])
 }
 
 model ItemType {
   id          String   @id @default(cuid())
-  slug        String   @unique
+  siteId      String
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  slug        String
   name        String
   description String?
   attributes  Json     @default("{}")
   supplies    Supply[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([siteId, slug])
+  @@index([siteId])
 }
 
 model StockLevel {
@@ -172,16 +221,20 @@ model StockLevel {
 }
 
 model Vendor {
-  id          String       @id @default(cuid())
-  name        String
-  contact     String?
-  website     String?
-  notes       String?
-  isActive    Boolean      @default(true)
-  itemVendors ItemVendor[]
+  id             String         @id @default(cuid())
+  siteId         String
+  site           Site           @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  name           String
+  contact        String?
+  website        String?
+  notes          String?
+  isActive       Boolean        @default(true)
+  itemVendors    ItemVendor[]
   vendorReorders VendorReorder[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([siteId])
 }
 
 model ItemVendor {
@@ -297,6 +350,7 @@ enum NotificationType {
 }
 
 enum Role {
+  SUPERADMIN
   ADMIN
   STAFF
   PENDING

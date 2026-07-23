@@ -1,17 +1,12 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "@/components/admin/settings-form";
 
 export default async function SettingsPage() {
-  const session = await getServerSession(authOptions);
-
-  if (!session || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
+  const ctx = await requireAdmin();
 
   const settings = await prisma.systemSetting.findMany({
+    where: { siteId: ctx.siteId },
     orderBy: {
       key: "asc",
     },

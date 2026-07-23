@@ -1,38 +1,40 @@
 import { prisma } from "@/lib/prisma";
 
 export const locationRepository = {
-  findAll() {
+  findAll(siteId: string) {
     return prisma.location.findMany({
-      where: { isActive: true },
+      where: { siteId, isActive: true },
       orderBy: { name: "asc" },
       include: { _count: { select: { stockLevels: true } } },
     });
   },
 
-  findAllAdmin() {
+  findAllAdmin(siteId: string) {
     return prisma.location.findMany({
+      where: { siteId },
       orderBy: { name: "asc" },
       include: { _count: { select: { stockLevels: true } } },
     });
   },
 
-  findById(id: string) {
-    return prisma.location.findUnique({ where: { id } });
+  findById(id: string, siteId: string) {
+    return prisma.location.findFirst({ where: { id, siteId } });
   },
 
-  findActiveById(id: string) {
+  findActiveById(id: string, siteId: string) {
     return prisma.location.findFirst({
-      where: { id, isActive: true },
+      where: { id, siteId, isActive: true },
     });
   },
 
-  findDefault() {
+  findDefault(siteId: string) {
     return prisma.location.findFirst({
-      where: { name: "Watchpoint Delta", isActive: true },
+      where: { siteId, name: "Watchpoint Delta", isActive: true },
     });
   },
 
   create(data: {
+    siteId: string;
     name: string;
     type: string;
     description?: string;
@@ -42,6 +44,7 @@ export const locationRepository = {
 
   update(
     id: string,
+    siteId: string,
     data: Partial<{
       name: string;
       type: string;
@@ -49,6 +52,6 @@ export const locationRepository = {
       isActive: boolean;
     }>
   ) {
-    return prisma.location.update({ where: { id }, data });
+    return prisma.location.updateMany({ where: { id, siteId }, data });
   },
 };

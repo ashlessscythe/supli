@@ -74,11 +74,17 @@ describe("notificationService.notifyAdminsOfRegistration", () => {
       { id: "admin-2", email: null },
     ] as never);
 
-    await notificationService.notifyAdminsOfRegistration({
+    await notificationService.notifyAdminsOfRegistration("site-1", {
       id: "pending-1",
       username: "newbie",
       email: "newbie@example.com",
     });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ siteId: "site-1" }),
+      })
+    );
 
     expect(prisma.notification.create).toHaveBeenCalledTimes(2);
     expect(prisma.notification.create).toHaveBeenCalledWith(
@@ -111,10 +117,15 @@ describe("notificationService.notifyAdminsLowStock", () => {
       { id: "admin-2", email: "b@example.com" },
     ] as never);
 
-    await notificationService.notifyAdminsLowStock("Gloves", 2, "supply-1");
+    await notificationService.notifyAdminsLowStock(
+      "site-1",
+      "Gloves",
+      2,
+      "supply-1"
+    );
 
     expect(prisma.user.findMany).toHaveBeenCalledWith({
-      where: { role: Role.ADMIN },
+      where: { role: Role.ADMIN, siteId: "site-1" },
       select: { id: true, email: true },
     });
     expect(prisma.notification.create).toHaveBeenCalledTimes(2);

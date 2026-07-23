@@ -1,18 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdmin, requireSiteContext } from "@/lib/auth/session";
 import { settingsService } from "@/server/services/settings.service";
 import type { SettingInput } from "@/lib/validation/settings";
 
 export async function getSystemSetting(key: string) {
-  return settingsService.getSetting(key);
+  try {
+    const ctx = await requireSiteContext();
+    return settingsService.getSetting(ctx.siteId, key);
+  } catch {
+    return null;
+  }
 }
 
 export async function getAllSettings() {
   try {
-    await requireAdmin();
-    return settingsService.list();
+    const ctx = await requireAdmin();
+    return settingsService.list(ctx.siteId);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }
@@ -20,8 +25,12 @@ export async function getAllSettings() {
 
 export async function updateSettings(settings: SettingInput[]) {
   try {
-    const session = await requireAdmin();
-    const result = await settingsService.update(session.user.id, settings);
+    const ctx = await requireAdmin();
+    const result = await settingsService.update(
+      ctx.userId,
+      ctx.siteId,
+      settings
+    );
     if (result.success) revalidatePath("/admin/settings");
     return result;
   } catch {
@@ -31,9 +40,10 @@ export async function updateSettings(settings: SettingInput[]) {
 
 export async function updateKioskPassword(password: string) {
   try {
-    const session = await requireAdmin();
+    const ctx = await requireAdmin();
     const result = await settingsService.setKioskPassword(
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       password
     );
     if (result.success) revalidatePath("/admin/settings");
@@ -44,13 +54,28 @@ export async function updateKioskPassword(password: string) {
 }
 
 export async function shouldShowAllRequests() {
-  return settingsService.shouldShowAllRequests();
+  try {
+    const ctx = await requireSiteContext();
+    return settingsService.shouldShowAllRequests(ctx.siteId);
+  } catch {
+    return false;
+  }
 }
 
 export async function getMaxRequestQuantity() {
-  return settingsService.getMaxRequestQuantity();
+  try {
+    const ctx = await requireSiteContext();
+    return settingsService.getMaxRequestQuantity(ctx.siteId);
+  } catch {
+    return 100;
+  }
 }
 
 export async function getLowStockThreshold() {
-  return settingsService.getLowStockThreshold();
+  try {
+    const ctx = await requireSiteContext();
+    return settingsService.getLowStockThreshold(ctx.siteId);
+  } catch {
+    return 5;
+  }
 }

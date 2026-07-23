@@ -4,6 +4,8 @@ import { supplyService } from "@/server/services/supply.service";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { notificationService } from "@/server/services/notification.service";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
@@ -68,7 +70,7 @@ describe("supplyService.getDetails", () => {
       vendorReorders: [],
     } as never);
 
-    const result = await supplyService.getDetails("supply-1");
+    const result = await supplyService.getDetails(SITE_ID, "supply-1");
 
     expect(result.success).toBe(true);
     if (result.success) {
@@ -110,7 +112,7 @@ describe("supplyService.delete", () => {
       id: "req-1",
     } as never);
 
-    const result = await supplyService.delete(userId, supply.id);
+    const result = await supplyService.delete(userId, SITE_ID, supply.id);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -123,7 +125,7 @@ describe("supplyService.delete", () => {
   it("blocks deletion when supply has remaining quantity", async () => {
     vi.mocked(supplyRepository.hasRemainingStock).mockResolvedValue(true);
 
-    const result = await supplyService.delete(userId, supply.id);
+    const result = await supplyService.delete(userId, SITE_ID, supply.id);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -138,7 +140,7 @@ describe("supplyService.delete", () => {
       id: "order-1",
     } as never);
 
-    const result = await supplyService.delete(userId, supply.id);
+    const result = await supplyService.delete(userId, SITE_ID, supply.id);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -148,14 +150,15 @@ describe("supplyService.delete", () => {
   });
 
   it("deletes supply and records audit when no blockers exist", async () => {
-    const result = await supplyService.delete(userId, supply.id);
+    const result = await supplyService.delete(userId, SITE_ID, supply.id);
 
     expect(result.success).toBe(true);
-    expect(supplyRepository.delete).toHaveBeenCalledWith(supply.id, tx);
+    expect(supplyRepository.delete).toHaveBeenCalledWith(supply.id, SITE_ID, tx);
     expect(tx.auditLog.create).toHaveBeenCalledWith({
       data: {
         userId,
         action: "Deleted supply: Gloves",
+        siteId: SITE_ID,
       },
     });
   });
@@ -187,7 +190,7 @@ describe("supplyService.updateQuantity", () => {
   });
 
   it("rejects negative quantities", async () => {
-    const result = await supplyService.updateQuantity(userId, supply.id, -1);
+    const result = await supplyService.updateQuantity(userId, SITE_ID, supply.id, -1);
 
     expect(result.success).toBe(false);
     if (!result.success) {
@@ -196,10 +199,11 @@ describe("supplyService.updateQuantity", () => {
   });
 
   it("notifies admins when updated quantity is at or below threshold", async () => {
-    const result = await supplyService.updateQuantity(userId, supply.id, 4);
+    const result = await supplyService.updateQuantity(userId, SITE_ID, supply.id, 4);
 
     expect(result.success).toBe(true);
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+      SITE_ID,
       supply.name,
       4,
       supply.id
@@ -233,13 +237,18 @@ describe("supplyService.update", () => {
       id: "supply-1",
       ...input,
     } as never);
+    vi.mocked(supplyRepository.findById).mockResolvedValue({
+      id: "supply-1",
+      ...input,
+    } as never);
   });
 
   it("triggers low-stock notification when threshold is reached", async () => {
-    const result = await supplyService.update(userId, "supply-1", input);
+    const result = await supplyService.update(userId, SITE_ID, "supply-1", input);
 
     expect(result.success).toBe(true);
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+      SITE_ID,
       input.name,
       input.quantity,
       "supply-1"

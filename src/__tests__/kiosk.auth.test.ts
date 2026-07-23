@@ -1,8 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { computeKioskToken, isKioskAuthenticated, getKioskUserId } from "@/lib/kiosk";
+import {
+  computeKioskToken,
+  isKioskAuthenticated,
+  getKioskUserId,
+} from "@/lib/kiosk";
 import { settingsService } from "@/server/services/settings.service";
 import { prisma } from "@/lib/prisma";
-import { KIOSK_COOKIE, KIOSK_USERNAME } from "@/lib/kiosk-constants";
+import { KIOSK_COOKIE } from "@/lib/kiosk-constants";
+import { KIOSK_SITE_COOKIE } from "@/lib/sites";
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(),
@@ -19,6 +24,9 @@ vi.mock("@/lib/prisma", () => ({
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+    },
+    site: {
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -60,9 +68,23 @@ describe("isKioskAuthenticated", () => {
     expect(settingsService.getKioskPasswordHash).not.toHaveBeenCalled();
   });
 
+  it("returns false when the site cookie is missing", async () => {
+    vi.mocked(cookies).mockReturnValue({
+      get: (name: string) =>
+        name === KIOSK_COOKIE ? { value: "any-token" } : undefined,
+    } as never);
+
+    await expect(isKioskAuthenticated()).resolves.toBe(false);
+    expect(settingsService.getKioskPasswordHash).not.toHaveBeenCalled();
+  });
+
   it("returns false when no password hash is configured", async () => {
     vi.mocked(cookies).mockReturnValue({
-      get: () => ({ value: "any-token" }),
+      get: (name: string) => {
+        if (name === KIOSK_COOKIE) return { value: "any-token" };
+        if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
+        return undefined;
+      },
     } as never);
     vi.mocked(settingsService.getKioskPasswordHash).mockResolvedValue(null);
 
@@ -73,20 +95,30 @@ describe("isKioskAuthenticated", () => {
     const hash = "current-hash";
     const token = computeKioskToken(hash);
     vi.mocked(cookies).mockReturnValue({
-      get: (name: string) =>
-        name === KIOSK_COOKIE ? { value: token } : undefined,
+      get: (name: string) => {
+        if (name === KIOSK_COOKIE) return { value: token };
+        if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
+        return undefined;
+      },
     } as never);
     vi.mocked(settingsService.getKioskPasswordHash).mockResolvedValue(hash);
 
     await expect(isKioskAuthenticated()).resolves.toBe(true);
+    expect(settingsService.getKioskPasswordHash).toHaveBeenCalledWith("site-1");
   });
 
   it("returns false after password change (old token vs new hash)", async () => {
     const oldToken = computeKioskToken("old-hash");
     vi.mocked(cookies).mockReturnValue({
-      get: () => ({ value: oldToken }),
+      get: (name: string) => {
+        if (name === KIOSK_COOKIE) return { value: oldToken };
+        if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
+        return undefined;
+      },
     } as never);
-    vi.mocked(settingsService.getKioskPasswordHash).mockResolvedValue("new-hash");
+    vi.mocked(settingsService.getKioskPasswordHash).mockResolvedValue(
+      "new-hash"
+    );
 
     await expect(isKioskAuthenticated()).resolves.toBe(false);
   });
@@ -94,7 +126,12 @@ describe("isKioskAuthenticated", () => {
   it("returns false for truncated tokens (length mismatch)", async () => {
     const hash = "current-hash";
     vi.mocked(cookies).mockReturnValue({
-      get: () => ({ value: computeKioskToken(hash).slice(0, 10) }),
+      get: (name: string) => {
+        if (name === KIOSK_COOKIE)
+          return { value: computeKioskToken(hash).slice(0, 10) };
+        if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
+        return undefined;
+      },
     } as never);
     vi.mocked(settingsService.getKioskPasswordHash).mockResolvedValue(hash);
 
@@ -107,25 +144,62 @@ describe("getKioskUserId", () => {
     vi.clearAllMocks();
   });
 
-  it("returns existing kiosk user id", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "kiosk-1" } as never);
+  it("returns existing kiosk user id for a site", async () => {
+    vi.mocked(prisma.site.findUnique).mockResolvedValue({
+      id: "site-1",
+      slug: "main",
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "kiosk-1",
+    } as never);
 
-    await expect(getKioskUserId()).resolves.toBe("kiosk-1");
+    await expect(getKioskUserId("site-1")).resolves.toBe("kiosk-1");
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { username: "kiosk-main" },
+      select: { id: true },
+    });
     expect(prisma.user.create).not.toHaveBeenCalled();
   });
 
   it("creates the system kiosk user on first use", async () => {
+    vi.mocked(prisma.site.findUnique).mockResolvedValue({
+      id: "site-1",
+      slug: "main",
+    } as never);
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never);
-    vi.mocked(prisma.user.create).mockResolvedValue({ id: "kiosk-new" } as never);
+    vi.mocked(prisma.user.create).mockResolvedValue({
+      id: "kiosk-new",
+    } as never);
 
-    await expect(getKioskUserId()).resolves.toBe("kiosk-new");
+    await expect(getKioskUserId("site-1")).resolves.toBe("kiosk-new");
     expect(prisma.user.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          username: KIOSK_USERNAME,
+          username: "kiosk-main",
           role: "STAFF",
+          siteId: "site-1",
         }),
       })
     );
+  });
+
+  it("reads site id from the kiosk site cookie when omitted", async () => {
+    vi.mocked(cookies).mockReturnValue({
+      get: (name: string) =>
+        name === KIOSK_SITE_COOKIE ? { value: "site-cookie" } : undefined,
+    } as never);
+    vi.mocked(prisma.site.findUnique).mockResolvedValue({
+      id: "site-cookie",
+      slug: "east",
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: "kiosk-east",
+    } as never);
+
+    await expect(getKioskUserId()).resolves.toBe("kiosk-east");
+    expect(prisma.site.findUnique).toHaveBeenCalledWith({
+      where: { id: "site-cookie" },
+      select: { id: true, slug: true },
+    });
   });
 });

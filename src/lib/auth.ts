@@ -4,6 +4,7 @@ import { Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcrypt";
 import { rateLimitService } from "@/server/services/auth.service";
+import { isKioskUsername } from "@/lib/sites";
 
 export const authOptions: NextAuthOptions = {
   session: {
@@ -34,7 +35,7 @@ export const authOptions: NextAuthOptions = {
           where: { username: credentials.username },
         });
 
-        if (!user) {
+        if (!user || isKioskUsername(user.username)) {
           await rateLimitService.recordFailure(identifier);
           return null;
         }
@@ -53,12 +54,17 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        if (user.role !== Role.SUPERADMIN && !user.siteId) {
+          return null;
+        }
+
         await rateLimitService.reset(identifier);
 
         return {
           id: user.id,
           username: user.username,
           role: user.role,
+          siteId: user.siteId,
         };
       },
     }),
@@ -68,21 +74,29 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.username = user.username;
         token.role = user.role;
+        token.siteId = user.siteId;
       }
 
       if (token.sub) {
         const dbUser = await prisma.user.findUnique({
           where: { id: token.sub },
-          select: { username: true, role: true },
+          select: { username: true, role: true, siteId: true },
         });
-        if (!dbUser || dbUser.role === Role.PENDING) {
+        if (
+          !dbUser ||
+          dbUser.role === Role.PENDING ||
+          isKioskUsername(dbUser.username) ||
+          (dbUser.role !== Role.SUPERADMIN && !dbUser.siteId)
+        ) {
           delete token.sub;
           delete token.username;
           delete token.role;
+          delete token.siteId;
           return token;
         }
         token.username = dbUser.username;
         token.role = dbUser.role;
+        token.siteId = dbUser.siteId;
       }
 
       return token;
@@ -96,6 +110,7 @@ export const authOptions: NextAuthOptions = {
             id: "",
             username: "",
             role: Role.STAFF,
+            siteId: null,
           },
         };
       }
@@ -106,6 +121,7 @@ export const authOptions: NextAuthOptions = {
           id: token.sub as string,
           username: token.username as string,
           role: token.role,
+          siteId: (token.siteId as string | null | undefined) ?? null,
         },
       };
     },

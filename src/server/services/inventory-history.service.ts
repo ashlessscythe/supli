@@ -29,7 +29,7 @@ function isVendorReorderStatus(
 }
 
 export const inventoryHistoryService = {
-  async search(input: InventoryHistorySearchInput) {
+  async search(siteId: string, input: InventoryHistorySearchInput) {
     try {
       const data = inventoryHistorySearchSchema.parse(input);
       const term = data.q?.trim() ?? "";
@@ -54,6 +54,7 @@ export const inventoryHistoryService = {
       if (includeOrders) {
         const orders = await prisma.vendorReorder.findMany({
           where: {
+            supply: { siteId },
             ...(statusFilter ? { status: statusFilter } : {}),
             ...(from || to
               ? {
@@ -126,6 +127,7 @@ export const inventoryHistoryService = {
 
         const movements = await prisma.stockMovement.findMany({
           where: {
+            supply: { siteId },
             type: { in: movementTypes },
             ...(from || to
               ? {

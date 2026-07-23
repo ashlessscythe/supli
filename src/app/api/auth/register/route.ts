@@ -2,11 +2,21 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { userService } from "@/server/services/user.service";
 import { registerSchema } from "@/lib/validation/user";
+import { siteService } from "@/server/services/site.service";
 
 export async function POST(request: Request) {
   try {
     const json = await request.json();
     const data = registerSchema.parse(json);
+
+    const siteResult = await siteService.getById(data.siteId);
+    if (!siteResult.success || !siteResult.data.isActive) {
+      return NextResponse.json(
+        { error: "Invalid or inactive site" },
+        { status: 400 }
+      );
+    }
+
     const result = await userService.register(data);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });

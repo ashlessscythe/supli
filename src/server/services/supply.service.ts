@@ -23,18 +23,18 @@ function isUniqueViolation(error: unknown): boolean {
 }
 
 export const supplyService = {
-  async list(): Promise<ActionResult<Awaited<ReturnType<typeof supplyRepository.findAll>>>> {
+  async list(siteId: string): Promise<ActionResult<Awaited<ReturnType<typeof supplyRepository.findAll>>>> {
     try {
-      const supplies = await supplyRepository.findAll();
+      const supplies = await supplyRepository.findAll(siteId);
       return success(supplies);
     } catch {
       return failure("Failed to fetch supplies");
     }
   },
 
-  async getById(id: string) {
+  async getById(siteId: string, id: string) {
     try {
-      const supply = await supplyRepository.findById(id);
+      const supply = await supplyRepository.findById(id, siteId);
       if (!supply) return failure("Supply not found");
       return success(supply);
     } catch {
@@ -42,9 +42,9 @@ export const supplyService = {
     }
   },
 
-  async getDetails(id: string) {
+  async getDetails(siteId: string, id: string) {
     try {
-      const supply = await supplyRepository.findDetails(id);
+      const supply = await supplyRepository.findDetails(id, siteId);
       if (!supply) return failure("Supply not found");
 
       const userIds = [
@@ -148,13 +148,14 @@ export const supplyService = {
     }
   },
 
-  async create(userId: string, input: SupplyInput) {
+  async create(userId: string, siteId: string, input: SupplyInput) {
     try {
       const data = supplyAdminSchema.parse(input);
       const supply = await executeWithAudit(
         userId,
         `Created supply: ${data.name}`,
-        (tx) => supplyRepository.create(data, tx)
+        (tx) => supplyRepository.create({ ...data, siteId }, tx),
+        siteId
       );
       return success(supply);
     } catch (error) {
@@ -166,17 +167,27 @@ export const supplyService = {
     }
   },
 
-  async update(userId: string, id: string, input: SupplyInput) {
+  async update(userId: string, siteId: string, id: string, input: SupplyInput) {
     try {
       const data = supplyAdminSchema.parse(input);
-      const supply = await executeWithAudit(
+      await executeWithAudit(
         userId,
         `Updated supply: ${data.name}`,
-        (tx) => supplyRepository.update(id, data, tx)
+        async (tx) => {
+          const result = await supplyRepository.update(id, siteId, data, tx);
+          if (result.count === 0) {
+            throw new Error("Supply not found");
+          }
+        },
+        siteId
       );
+
+      const supply = await supplyRepository.findById(id, siteId);
+      if (!supply) return failure("Supply not found");
 
       if (data.quantity <= data.minimumThreshold) {
         await notificationService.notifyAdminsLowStock(
+          siteId,
           supply.name,
           supply.quantity,
           supply.id
@@ -186,6 +197,9 @@ export const supplyService = {
       return success(supply);
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
+      if (error instanceof Error && error.message === "Supply not found") {
+        return failure("Supply not found");
+      }
       if (isUniqueViolation(error)) {
         return failure("A supply with that barcode or SKU already exists");
       }
@@ -193,17 +207,31 @@ export const supplyService = {
     }
   },
 
-  async updateByStaff(userId: string, id: string, input: SupplyStaffUpdateInput) {
+  async updateByStaff(
+    userId: string,
+    siteId: string,
+    id: string,
+    input: SupplyStaffUpdateInput
+  ) {
     try {
       const data = supplyStaffUpdateSchema.parse(input);
-      const existing = await supplyRepository.findById(id);
+      const existing = await supplyRepository.findById(id, siteId);
       if (!existing) return failure("Supply not found");
 
-      const supply = await executeWithAudit(
+      await executeWithAudit(
         userId,
         `Updated supply: ${existing.name}`,
-        (tx) => supplyRepository.update(id, data, tx)
+        async (tx) => {
+          const result = await supplyRepository.update(id, siteId, data, tx);
+          if (result.count === 0) {
+            throw new Error("Supply not found");
+          }
+        },
+        siteId
       );
+
+      const supply = await supplyRepository.findById(id, siteId);
+      if (!supply) return failure("Supply not found");
       return success(supply);
     } catch (error) {
       if (error instanceof z.ZodError) return failure(error.errors);
@@ -211,30 +239,31 @@ export const supplyService = {
     }
   },
 
-  async delete(userId: string, id: string) {
+  async delete(userId: string, siteId: string, id: string) {
     try {
-      const pending = await supplyRepository.hasPendingRequests(id);
+      const pending = await supplyRepository.hasPendingRequests(id, siteId);
       if (pending) {
         return failure("Cannot delete supply with pending requests");
       }
 
-      const hasStock = await supplyRepository.hasRemainingStock(id);
+      const hasStock = await supplyRepository.hasRemainingStock(id, siteId);
       if (hasStock) {
         return failure("Cannot delete supply with remaining quantity");
       }
 
-      const openOrders = await supplyRepository.hasOpenOrders(id);
+      const openOrders = await supplyRepository.hasOpenOrders(id, siteId);
       if (openOrders) {
         return failure("Cannot delete supply with open orders");
       }
 
-      const existing = await supplyRepository.findById(id);
+      const existing = await supplyRepository.findById(id, siteId);
       if (!existing) return failure("Supply not found");
 
       await executeWithAudit(
         userId,
         `Deleted supply: ${existing.name}`,
-        (tx) => supplyRepository.delete(id, tx).then(() => existing)
+        (tx) => supplyRepository.delete(id, siteId, tx).then(() => existing),
+        siteId
       );
 
       return success(existing);
@@ -243,11 +272,16 @@ export const supplyService = {
     }
   },
 
-  async updateQuantity(userId: string, id: string, quantity: number) {
+  async updateQuantity(
+    userId: string,
+    siteId: string,
+    id: string,
+    quantity: number
+  ) {
     try {
       if (quantity < 0) return failure("Quantity cannot be negative");
 
-      const supply = await supplyRepository.findById(id);
+      const supply = await supplyRepository.findById(id, siteId);
       if (!supply) return failure("Supply not found");
 
       const actions = [
@@ -259,12 +293,29 @@ export const supplyService = {
         );
       }
 
-      const updated = await executeWithAudits(userId, actions, (tx) =>
-        supplyRepository.update(id, { quantity }, tx)
+      await executeWithAudits(
+        userId,
+        actions,
+        async (tx) => {
+          const result = await supplyRepository.update(
+            id,
+            siteId,
+            { quantity },
+            tx
+          );
+          if (result.count === 0) {
+            throw new Error("Supply not found");
+          }
+        },
+        siteId
       );
+
+      const updated = await supplyRepository.findById(id, siteId);
+      if (!updated) return failure("Supply not found");
 
       if (quantity <= supply.minimumThreshold) {
         await notificationService.notifyAdminsLowStock(
+          siteId,
           supply.name,
           quantity,
           supply.id

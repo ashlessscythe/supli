@@ -1,10 +1,12 @@
 import { getServerSession } from "next-auth";
+import { Role } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { LowStockCard } from "@/components/dashboard/low-stock-card";
 import { Package } from "lucide-react";
+import { requireSiteContext } from "@/lib/auth/session";
 import { forecastService } from "@/server/services/forecast.service";
 import {
   getReceiptsChartData,
@@ -20,17 +22,22 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  if (session.user.role === "ADMIN") {
+  if (
+    session.user.role === Role.ADMIN ||
+    session.user.role === Role.SUPERADMIN
+  ) {
     redirect("/admin");
   }
+
+  const ctx = await requireSiteContext();
 
   const [stats, receiptsData, supplyData, metrics, depletion, lowStockItems] =
     await Promise.all([
       getStats(),
       getReceiptsChartData(),
       getSupplyChartData(),
-      forecastService.getDashboardMetrics(),
-      forecastService.getDepletionEstimates(),
+      forecastService.getDashboardMetrics(ctx.siteId),
+      forecastService.getDepletionEstimates(ctx.siteId),
       getLowStockItems(5),
     ]);
 

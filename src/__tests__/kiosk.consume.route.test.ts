@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/kiosk/consume/route";
 import { stockMovementService } from "@/server/services/stock-movement.service";
-import { isKioskAuthenticated, getKioskUserId } from "@/lib/kiosk";
+import {
+  isKioskAuthenticated,
+  getKioskUserId,
+  getKioskSite,
+} from "@/lib/kiosk";
 import { prisma } from "@/lib/prisma";
 
 vi.mock("@/lib/kiosk", () => ({
   isKioskAuthenticated: vi.fn(),
   getKioskUserId: vi.fn(),
+  getKioskSite: vi.fn(),
 }));
 
 vi.mock("@/server/services/stock-movement.service", () => ({
@@ -18,7 +23,7 @@ vi.mock("@/server/services/stock-movement.service", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     supply: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -48,12 +53,17 @@ describe("POST /api/kiosk/consume", () => {
 
   it("forwards consume to the kiosk system user when authenticated", async () => {
     vi.mocked(isKioskAuthenticated).mockResolvedValue(true);
+    vi.mocked(getKioskSite).mockResolvedValue({
+      id: "site-1",
+      name: "Main",
+      slug: "main",
+    });
     vi.mocked(getKioskUserId).mockResolvedValue("kiosk-user");
     vi.mocked(stockMovementService.consume).mockResolvedValue({
       success: true,
       data: { id: "supply-1", quantity: 9 },
     } as never);
-    vi.mocked(prisma.supply.findUnique).mockResolvedValue({
+    vi.mocked(prisma.supply.findFirst).mockResolvedValue({
       name: "Nitrile gloves",
     } as never);
 
@@ -62,7 +72,12 @@ describe("POST /api/kiosk/consume", () => {
     const json = await response.json();
 
     expect(response.status).toBe(200);
-    expect(stockMovementService.consume).toHaveBeenCalledWith("kiosk-user", body);
+    expect(getKioskUserId).toHaveBeenCalledWith("site-1");
+    expect(stockMovementService.consume).toHaveBeenCalledWith(
+      "kiosk-user",
+      "site-1",
+      body
+    );
     expect(json).toEqual({
       id: "supply-1",
       quantity: 9,
@@ -72,6 +87,11 @@ describe("POST /api/kiosk/consume", () => {
 
   it("returns 400 when consume fails", async () => {
     vi.mocked(isKioskAuthenticated).mockResolvedValue(true);
+    vi.mocked(getKioskSite).mockResolvedValue({
+      id: "site-1",
+      name: "Main",
+      slug: "main",
+    });
     vi.mocked(getKioskUserId).mockResolvedValue("kiosk-user");
     vi.mocked(stockMovementService.consume).mockResolvedValue({
       success: false,

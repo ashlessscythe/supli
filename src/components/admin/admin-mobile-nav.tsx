@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
@@ -12,14 +13,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { adminRoutes } from "./admin-nav";
+import { getAdminRoutes } from "./admin-nav";
 
-export function AdminMobileNav() {
+export function AdminMobileNav({ role }: { role?: Role | string }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const routes = getAdminRoutes(role);
 
   const current =
-    adminRoutes.find((route) => route.href === pathname)?.title ?? "Admin";
+    routes.find((route) => route.href === pathname)?.title ?? "Admin";
 
   return (
     <div className="md:hidden">
@@ -34,7 +36,7 @@ export function AdminMobileNav() {
           align="start"
           className="w-[calc(100vw-2rem)] max-w-sm"
         >
-          {adminRoutes.map((route) => (
+          {routes.map((route) => (
             <DropdownMenuItem key={route.href} asChild>
               <Link
                 href={route.href}

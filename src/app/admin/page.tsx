@@ -1,3 +1,4 @@
+import { requireAdmin } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { LowStockCard } from "@/components/dashboard/low-stock-card";
@@ -11,13 +12,15 @@ import {
 } from "@/lib/actions/admin";
 
 export default async function AdminPage() {
+  const ctx = await requireAdmin();
+
   const [stats, receiptsData, supplyData, metrics, depletion, lowStockItems] =
     await Promise.all([
       getStats(),
       getReceiptsChartData(),
       getSupplyChartData(),
-      forecastService.getDashboardMetrics(),
-      forecastService.getDepletionEstimates(),
+      forecastService.getDashboardMetrics(ctx.siteId),
+      forecastService.getDepletionEstimates(ctx.siteId),
       getLowStockItems(5),
     ]);
 

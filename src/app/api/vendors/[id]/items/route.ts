@@ -1,26 +1,25 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth/session";
 import { vendorService } from "@/server/services/vendor.service";
 
-async function requireAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "ADMIN") {
+async function getAdminContext() {
+  try {
+    return await requireAdmin();
+  } catch {
     return null;
   }
-  return session;
 }
 
 export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await requireAdmin();
-  if (!session) {
+  const ctx = await getAdminContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await vendorService.listItems(params.id);
+  const result = await vendorService.listItems(ctx.siteId, params.id);
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
@@ -31,8 +30,8 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await requireAdmin();
-  if (!session) {
+  const ctx = await getAdminContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -40,7 +39,8 @@ export async function POST(
     const json = await request.json();
     const result = await vendorService.linkItem(
       params.id,
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       json
     );
     if (!result.success) {
@@ -65,8 +65,8 @@ export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await requireAdmin();
-  if (!session) {
+  const ctx = await getAdminContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -74,7 +74,8 @@ export async function PATCH(
     const json = await request.json();
     const result = await vendorService.updateItemLink(
       params.id,
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       json
     );
     if (!result.success) {
@@ -93,8 +94,8 @@ export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const session = await requireAdmin();
-  if (!session) {
+  const ctx = await getAdminContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -111,7 +112,8 @@ export async function DELETE(
     const result = await vendorService.unlinkItem(
       params.id,
       supplyId,
-      session.user.id
+      ctx.userId,
+      ctx.siteId
     );
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 400 });

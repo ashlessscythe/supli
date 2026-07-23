@@ -9,6 +9,8 @@ import { stockLevelRepository } from "@/server/repositories/stock-level.reposito
 import { settingsService } from "@/server/services/settings.service";
 import { notificationService } from "@/server/services/notification.service";
 
+const SITE_ID = "site-1";
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     $transaction: vi.fn(),
@@ -80,7 +82,7 @@ describe("requestService.create", () => {
   it("rejects when supply is not found", async () => {
     vi.mocked(supplyRepository.findById).mockResolvedValue(null as never);
 
-    const result = await requestService.create(actorId, {
+    const result = await requestService.create(actorId, SITE_ID, {
       supplyId: "missing",
       quantity: 1,
     });
@@ -94,7 +96,7 @@ describe("requestService.create", () => {
   it("rejects when requested quantity exceeds available stock", async () => {
     vi.mocked(supplyRepository.findById).mockResolvedValue(supply as never);
 
-    const result = await requestService.create(actorId, {
+    const result = await requestService.create(actorId, SITE_ID, {
       supplyId: supply.id,
       quantity: 11,
     });
@@ -110,7 +112,7 @@ describe("requestService.create", () => {
     vi.mocked(supplyRepository.findById).mockResolvedValue(supply as never);
     vi.mocked(requestRepository.create).mockResolvedValue(created as never);
 
-    const result = await requestService.create(actorId, {
+    const result = await requestService.create(actorId, SITE_ID, {
       supplyId: supply.id,
       quantity: 3,
     });
@@ -118,6 +120,7 @@ describe("requestService.create", () => {
     expect(result.success).toBe(true);
     expect(requestRepository.create).toHaveBeenCalledWith(
       {
+        siteId: SITE_ID,
         userId: actorId,
         supplyId: supply.id,
         quantity: 3,
@@ -128,6 +131,7 @@ describe("requestService.create", () => {
       data: {
         userId: actorId,
         action: "Created request for 3 Nitrile gloves",
+        siteId: SITE_ID,
       },
     });
   });
@@ -189,6 +193,7 @@ describe("requestService.updateStatus", () => {
   it("rejects invalid status values", async () => {
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.PENDING
     );
@@ -207,6 +212,7 @@ describe("requestService.updateStatus", () => {
 
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.DENIED
     );
@@ -226,6 +232,7 @@ describe("requestService.updateStatus", () => {
 
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.APPROVED
     );
@@ -239,6 +246,7 @@ describe("requestService.updateStatus", () => {
   it("approves request, deducts stock, and notifies the requester", async () => {
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.APPROVED
     );
@@ -283,6 +291,7 @@ describe("requestService.updateStatus", () => {
 
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.DENIED
     );
@@ -312,11 +321,13 @@ describe("requestService.updateStatus", () => {
 
     await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.APPROVED
     );
 
     expect(notificationService.notifyAdminsLowStock).toHaveBeenCalledWith(
+      SITE_ID,
       existing.supply.name,
       4,
       existing.supplyId
@@ -328,6 +339,7 @@ describe("requestService.updateStatus", () => {
 
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.APPROVED
     );
@@ -348,6 +360,7 @@ describe("requestService.updateStatus", () => {
 
     const result = await requestService.updateStatus(
       actorId,
+      SITE_ID,
       existing.id,
       RequestStatus.APPROVED
     );
@@ -369,10 +382,11 @@ describe("requestService.getById", () => {
     vi.mocked(settingsService.shouldShowAllRequests).mockResolvedValue(false);
     vi.mocked(requestRepository.findFirst).mockResolvedValue(null as never);
 
-    const result = await requestService.getById("user-1", "STAFF", "req-other");
+    const result = await requestService.getById("user-1", SITE_ID, "STAFF", "req-other");
 
     expect(requestRepository.findFirst).toHaveBeenCalledWith({
       id: "req-other",
+      siteId: SITE_ID,
       userId: "user-1",
     });
     expect(result.success).toBe(false);
@@ -386,9 +400,9 @@ describe("requestService.getById", () => {
     vi.mocked(settingsService.shouldShowAllRequests).mockResolvedValue(false);
     vi.mocked(requestRepository.findFirst).mockResolvedValue(request as never);
 
-    const result = await requestService.getById("admin-1", "ADMIN", "req-1");
+    const result = await requestService.getById("admin-1", SITE_ID, "ADMIN", "req-1");
 
-    expect(requestRepository.findFirst).toHaveBeenCalledWith({ id: "req-1" });
+    expect(requestRepository.findFirst).toHaveBeenCalledWith({ id: "req-1", siteId: SITE_ID });
     expect(result.success).toBe(true);
   });
 });
@@ -402,17 +416,17 @@ describe("requestService.list", () => {
     vi.mocked(settingsService.shouldShowAllRequests).mockResolvedValue(false);
     vi.mocked(requestRepository.findMany).mockResolvedValue([] as never);
 
-    await requestService.list("user-1", "STAFF");
+    await requestService.list("user-1", SITE_ID, "STAFF");
 
-    expect(requestRepository.findMany).toHaveBeenCalledWith({ userId: "user-1" });
+    expect(requestRepository.findMany).toHaveBeenCalledWith({ siteId: SITE_ID, userId: "user-1" });
   });
 
   it("returns all requests for admins", async () => {
     vi.mocked(settingsService.shouldShowAllRequests).mockResolvedValue(false);
     vi.mocked(requestRepository.findMany).mockResolvedValue([] as never);
 
-    await requestService.list("admin-1", "ADMIN");
+    await requestService.list("admin-1", SITE_ID, "ADMIN");
 
-    expect(requestRepository.findMany).toHaveBeenCalledWith({});
+    expect(requestRepository.findMany).toHaveBeenCalledWith({ siteId: SITE_ID });
   });
 });

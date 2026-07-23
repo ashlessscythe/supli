@@ -7,7 +7,7 @@ const LOW_STOCK_WHERE = {
 } as const;
 
 export const adminService = {
-  async getReceiptsChartData() {
+  async getReceiptsChartData(siteId: string) {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
@@ -16,6 +16,7 @@ export const adminService = {
       where: {
         type: StockMovementType.RECEIVE,
         createdAt: { gte: thirtyDaysAgo },
+        supply: { siteId },
       },
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: "desc" } },
@@ -25,7 +26,7 @@ export const adminService = {
     if (grouped.length === 0) return [];
 
     const supplies = await prisma.supply.findMany({
-      where: { id: { in: grouped.map((g) => g.supplyId) } },
+      where: { id: { in: grouped.map((g) => g.supplyId) }, siteId },
       select: { id: true, name: true },
     });
     const nameMap = new Map(supplies.map((s) => [s.id, s.name]));
@@ -49,8 +50,9 @@ export const adminService = {
     }));
   },
 
-  async getSupplyChartData() {
+  async getSupplyChartData(siteId: string) {
     const supplies = await prisma.supply.findMany({
+      where: { siteId },
       select: { name: true, quantity: true, minimumThreshold: true },
       orderBy: { quantity: "asc" },
       take: 10,
@@ -59,9 +61,9 @@ export const adminService = {
     return supplies.map(toSupplyChartRow);
   },
 
-  async getLowStockItems(limit = 5) {
+  async getLowStockItems(siteId: string, limit = 5) {
     return prisma.supply.findMany({
-      where: LOW_STOCK_WHERE,
+      where: { siteId, ...LOW_STOCK_WHERE },
       select: {
         id: true,
         name: true,
@@ -73,12 +75,17 @@ export const adminService = {
     });
   },
 
-  async getStats() {
+  async getStats(siteId: string) {
     const [totalUsers, totalSupplies, lowStockItems] = await Promise.all([
-      prisma.user.count(),
-      prisma.supply.count(),
+      prisma.user.count({
+        where: {
+          siteId,
+          NOT: { username: { startsWith: "kiosk-" } },
+        },
+      }),
+      prisma.supply.count({ where: { siteId } }),
       prisma.supply.count({
-        where: LOW_STOCK_WHERE,
+        where: { siteId, ...LOW_STOCK_WHERE },
       }),
     ]);
 

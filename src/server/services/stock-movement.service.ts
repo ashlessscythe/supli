@@ -47,12 +47,16 @@ async function getReceivedQuantityForReorder(
 }
 
 async function validateVendorReorderLink(
+  siteId: string,
   supplyId: string,
   vendorReorderId: string,
   receiveQuantity: number
 ) {
-  const reorder = await prisma.vendorReorder.findUnique({
-    where: { id: vendorReorderId },
+  const reorder = await prisma.vendorReorder.findFirst({
+    where: {
+      id: vendorReorderId,
+      supply: { siteId },
+    },
   });
 
   if (!reorder) {
@@ -133,11 +137,11 @@ function extractLegacyVendorId(notes: string | null) {
   return match?.[1] ?? null;
 }
 
-async function resolveLocation(locationId?: string) {
+async function resolveLocation(siteId: string, locationId?: string) {
   if (locationId) {
-    return locationRepository.findActiveById(locationId);
+    return locationRepository.findActiveById(locationId, siteId);
   }
-  return locationRepository.findDefault();
+  return locationRepository.findDefault(siteId);
 }
 
 async function canFulfillAtLocation(
@@ -157,11 +161,15 @@ async function canFulfillAtLocation(
 }
 
 async function resolveCheckoutLocation(
+  siteId: string,
   items: { supplyId: string; quantity: number }[],
   locationId?: string
 ) {
   if (locationId) {
-    const location = await locationRepository.findActiveById(locationId);
+    const location = await locationRepository.findActiveById(
+      locationId,
+      siteId
+    );
     if (!location) {
       return failure("Location is not available");
     }
@@ -172,12 +180,12 @@ async function resolveCheckoutLocation(
   }
 
   const candidates: { id: string; name: string }[] = [];
-  const defaultLocation = await locationRepository.findDefault();
+  const defaultLocation = await locationRepository.findDefault(siteId);
   if (defaultLocation) {
     candidates.push(defaultLocation);
   }
 
-  const activeLocations = await locationRepository.findAll();
+  const activeLocations = await locationRepository.findAll(siteId);
   for (const location of activeLocations) {
     if (!candidates.some((candidate) => candidate.id === location.id)) {
       candidates.push(location);
@@ -200,9 +208,10 @@ type SupplyWithThreshold = {
   minimumThreshold: number;
 };
 
-async function notifyIfLowStock(supply: SupplyWithThreshold) {
+async function notifyIfLowStock(siteId: string, supply: SupplyWithThreshold) {
   if (supply.quantity <= supply.minimumThreshold) {
     await notificationService.notifyAdminsLowStock(
+      siteId,
       supply.name,
       supply.quantity,
       supply.id
@@ -257,6 +266,7 @@ async function writeConsumeMovement(
 export const stockMovementService = {
   async consume(
     userId: string,
+    siteId: string,
     input: z.infer<typeof consumeSchema>
   ) {
     try {
@@ -265,12 +275,13 @@ export const stockMovementService = {
       if (!normalizedBarcode) return failure("Item not found");
 
       const supply = await prisma.supply.findFirst({
-        where: { barcode: normalizedBarcode },
+        where: { barcode: normalizedBarcode, siteId },
       });
 
       if (!supply) return failure("Item not found");
 
       const locationResult = await resolveCheckoutLocation(
+        siteId,
         [{ supplyId: supply.id, quantity: data.quantity }],
         data.locationId
       );
@@ -291,9 +302,10 @@ export const stockMovementService = {
             data.quantity,
             { badgeId: data.badgeId }
           );
-          await notifyIfLowStock(updated);
+          await notifyIfLowStock(siteId, updated);
           return updated;
-        }
+        },
+        siteId
       );
 
       return success(result);
@@ -303,12 +315,14 @@ export const stockMovementService = {
     }
   },
 
-  async consumeBulk(userId: string, input: BulkConsumeInput) {
+  async consumeBulk(userId: string, siteId: string, input: BulkConsumeInput) {
     try {
       const data = bulkConsumeSchema.parse(input);
       const mergedItems = mergeBulkConsumeItems(data.items);
       const supplies = await Promise.all(
-        mergedItems.map((item) => supplyRepository.findById(item.supplyId))
+        mergedItems.map((item) =>
+          supplyRepository.findById(item.supplyId, siteId)
+        )
       );
 
       for (let i = 0; i < mergedItems.length; i++) {
@@ -318,12 +332,16 @@ export const stockMovementService = {
       }
 
       const locationResult = await resolveCheckoutLocation(
+        siteId,
         mergedItems,
         data.locationId
       );
       if (!locationResult.success) {
         if (data.locationId) {
-          const location = await locationRepository.findActiveById(data.locationId);
+          const location = await locationRepository.findActiveById(
+            data.locationId,
+            siteId
+          );
           for (let i = 0; i < mergedItems.length; i++) {
             const item = mergedItems[i];
             const supply = supplies[i]!;
@@ -345,7 +363,7 @@ export const stockMovementService = {
             const activeLevels = await prisma.stockLevel.findMany({
               where: {
                 supplyId: item.supplyId,
-                location: { isActive: true },
+                location: { isActive: true, siteId },
               },
             });
             const maxAvailable = Math.max(
@@ -385,12 +403,13 @@ export const stockMovementService = {
               item.quantity,
               { notes }
             );
-            await notifyIfLowStock(updated);
+            await notifyIfLowStock(siteId, updated);
             results.push(updated);
           }
 
           return results;
-        }
+        },
+        siteId
       );
 
       return success({ items: updatedSupplies });
@@ -400,13 +419,13 @@ export const stockMovementService = {
     }
   },
 
-  async receive(userId: string, input: ReceiveStockInput) {
+  async receive(userId: string, siteId: string, input: ReceiveStockInput) {
     try {
       const data = receiveStockSchema.parse(input);
-      const supply = await supplyRepository.findById(data.supplyId);
+      const supply = await supplyRepository.findById(data.supplyId, siteId);
       if (!supply) return failure("Supply not found");
 
-      const location = await resolveLocation(data.locationId);
+      const location = await resolveLocation(siteId, data.locationId);
       if (!location) {
         return failure(
           data.locationId ? "Location is not available" : "No location configured"
@@ -415,6 +434,7 @@ export const stockMovementService = {
 
       if (data.vendorReorderId) {
         const linkValidation = await validateVendorReorderLink(
+          siteId,
           data.supplyId,
           data.vendorReorderId,
           data.quantity
@@ -426,11 +446,12 @@ export const stockMovementService = {
 
       let vendorName: string | undefined;
       if (data.vendorId) {
-        const vendor = await prisma.vendor.findUnique({
-          where: { id: data.vendorId },
+        const vendor = await prisma.vendor.findFirst({
+          where: { id: data.vendorId, siteId },
           select: { name: true },
         });
-        vendorName = vendor?.name;
+        if (!vendor) return failure("Vendor not found");
+        vendorName = vendor.name;
       }
 
       const notes = buildReceiveNotes({
@@ -536,7 +557,8 @@ export const stockMovementService = {
           }
 
           return stockLevelRepository.syncSupplyTotals(supply.id, tx);
-        }
+        },
+        siteId
       );
 
       return success(result);
@@ -546,13 +568,13 @@ export const stockMovementService = {
     }
   },
 
-  async adjust(userId: string, input: AdjustStockInput) {
+  async adjust(userId: string, siteId: string, input: AdjustStockInput) {
     try {
       const data = adjustStockSchema.parse(input);
-      const supply = await supplyRepository.findById(data.supplyId);
+      const supply = await supplyRepository.findById(data.supplyId, siteId);
       if (!supply) return failure("Supply not found");
 
-      const location = await resolveLocation(data.locationId);
+      const location = await resolveLocation(siteId, data.locationId);
       if (!location) {
         return failure(
           data.locationId ? "Location is not available" : "No location configured"
@@ -603,10 +625,11 @@ export const stockMovementService = {
             tx
           );
 
-          await notifyIfLowStock(updated);
+          await notifyIfLowStock(siteId, updated);
 
           return updated;
-        }
+        },
+        siteId
       );
 
       return success(result);
@@ -616,10 +639,10 @@ export const stockMovementService = {
     }
   },
 
-  async listReceipts(limit = 50) {
+  async listReceipts(siteId: string, limit = 50) {
     try {
       const movements = await prisma.stockMovement.findMany({
-        where: { type: StockMovementType.RECEIVE },
+        where: { type: StockMovementType.RECEIVE, supply: { siteId } },
         orderBy: { createdAt: "desc" },
         take: limit,
         include: {
@@ -644,7 +667,7 @@ export const stockMovementService = {
       const legacyVendors =
         legacyVendorIds.length > 0
           ? await prisma.vendor.findMany({
-              where: { id: { in: legacyVendorIds } },
+              where: { id: { in: legacyVendorIds }, siteId },
               select: { id: true, name: true },
             })
           : [];
@@ -711,11 +734,23 @@ export const stockMovementService = {
     }
   },
 
-  async logVendorReorder(userId: string, input: LogVendorReorderInput) {
+  async logVendorReorder(
+    userId: string,
+    siteId: string,
+    input: LogVendorReorderInput
+  ) {
     try {
       const data = logVendorReorderSchema.parse(input);
-      const supply = await supplyRepository.findById(data.supplyId);
+      const supply = await supplyRepository.findById(data.supplyId, siteId);
       if (!supply) return failure("Supply not found");
+
+      if (data.vendorId) {
+        const vendor = await prisma.vendor.findFirst({
+          where: { id: data.vendorId, siteId },
+          select: { id: true },
+        });
+        if (!vendor) return failure("Vendor not found");
+      }
 
       const parsedAttachments = fileService.parseUploads(
         data.attachments ?? []
@@ -753,7 +788,8 @@ export const stockMovementService = {
           }
 
           return created;
-        }
+        },
+        siteId
       );
 
       return success(reorder);
@@ -763,10 +799,11 @@ export const stockMovementService = {
     }
   },
 
-  async listOpenVendorReorders() {
+  async listOpenVendorReorders(siteId: string) {
     try {
       const reorders = await prisma.vendorReorder.findMany({
         where: {
+          supply: { siteId },
           status: {
             in: [...OPEN_VENDOR_REORDER_STATUSES],
           },
@@ -830,13 +867,14 @@ export const stockMovementService = {
 
   async updateVendorReorder(
     userId: string,
+    siteId: string,
     reorderId: string,
     input: UpdateVendorReorderInput
   ) {
     try {
       const data = updateVendorReorderSchema.parse(input);
-      const existing = await prisma.vendorReorder.findUnique({
-        where: { id: reorderId },
+      const existing = await prisma.vendorReorder.findFirst({
+        where: { id: reorderId, supply: { siteId } },
         include: {
           supply: { select: { name: true } },
           stockMovements: {
@@ -854,6 +892,14 @@ export const stockMovementService = {
         )
       ) {
         return failure("Only open orders can be edited");
+      }
+
+      if (data.vendorId) {
+        const vendor = await prisma.vendor.findFirst({
+          where: { id: data.vendorId, siteId },
+          select: { id: true },
+        });
+        if (!vendor) return failure("Vendor not found");
       }
 
       const receivedQuantity = existing.stockMovements.reduce(
@@ -895,7 +941,8 @@ export const stockMovementService = {
               receivedAt:
                 receivedQuantity >= data.quantity ? new Date() : null,
             },
-          })
+          }),
+        siteId
       );
 
       return success(reorder);
@@ -905,13 +952,17 @@ export const stockMovementService = {
     }
   },
 
-  async getConsumptionHistory(supplyId: string, days = 30) {
+  async getConsumptionHistory(siteId: string, supplyId: string, days = 30) {
+    const supply = await supplyRepository.findById(supplyId, siteId);
+    if (!supply) return [];
+
     const since = new Date();
     since.setDate(since.getDate() - days);
 
     return prisma.stockMovement.findMany({
       where: {
         supplyId,
+        supply: { siteId },
         type: StockMovementType.CONSUME,
         createdAt: { gte: since },
       },
@@ -920,9 +971,16 @@ export const stockMovementService = {
     });
   },
 
-  async getCheckoutStockLevels(locationId: string, supplyIds: string[]) {
+  async getCheckoutStockLevels(
+    siteId: string,
+    locationId: string,
+    supplyIds: string[]
+  ) {
     try {
-      const location = await locationRepository.findActiveById(locationId);
+      const location = await locationRepository.findActiveById(
+        locationId,
+        siteId
+      );
       if (!location) {
         return failure("Location is not available");
       }
@@ -934,7 +992,8 @@ export const stockMovementService = {
               where: {
                 locationId,
                 supplyId: { in: uniqueSupplyIds },
-                location: { isActive: true },
+                supply: { siteId },
+                location: { isActive: true, siteId },
               },
               select: { supplyId: true, quantity: true },
             })

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
+import { requireAdmin } from "@/lib/auth/session";
 import { userService } from "@/server/services/user.service";
 
 const bodySchema = z.object({
@@ -10,16 +9,13 @@ const bodySchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+    const ctx = await requireAdmin();
     const json = await request.json();
     const { userId } = bodySchema.parse(json);
     const result = await userService.approveRegistration(
-      session.user.id,
-      userId
+      ctx.userId,
+      userId,
+      ctx.siteId
     );
 
     if (!result.success) {
@@ -30,6 +26,13 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: error.errors }, { status: 400 });
+    }
+    if (
+      error instanceof Error &&
+      (error.message === "Unauthorized" ||
+        error.message === "No active site selected")
+    ) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.json(
       { error: "Internal Server Error" },
