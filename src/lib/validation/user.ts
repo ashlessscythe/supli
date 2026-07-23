@@ -42,6 +42,7 @@ export const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
   email: z.string().email("Valid email is required"),
   password: passwordSchema,
+  siteId: z.string().min(1),
 });
 
 export type UserInput = z.infer<typeof userSchema>;

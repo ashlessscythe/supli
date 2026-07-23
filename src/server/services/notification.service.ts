@@ -59,13 +59,16 @@ export const notificationService = {
     });
   },
 
-  async notifyAdminsOfRegistration(user: {
-    id: string;
-    username: string;
-    email: string | null;
-  }) {
+  async notifyAdminsOfRegistration(
+    siteId: string,
+    user: {
+      id: string;
+      username: string;
+      email: string | null;
+    }
+  ) {
     const admins = await prisma.user.findMany({
-      where: { role: Role.ADMIN },
+      where: { role: Role.ADMIN, siteId },
       select: { id: true, email: true },
     });
 
@@ -136,12 +139,13 @@ export const notificationService = {
   },
 
   async notifyAdminsLowStock(
+    siteId: string,
     itemName: string,
     quantity: number,
     supplyId: string
   ) {
     const admins = await prisma.user.findMany({
-      where: { role: Role.ADMIN },
+      where: { role: Role.ADMIN, siteId },
       select: { id: true, email: true },
     });
 

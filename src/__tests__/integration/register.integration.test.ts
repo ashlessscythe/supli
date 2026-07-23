@@ -1,19 +1,14 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { Role, TokenType } from "@prisma/client";
+import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
 import {
   isIntegrationEnabled,
   createAdminUser,
   createStaffUser,
+  createTestSite,
   getPrisma,
   resetDatabase,
 } from "./db";
-
-const registerPayload = {
-  username: "newuser",
-  email: "newuser@example.com",
-  password: "Password1",
-};
 
 describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
   beforeEach(async () => {
@@ -21,7 +16,13 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
   });
 
   it("creates a pending user in the database", async () => {
-    await createAdminUser();
+    const admin = await createAdminUser();
+    const registerPayload = {
+      username: "newuser",
+      email: "newuser@example.com",
+      password: "Password1",
+      siteId: admin.siteId!,
+    };
 
     const { userService } = await import("@/server/services/user.service");
     const result = await userService.register(registerPayload);
@@ -36,6 +37,7 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
     expect(user).not.toBeNull();
     expect(user?.role).toBe(Role.PENDING);
     expect(user?.email).toBe("newuser@example.com");
+    expect(user?.siteId).toBe(admin.siteId);
     expect(await bcrypt.compare("Password1", user!.password)).toBe(true);
 
     const notifications = await prisma.notification.findMany({
@@ -49,13 +51,19 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
   });
 
   it("rejects duplicate usernames using the real database", async () => {
-    await createStaffUser({ username: "taken", email: "taken@example.com" });
+    const site = await createTestSite();
+    await createStaffUser({
+      username: "taken",
+      email: "taken@example.com",
+      siteId: site.id,
+    });
 
     const { userService } = await import("@/server/services/user.service");
     const result = await userService.register({
       username: "taken",
       email: "other@example.com",
       password: "Password1",
+      siteId: site.id,
     });
 
     expect(result.success).toBe(false);
@@ -71,7 +79,12 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
     const admin = await createAdminUser();
     const { userService } = await import("@/server/services/user.service");
 
-    await userService.register(registerPayload);
+    await userService.register({
+      username: "newuser",
+      email: "newuser@example.com",
+      password: "Password1",
+      siteId: admin.siteId!,
+    });
     const prisma = await getPrisma();
     const pending = await prisma.user.findUnique({
       where: { username: "newuser" },
@@ -79,7 +92,8 @@ describe.skipIf(!isIntegrationEnabled())("user registration (database)", () => {
 
     const result = await userService.approveRegistration(
       admin.id,
-      pending!.id
+      pending!.id,
+      admin.siteId!
     );
 
     expect(result.success).toBe(true);

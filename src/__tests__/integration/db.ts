@@ -50,19 +50,39 @@ export async function resetDatabase() {
         ${q("ItemType")},
         ${q("Vendor")},
         ${q("SystemSetting")},
-        ${q("User")}
+        ${q("User")},
+        ${q("Site")}
       RESTART IDENTITY CASCADE;
     `
   );
+}
+
+export async function createTestSite(overrides?: {
+  name?: string;
+  slug?: string;
+  isActive?: boolean;
+}) {
+  const prisma = await getPrisma();
+  return prisma.site.create({
+    data: {
+      name: overrides?.name ?? "Main",
+      slug: overrides?.slug ?? "main",
+      isActive: overrides?.isActive ?? true,
+    },
+  });
 }
 
 export async function createAdminUser(overrides?: {
   username?: string;
   email?: string;
   password?: string;
+  siteId?: string;
 }) {
   const prisma = await getPrisma();
   const password = await bcrypt.hash(overrides?.password ?? "AdminPass1", 10);
+  const siteId =
+    overrides?.siteId ??
+    (await createTestSite()).id;
 
   return prisma.user.create({
     data: {
@@ -70,6 +90,7 @@ export async function createAdminUser(overrides?: {
       email: overrides?.email ?? "admin@example.com",
       password,
       role: Role.ADMIN,
+      siteId,
     },
   });
 }
@@ -78,9 +99,13 @@ export async function createStaffUser(overrides?: {
   username?: string;
   email?: string;
   password?: string;
+  siteId?: string;
 }) {
   const prisma = await getPrisma();
   const password = await bcrypt.hash(overrides?.password ?? "StaffPass1", 10);
+  const siteId =
+    overrides?.siteId ??
+    (await createTestSite()).id;
 
   return prisma.user.create({
     data: {
@@ -88,6 +113,7 @@ export async function createStaffUser(overrides?: {
       email: overrides?.email ?? "staff@example.com",
       password,
       role: Role.STAFF,
+      siteId,
     },
   });
 }
