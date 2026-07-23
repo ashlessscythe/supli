@@ -149,10 +149,25 @@ export const siteService = {
         return failure("Cannot delete the main site");
       }
 
+      const humanUsers = await prisma.user.count({
+        where: {
+          siteId: id,
+          NOT: { username: { startsWith: "kiosk-" } },
+        },
+      });
+      if (humanUsers > 0) {
+        return failure("Reassign or remove users before deleting this site");
+      }
+
       await executeWithAudit(
         actorId,
         `Deleted site: ${site.name}`,
-        (tx) => siteRepository.delete(id, tx),
+        async (tx) => {
+          await tx.user.deleteMany({
+            where: { siteId: id, username: { startsWith: "kiosk-" } },
+          });
+          return siteRepository.delete(id, tx);
+        },
         id
       );
 
