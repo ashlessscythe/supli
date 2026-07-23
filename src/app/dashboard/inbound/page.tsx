@@ -1,4 +1,5 @@
 import { getServerSession } from "next-auth";
+import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { InboundClient } from "@/app/admin/inbound/inbound-client";
@@ -11,7 +12,9 @@ export default async function DashboardInboundPage() {
     redirect("/login");
   }
 
-  const isAdmin = session.user.role === "ADMIN";
+  const isAdmin =
+    session.user.role === Role.ADMIN ||
+    session.user.role === Role.SUPERADMIN;
   const { supplies, locations, receipts, openVendorReorders, requests } =
     await getInboundPageData({ includeRequests: isAdmin });
 

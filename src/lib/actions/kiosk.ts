@@ -3,31 +3,40 @@
 import { cookies } from "next/headers";
 import { settingsService } from "@/server/services/settings.service";
 import { env } from "@/lib/env";
+import { KIOSK_SITE_COOKIE } from "@/lib/sites";
 import {
   KIOSK_COOKIE,
   KIOSK_SESSION_MAX_AGE,
   computeKioskToken,
 } from "@/lib/kiosk";
 
-export async function kioskLogin(password: string) {
-  const valid = await settingsService.verifyKioskPassword(password);
+export async function kioskLogin(siteId: string, password: string) {
+  if (!siteId) {
+    return { success: false as const, error: "Site is required" };
+  }
+
+  const valid = await settingsService.verifyKioskPassword(siteId, password);
   if (!valid) {
     return { success: false as const, error: "Incorrect password" };
   }
 
-  const hash = await settingsService.ensureKioskPasswordHash();
-  cookies().set(KIOSK_COOKIE, computeKioskToken(hash), {
+  const hash = await settingsService.ensureKioskPasswordHash(siteId);
+  const cookieOptions = {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "lax" as const,
     secure: env.NODE_ENV === "production",
     path: "/",
     maxAge: KIOSK_SESSION_MAX_AGE,
-  });
+  };
+
+  cookies().set(KIOSK_COOKIE, computeKioskToken(hash), cookieOptions);
+  cookies().set(KIOSK_SITE_COOKIE, siteId, cookieOptions);
 
   return { success: true as const };
 }
 
 export async function kioskLogout() {
   cookies().delete(KIOSK_COOKIE);
+  cookies().delete(KIOSK_SITE_COOKIE);
   return { success: true as const };
 }

@@ -2,9 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { StockMovementType } from "@prisma/client";
 
 export const forecastService = {
-  async getDepletionEstimates() {
+  async getDepletionEstimates(siteId: string) {
     const supplies = await prisma.supply.findMany({
-      where: { quantity: { gt: 0 } },
+      where: { siteId, quantity: { gt: 0 } },
       select: {
         id: true,
         name: true,
@@ -22,6 +22,7 @@ export const forecastService = {
           by: ["supplyId"],
           where: {
             supplyId: supply.id,
+            supply: { siteId },
             type: StockMovementType.CONSUME,
             createdAt: { gte: thirtyDaysAgo },
           },
@@ -46,8 +47,7 @@ export const forecastService = {
         const daysUntilDepletion = Math.floor(supply.quantity / dailyRate);
         const reorderBy = new Date();
         reorderBy.setDate(
-          reorderBy.getDate() +
-            Math.max(0, daysUntilDepletion - 7)
+          reorderBy.getDate() + Math.max(0, daysUntilDepletion - 7)
         );
 
         return {
@@ -68,21 +68,24 @@ export const forecastService = {
     );
   },
 
-  async getDashboardMetrics() {
+  async getDashboardMetrics(siteId: string) {
     const [lowStock, recentMovements, fastMoving] = await Promise.all([
       prisma.supply.count({
         where: {
+          siteId,
           quantity: { lte: prisma.supply.fields.minimumThreshold },
         },
       }),
       prisma.stockMovement.count({
         where: {
+          supply: { siteId },
           createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
         },
       }),
       prisma.stockMovement.groupBy({
         by: ["supplyId"],
         where: {
+          supply: { siteId },
           type: StockMovementType.CONSUME,
           createdAt: {
             gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
@@ -96,7 +99,7 @@ export const forecastService = {
 
     const supplyIds = fastMoving.map((m) => m.supplyId);
     const supplyNames = await prisma.supply.findMany({
-      where: { id: { in: supplyIds } },
+      where: { id: { in: supplyIds }, siteId },
       select: { id: true, name: true },
     });
     const nameMap = Object.fromEntries(

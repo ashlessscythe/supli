@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import {
   Users,
@@ -13,6 +14,7 @@ import {
   Truck,
   PackagePlus,
   Search,
+  Building2,
 } from "lucide-react";
 import { adminNavigationItems } from "@/lib/nav-config";
 
@@ -26,19 +28,40 @@ const adminIcons = {
   Users: Users,
   "Audit Log": History,
   Settings: Settings,
+  Sites: Building2,
 } as const;
 
 export const adminRoutes = adminNavigationItems.map((route) => ({
   ...route,
-  icon: adminIcons[route.title],
+  icon: adminIcons[route.title as keyof typeof adminIcons],
 }));
 
-export function AdminNav({ onNavigate }: { onNavigate?: () => void }) {
+const sitesRoute = {
+  title: "Sites",
+  href: "/admin/sites",
+  icon: Building2,
+} as const;
+
+export function getAdminRoutes(role?: Role | string) {
+  if (role === Role.SUPERADMIN || role === "SUPERADMIN") {
+    return [sitesRoute, ...adminRoutes];
+  }
+  return adminRoutes;
+}
+
+export function AdminNav({
+  onNavigate,
+  role,
+}: {
+  onNavigate?: () => void;
+  role?: Role | string;
+}) {
   const pathname = usePathname();
+  const routes = getAdminRoutes(role);
 
   return (
     <nav className="grid items-start gap-2">
-      {adminRoutes.map((route) => (
+      {routes.map((route) => (
         <Link
           key={route.href}
           href={route.href}

@@ -1,27 +1,23 @@
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { locationService } from "@/server/services/location.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SuppliesTable } from "@/components/supplies/supplies-table";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
 
-async function getSupplies() {
-  const supplies = await prisma.supply.findMany({
-    orderBy: {
-      name: "asc",
-    },
-  });
-
-  return supplies;
-}
-
 export default async function AdminSuppliesPage({
   searchParams,
 }: {
   searchParams: { q?: string; stock?: string };
 }) {
+  const ctx = await requireAdmin();
+
   const [supplies, locationsResult] = await Promise.all([
-    getSupplies(),
-    locationService.list(),
+    prisma.supply.findMany({
+      where: { siteId: ctx.siteId },
+      orderBy: { name: "asc" },
+    }),
+    locationService.list(ctx.siteId),
   ]);
 
   const locations = locationsResult.success

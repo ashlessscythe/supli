@@ -1,15 +1,22 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
+import { requireSiteContext } from "@/lib/auth/session";
 import { HistorySearchClient } from "@/components/inventory/history-search-client";
 import { inventoryHistoryService } from "@/server/services/inventory-history.service";
 
 export default async function DashboardHistoryPage() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
-  if (session.user.role === "ADMIN") redirect("/admin/history");
+  let ctx;
+  try {
+    ctx = await requireSiteContext();
+  } catch {
+    redirect("/login");
+  }
 
-  const initial = await inventoryHistoryService.search({
+  if (ctx.role === Role.ADMIN || ctx.role === Role.SUPERADMIN) {
+    redirect("/admin/history");
+  }
+
+  const initial = await inventoryHistoryService.search(ctx.siteId, {
     kind: "all",
     limit: 50,
   });

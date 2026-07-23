@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireAdmin, requireSession } from "@/lib/auth/session";
+import { requireAdmin, requireSiteContext } from "@/lib/auth/session";
 import { stockMovementService } from "@/server/services/stock-movement.service";
 import { locationService } from "@/server/services/location.service";
 import type {
@@ -22,8 +22,12 @@ function revalidateInventoryPaths() {
 
 export async function receiveStock(input: ReceiveStockInput) {
   try {
-    const session = await requireSession();
-    const result = await stockMovementService.receive(session.user.id, input);
+    const ctx = await requireSiteContext();
+    const result = await stockMovementService.receive(
+      ctx.userId,
+      ctx.siteId,
+      input
+    );
     if (result.success) revalidateInventoryPaths();
     return result;
   } catch {
@@ -33,8 +37,12 @@ export async function receiveStock(input: ReceiveStockInput) {
 
 export async function adjustStock(input: AdjustStockInput) {
   try {
-    const session = await requireAdmin();
-    const result = await stockMovementService.adjust(session.user.id, input);
+    const ctx = await requireAdmin();
+    const result = await stockMovementService.adjust(
+      ctx.userId,
+      ctx.siteId,
+      input
+    );
     if (result.success) revalidateInventoryPaths();
     return result;
   } catch {
@@ -44,9 +52,10 @@ export async function adjustStock(input: AdjustStockInput) {
 
 export async function checkoutSupplies(input: BulkConsumeInput) {
   try {
-    const session = await requireSession();
+    const ctx = await requireSiteContext();
     const result = await stockMovementService.consumeBulk(
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       input
     );
     if (result.success) revalidateInventoryPaths();
@@ -58,8 +67,8 @@ export async function checkoutSupplies(input: BulkConsumeInput) {
 
 export async function getReceiptHistory() {
   try {
-    await requireSession();
-    return stockMovementService.listReceipts();
+    const ctx = await requireSiteContext();
+    return stockMovementService.listReceipts(ctx.siteId);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }
@@ -67,8 +76,8 @@ export async function getReceiptHistory() {
 
 export async function getLocations() {
   try {
-    await requireSession();
-    return locationService.list();
+    const ctx = await requireSiteContext();
+    return locationService.list(ctx.siteId);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }
@@ -76,9 +85,10 @@ export async function getLocations() {
 
 export async function logVendorReorder(input: LogVendorReorderInput) {
   try {
-    const session = await requireSession();
+    const ctx = await requireSiteContext();
     const result = await stockMovementService.logVendorReorder(
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       input
     );
     if (result.success) revalidateInventoryPaths();
@@ -93,9 +103,10 @@ export async function updateVendorReorder(
   input: UpdateVendorReorderInput
 ) {
   try {
-    const session = await requireSession();
+    const ctx = await requireSiteContext();
     const result = await stockMovementService.updateVendorReorder(
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       reorderId,
       input
     );
@@ -111,8 +122,12 @@ export async function getCheckoutStockLevels(
   supplyIds: string[]
 ) {
   try {
-    await requireSession();
-    return stockMovementService.getCheckoutStockLevels(locationId, supplyIds);
+    const ctx = await requireSiteContext();
+    return stockMovementService.getCheckoutStockLevels(
+      ctx.siteId,
+      locationId,
+      supplyIds
+    );
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }
@@ -120,8 +135,8 @@ export async function getCheckoutStockLevels(
 
 export async function getOpenVendorReorders() {
   try {
-    await requireSession();
-    return stockMovementService.listOpenVendorReorders();
+    const ctx = await requireSiteContext();
+    return stockMovementService.listOpenVendorReorders(ctx.siteId);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }

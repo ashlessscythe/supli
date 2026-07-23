@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { RequestStatus } from "@prisma/client";
-import { requireAdmin, requireSession } from "@/lib/auth/session";
+import { requireAdmin, requireSiteContext } from "@/lib/auth/session";
 import { requestService } from "@/server/services/request.service";
 import type { RequestInput } from "@/lib/validation/request";
 
 export async function createRequest(formData: RequestInput) {
   try {
-    const session = await requireSession();
-    const result = await requestService.create(session.user.id, formData);
+    const ctx = await requireSiteContext();
+    const result = await requestService.create(ctx.userId, ctx.siteId, formData);
     if (result.success) {
       revalidatePath("/dashboard/inbound");
       revalidatePath("/admin/inbound");
@@ -22,9 +22,10 @@ export async function createRequest(formData: RequestInput) {
 
 export async function updateRequestStatus(id: string, status: RequestStatus) {
   try {
-    const session = await requireAdmin();
+    const ctx = await requireAdmin();
     const result = await requestService.updateStatus(
-      session.user.id,
+      ctx.userId,
+      ctx.siteId,
       id,
       status
     );
@@ -40,8 +41,8 @@ export async function updateRequestStatus(id: string, status: RequestStatus) {
 
 export async function getRequests() {
   try {
-    const session = await requireSession();
-    return requestService.list(session.user.id, session.user.role);
+    const ctx = await requireSiteContext();
+    return requestService.list(ctx.userId, ctx.siteId, ctx.role);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }
@@ -49,8 +50,8 @@ export async function getRequests() {
 
 export async function getRequest(id: string) {
   try {
-    const session = await requireSession();
-    return requestService.getById(session.user.id, session.user.role, id);
+    const ctx = await requireSiteContext();
+    return requestService.getById(ctx.userId, ctx.siteId, ctx.role, id);
   } catch {
     return { success: false as const, error: "Unauthorized" };
   }

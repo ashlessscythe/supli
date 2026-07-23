@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -18,7 +18,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { kioskLogin } from "@/lib/actions/kiosk";
+import { listActiveSites } from "@/lib/actions/site";
 import { KIOSK_USERNAME } from "@/lib/kiosk-constants";
+import { isKioskUsername, MAIN_SITE_SLUG } from "@/lib/sites";
 
 const formSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -28,6 +30,15 @@ const formSchema = z.object({
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [sites, setSites] = useState<
+    Array<{ id: string; name: string; slug: string }>
+  >([]);
+
+  useEffect(() => {
+    void listActiveSites().then((result) => {
+      if (result.success) setSites(result.data);
+    });
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,8 +50,18 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      if (values.username.trim().toLowerCase() === KIOSK_USERNAME) {
-        const kioskResult = await kioskLogin(values.password);
+      const username = values.username.trim().toLowerCase();
+      if (username === KIOSK_USERNAME || isKioskUsername(username)) {
+        const slug =
+          username === KIOSK_USERNAME
+            ? MAIN_SITE_SLUG
+            : username.slice("kiosk-".length);
+        const site = sites.find((s) => s.slug === slug);
+        if (!site) {
+          setError("Kiosk site not found. Use /kiosk/login instead.");
+          return;
+        }
+        const kioskResult = await kioskLogin(site.id, values.password);
         if (!kioskResult.success) {
           setError(kioskResult.error ?? "Invalid username or password");
           return;
