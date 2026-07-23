@@ -1,18 +1,39 @@
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
 import type { TransactionClient } from "@/server/audit";
+import { isKioskUsername } from "@/lib/sites";
+
+const userListSelect = {
+  id: true,
+  username: true,
+  email: true,
+  emailVerified: true,
+  role: true,
+  siteId: true,
+  createdAt: true,
+  _count: { select: { requests: true } },
+} as const;
 
 export const userRepository = {
-  findAll() {
+  findAll(siteId: string) {
     return prisma.user.findMany({
+      where: {
+        siteId,
+        NOT: { username: { startsWith: "kiosk-" } },
+      },
+      select: userListSelect,
+      orderBy: { username: "asc" },
+    });
+  },
+
+  findAllForSuperAdmin() {
+    return prisma.user.findMany({
+      where: {
+        NOT: { username: { startsWith: "kiosk-" } },
+      },
       select: {
-        id: true,
-        username: true,
-        email: true,
-        emailVerified: true,
-        role: true,
-        createdAt: true,
-        _count: { select: { requests: true } },
+        ...userListSelect,
+        site: { select: { id: true, name: true, slug: true } },
       },
       orderBy: { username: "asc" },
     });
@@ -27,19 +48,21 @@ export const userRepository = {
         email: true,
         emailVerified: true,
         role: true,
+        siteId: true,
         createdAt: true,
       },
     });
   },
 
-  findPending() {
+  findPending(siteId: string) {
     return prisma.user.findMany({
-      where: { role: Role.PENDING },
+      where: { role: Role.PENDING, siteId },
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
+        siteId: true,
         createdAt: true,
       },
       orderBy: { createdAt: "asc" },
@@ -54,12 +77,24 @@ export const userRepository = {
     return prisma.user.findUnique({ where: { email } });
   },
 
-  countAdmins() {
-    return prisma.user.count({ where: { role: Role.ADMIN } });
+  countAdmins(siteId: string) {
+    return prisma.user.count({
+      where: {
+        role: Role.ADMIN,
+        siteId,
+        NOT: { username: { startsWith: "kiosk-" } },
+      },
+    });
   },
 
   create(
-    data: { username: string; email?: string | null; password: string; role: Role },
+    data: {
+      username: string;
+      email?: string | null;
+      password: string;
+      role: Role;
+      siteId: string | null;
+    },
     tx?: TransactionClient
   ) {
     const client = tx ?? prisma;
@@ -70,6 +105,7 @@ export const userRepository = {
         username: true,
         email: true,
         role: true,
+        siteId: true,
         createdAt: true,
       },
     });
@@ -78,10 +114,11 @@ export const userRepository = {
   update(
     id: string,
     data: {
-      username: string;
+      username?: string;
       email?: string | null;
       password?: string;
-      role: Role;
+      role?: Role;
+      siteId?: string | null;
       emailVerified?: Date | null;
     },
     tx?: TransactionClient
@@ -96,6 +133,7 @@ export const userRepository = {
         email: true,
         emailVerified: true,
         role: true,
+        siteId: true,
         createdAt: true,
       },
     });
@@ -104,5 +142,9 @@ export const userRepository = {
   delete(id: string, tx?: TransactionClient) {
     const client = tx ?? prisma;
     return client.user.delete({ where: { id } });
+  },
+
+  isSystemKiosk(username: string) {
+    return isKioskUsername(username);
   },
 };

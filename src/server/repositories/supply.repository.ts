@@ -3,13 +3,16 @@ import type { Supply } from "@prisma/client";
 import type { TransactionClient } from "@/server/audit";
 
 export const supplyRepository = {
-  findAll(): Promise<Supply[]> {
-    return prisma.supply.findMany({ orderBy: { name: "asc" } });
+  findAll(siteId: string): Promise<Supply[]> {
+    return prisma.supply.findMany({
+      where: { siteId },
+      orderBy: { name: "asc" },
+    });
   },
 
-  findById(id: string) {
-    return prisma.supply.findUnique({
-      where: { id },
+  findById(id: string, siteId: string) {
+    return prisma.supply.findFirst({
+      where: { id, siteId },
       include: {
         requests: {
           include: { user: { select: { username: true } } },
@@ -20,9 +23,9 @@ export const supplyRepository = {
     });
   },
 
-  findDetails(id: string) {
-    return prisma.supply.findUnique({
-      where: { id },
+  findDetails(id: string, siteId: string) {
+    return prisma.supply.findFirst({
+      where: { id, siteId },
       include: {
         itemType: { select: { name: true, slug: true } },
         stockLevels: {
@@ -64,6 +67,7 @@ export const supplyRepository = {
 
   create(
     data: {
+      siteId: string;
       name: string;
       description: string;
       quantity: number;
@@ -80,6 +84,7 @@ export const supplyRepository = {
 
   update(
     id: string,
+    siteId: string,
     data: Partial<
       Pick<
         Supply,
@@ -94,23 +99,26 @@ export const supplyRepository = {
     tx?: TransactionClient
   ) {
     const client = tx ?? prisma;
-    return client.supply.update({ where: { id }, data });
-  },
-
-  delete(id: string, tx?: TransactionClient) {
-    const client = tx ?? prisma;
-    return client.supply.delete({ where: { id } });
-  },
-
-  hasPendingRequests(supplyId: string) {
-    return prisma.request.findFirst({
-      where: { supplyId, status: "PENDING" },
+    return client.supply.updateMany({
+      where: { id, siteId },
+      data,
     });
   },
 
-  async hasRemainingStock(supplyId: string) {
-    const supply = await prisma.supply.findUnique({
-      where: { id: supplyId },
+  delete(id: string, siteId: string, tx?: TransactionClient) {
+    const client = tx ?? prisma;
+    return client.supply.deleteMany({ where: { id, siteId } });
+  },
+
+  hasPendingRequests(supplyId: string, siteId: string) {
+    return prisma.request.findFirst({
+      where: { supplyId, siteId, status: "PENDING" },
+    });
+  },
+
+  async hasRemainingStock(supplyId: string, siteId: string) {
+    const supply = await prisma.supply.findFirst({
+      where: { id: supplyId, siteId },
       select: {
         quantity: true,
         stockLevels: {
@@ -124,19 +132,25 @@ export const supplyRepository = {
     return supply.quantity > 0 || supply.stockLevels.length > 0;
   },
 
-  hasOpenOrders(supplyId: string) {
+  hasOpenOrders(supplyId: string, siteId: string) {
     return prisma.vendorReorder.findFirst({
       where: {
         supplyId,
+        supply: { siteId },
         status: { in: ["ORDERED", "PARTIALLY_RECEIVED"] },
       },
     });
   },
 
-  decrementQuantity(id: string, amount: number, tx?: TransactionClient) {
+  decrementQuantity(
+    id: string,
+    siteId: string,
+    amount: number,
+    tx?: TransactionClient
+  ) {
     const client = tx ?? prisma;
-    return client.supply.update({
-      where: { id },
+    return client.supply.updateMany({
+      where: { id, siteId },
       data: { quantity: { decrement: amount } },
     });
   },

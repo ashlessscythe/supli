@@ -6,6 +6,8 @@ const envSchema = z.object({
   NEXTAUTH_URL: z.string().url("NEXTAUTH_URL must be a valid URL"),
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().optional(),
+  SUPERADMIN_EMAIL: z.string().email().optional().or(z.literal("")),
+  SUPERADMIN_INITIAL_PASSWORD: z.string().min(8).optional().or(z.literal("")),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),

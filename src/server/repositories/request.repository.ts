@@ -14,9 +14,9 @@ export const requestRepository = {
     });
   },
 
-  findById(id: string) {
-    return prisma.request.findUnique({
-      where: { id },
+  findById(id: string, siteId: string) {
+    return prisma.request.findFirst({
+      where: { id, siteId },
       include: { supply: true },
     });
   },
@@ -33,6 +33,7 @@ export const requestRepository = {
 
   create(
     data: {
+      siteId: string;
       userId: string;
       supplyId: string;
       quantity: number;
@@ -50,15 +51,16 @@ export const requestRepository = {
     });
   },
 
-  updateStatus(id: string, status: RequestStatus, tx?: TransactionClient) {
+  updateStatus(
+    id: string,
+    siteId: string,
+    status: RequestStatus,
+    tx?: TransactionClient
+  ) {
     const client = tx ?? prisma;
-    return client.request.update({
-      where: { id },
+    return client.request.updateMany({
+      where: { id, siteId },
       data: { status },
-      include: {
-        supply: { select: { name: true } },
-        user: { select: { username: true } },
-      },
     });
   },
 };
