@@ -54,9 +54,45 @@ export function SitesClient({
   const [assignRole, setAssignRole] = useState<"ADMIN" | "STAFF" | "PENDING">(
     "STAFF"
   );
+  const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editSlug, setEditSlug] = useState("");
 
   function refresh() {
     router.refresh();
+  }
+
+  function startEdit(site: SiteRow) {
+    setError(null);
+    setEditingSiteId(site.id);
+    setEditName(site.name);
+    setEditSlug(site.slug);
+  }
+
+  function cancelEdit() {
+    setEditingSiteId(null);
+    setEditName("");
+    setEditSlug("");
+  }
+
+  async function handleSaveEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingSiteId) return;
+    setError(null);
+    const result = await updateSite(editingSiteId, {
+      name: editName.trim(),
+      slug: editSlug.trim(),
+    });
+    if (!result.success) {
+      setError(
+        typeof result.error === "string"
+          ? result.error
+          : "Failed to update site"
+      );
+      return;
+    }
+    cancelEdit();
+    refresh();
   }
 
   async function handleSwitch(siteId: string) {
@@ -244,55 +280,111 @@ export function SitesClient({
           {initialSites.map((site) => (
             <div
               key={site.id}
-              className="flex flex-col gap-3 border-b py-3 last:border-0 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 border-b py-3 last:border-0"
             >
-              <div>
-                <div className="font-medium">
-                  {site.name}{" "}
-                  <span className="text-muted-foreground">({site.slug})</span>
-                  {activeSiteId === site.id && (
-                    <span className="ml-2 text-xs text-primary">Active</span>
-                  )}
+              {editingSiteId === site.id ? (
+                <form
+                  onSubmit={(e) =>
+                    startTransition(() => void handleSaveEdit(e))
+                  }
+                  className="flex flex-col gap-3 sm:flex-row sm:items-center"
+                >
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Name"
+                    required
+                    className="sm:max-w-xs"
+                  />
+                  <Input
+                    value={editSlug}
+                    onChange={(e) => setEditSlug(e.target.value)}
+                    placeholder="slug"
+                    required
+                    className="sm:max-w-xs"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={pending || !editName.trim() || !editSlug.trim()}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={cancelEdit}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="font-medium">
+                      {site.name}{" "}
+                      <span className="text-muted-foreground">
+                        ({site.slug})
+                      </span>
+                      {activeSiteId === site.id && (
+                        <span className="ml-2 text-xs text-primary">Active</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {site.isActive ? "Active" : "Inactive"} ·{" "}
+                      {site._count.users} users · {site._count.supplies} supplies
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => startEdit(site)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={
+                        activeSiteId === site.id ? "secondary" : "default"
+                      }
+                      disabled={
+                        pending || activeSiteId === site.id || !site.isActive
+                      }
+                      onClick={() =>
+                        startTransition(() => void handleSwitch(site.id))
+                      }
+                    >
+                      {activeSiteId === site.id ? "Selected" : "Switch"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() =>
+                        startTransition(() => void handleToggleActive(site))
+                      }
+                    >
+                      {site.isActive ? "Deactivate" : "Activate"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={pending}
+                      onClick={() =>
+                        startTransition(() => void handleDelete(site.id))
+                      }
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {site.isActive ? "Active" : "Inactive"} ·{" "}
-                  {site._count.users} users · {site._count.supplies} supplies
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant={activeSiteId === site.id ? "secondary" : "default"}
-                  disabled={
-                    pending || activeSiteId === site.id || !site.isActive
-                  }
-                  onClick={() =>
-                    startTransition(() => void handleSwitch(site.id))
-                  }
-                >
-                  {activeSiteId === site.id ? "Selected" : "Switch"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(() => void handleToggleActive(site))
-                  }
-                >
-                  {site.isActive ? "Deactivate" : "Activate"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="destructive"
-                  disabled={pending}
-                  onClick={() =>
-                    startTransition(() => void handleDelete(site.id))
-                  }
-                >
-                  Delete
-                </Button>
-              </div>
+              )}
             </div>
           ))}
           {initialSites.length === 0 && (
