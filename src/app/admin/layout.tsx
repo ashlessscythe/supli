@@ -46,16 +46,19 @@ export default async function AdminLayout({
       : [];
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
       <Header />
-      <div className="container grid flex-1 gap-12 md:grid-cols-[200px_1fr] py-4">
+      <div className="container grid min-w-0 flex-1 gap-6 py-4 md:grid-cols-[200px_1fr] md:gap-12">
         <aside className="hidden w-[200px] flex-col md:flex">
           {role === Role.SUPERADMIN && (
             <SiteSwitcher sites={switcherSites} activeSiteId={activeSiteId} />
           )}
           <AdminNav role={role} />
         </aside>
-        <main className="flex w-full flex-1 flex-col overflow-hidden">
+        <main
+          id="main-content"
+          className="flex min-w-0 w-full flex-1 flex-col"
+        >
           <div className="mb-4 md:hidden">
             {role === Role.SUPERADMIN && (
               <SiteSwitcher sites={switcherSites} activeSiteId={activeSiteId} />

@@ -34,7 +34,7 @@ export function AdminMobileNav({ role }: { role?: Role | string }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="w-[calc(100vw-2rem)] max-w-sm"
+          className="w-[min(24rem,calc(100vw-2rem))]"
         >
           {routes.map((route) => (
             <DropdownMenuItem key={route.href} asChild>

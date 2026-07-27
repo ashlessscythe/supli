@@ -15,10 +15,10 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
       <Header />
-      <main id="main-content" className="flex-1">
-        <div className="container">{children}</div>
+      <main id="main-content" className="min-w-0 flex-1">
+        <div className="container min-w-0">{children}</div>
       </main>
     </div>
   );

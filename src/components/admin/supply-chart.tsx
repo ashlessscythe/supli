@@ -28,12 +28,12 @@ export function SupplyChart({ data }: SupplyChartProps) {
 
   return (
     <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={data} layout="vertical" margin={{ left: 120 }}>
+      <BarChart data={data} layout="vertical" margin={{ left: 8, right: 8 }}>
         <XAxis type="number" />
         <YAxis
           type="category"
           dataKey="name"
-          width={100}
+          width={88}
           stroke="#888888"
           fontSize={12}
           tickLine={false}
