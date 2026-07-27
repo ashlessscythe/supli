@@ -1,9 +1,9 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { locationService } from "@/server/services/location.service";
 import { LocationsClient } from "./locations-client";
 
 export default async function AdminLocationsPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
   const result = await locationService.listAll(ctx.siteId);
   const locations = result.success ? result.data : [];
 

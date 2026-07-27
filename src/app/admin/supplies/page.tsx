@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { locationService } from "@/server/services/location.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,7 @@ export default async function AdminSuppliesPage({
 }: {
   searchParams: { q?: string; stock?: string };
 }) {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
 
   const [supplies, locationsResult] = await Promise.all([
     prisma.supply.findMany({

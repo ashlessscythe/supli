@@ -5,9 +5,6 @@ import { listAssignableUsers, listSites } from "@/lib/actions/site";
 import { SitesClient } from "./sites-client";
 
 export default async function AdminSitesPage() {
-  // #region agent log
-  fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'C',location:'admin/sites/page.tsx:entry',message:'sites page entered',data:{},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   await requireSuperAdmin();
   const [sitesResult, usersResult] = await Promise.all([
     listSites(),

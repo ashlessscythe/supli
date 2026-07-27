@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AuditLogTable } from "@/components/admin/audit-log-table";
@@ -25,7 +25,7 @@ async function getAuditLogs(siteId: string) {
 }
 
 export default async function AdminAuditPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
   const logs = await getAuditLogs(ctx.siteId);
 
   return (

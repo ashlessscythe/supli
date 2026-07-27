@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,17 +48,6 @@ export function SitesClient({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
-
-  // #region agent log
-  useEffect(() => {
-    fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'D',location:'sites-client.tsx:mount',message:'SitesClient mounted',data:{siteCount:initialSites.length,hasActiveSiteId:Boolean(activeSiteId),ua:typeof navigator!=='undefined'?navigator.userAgent:''},timestamp:Date.now()})}).catch(()=>{});
-    const onErr = (event: ErrorEvent) => {
-      fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'D',location:'sites-client.tsx:window.onerror',message:'client error event',data:{msg:String(event.message||''),file:String(event.filename||'')},timestamp:Date.now()})}).catch(()=>{});
-    };
-    window.addEventListener('error', onErr);
-    return () => window.removeEventListener('error', onErr);
-  }, [initialSites.length, activeSiteId]);
-  // #endregion
   const [slug, setSlug] = useState("");
   const [assignUserId, setAssignUserId] = useState("");
   const [assignSiteId, setAssignSiteId] = useState("");
@@ -194,6 +183,11 @@ export function SitesClient({
         <p className="text-muted-foreground">
           Manage sites, assign people, and switch the active site
         </p>
+        {!activeSiteId && (
+          <p className="mt-2 text-sm font-medium text-destructive">
+            No current site selected — switch to a site below to continue.
+          </p>
+        )}
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -50,6 +51,34 @@ export async function requireAdmin() {
 }
 
 /**
+ * Page-safe admin gate: redirects SUPERADMIN to the sites picker when no
+ * active site is selected, instead of throwing (which races layout redirects
+ * and surfaces as a client-side error during parallel RSC render).
+ */
+export async function requireAdminPage() {
+  const session = await requireSession();
+  if (
+    session.user.role !== Role.ADMIN &&
+    session.user.role !== Role.SUPERADMIN
+  ) {
+    throw new Error("Unauthorized");
+  }
+
+  const ctx = await getSiteContext();
+  if (!ctx) {
+    if (session.user.role === Role.SUPERADMIN) {
+      redirect("/admin/sites");
+    }
+    throw new Error("Unauthorized");
+  }
+
+  if (ctx.role !== Role.ADMIN && ctx.role !== Role.SUPERADMIN) {
+    throw new Error("Unauthorized");
+  }
+  return ctx;
+}
+
+/**
  * Resolves the effective site for the current actor.
  * - ADMIN / STAFF / PENDING: home siteId (required)
  * - SUPERADMIN: active site cookie (required for site-scoped ops)
@@ -61,9 +90,6 @@ export async function requireSiteContext(): Promise<SiteContext> {
   if (role === Role.SUPERADMIN) {
     const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value;
     if (!activeSiteId) {
-      // #region agent log
-      fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'B',location:'session.ts:requireSiteContext',message:'throwing No active site selected for SUPERADMIN',data:{role,userId:id},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       throw new Error("No active site selected");
     }
     return {

@@ -1,9 +1,9 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { HistorySearchClient } from "@/components/inventory/history-search-client";
 import { inventoryHistoryService } from "@/server/services/inventory-history.service";
 
 export default async function AdminHistoryPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
   const initial = await inventoryHistoryService.search(ctx.siteId, {
     kind: "all",
     limit: 50,

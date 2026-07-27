@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { UsersClient } from "./users-client";
 import { Suspense } from "react";
@@ -31,7 +31,7 @@ async function getUsers(siteId: string) {
 }
 
 export default async function AdminUsersPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
   const users = await getUsers(ctx.siteId);
 
   return (

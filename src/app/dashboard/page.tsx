@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { Role } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
@@ -7,6 +8,7 @@ import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { LowStockCard } from "@/components/dashboard/low-stock-card";
 import { Package } from "lucide-react";
 import { requireSiteContext } from "@/lib/auth/session";
+import { ACTIVE_SITE_COOKIE } from "@/lib/sites";
 import { forecastService } from "@/server/services/forecast.service";
 import {
   getReceiptsChartData,
@@ -22,10 +24,12 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  if (
-    session.user.role === Role.ADMIN ||
-    session.user.role === Role.SUPERADMIN
-  ) {
+  if (session.user.role === Role.SUPERADMIN) {
+    const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value;
+    redirect(activeSiteId ? "/admin" : "/admin/sites");
+  }
+
+  if (session.user.role === Role.ADMIN) {
     redirect("/admin");
   }
 

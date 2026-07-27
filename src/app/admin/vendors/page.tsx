@@ -1,9 +1,9 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { vendorService } from "@/server/services/vendor.service";
 import { VendorsClient } from "./vendors-client";
 
 export default async function AdminVendorsPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
   const result = await vendorService.listAll(ctx.siteId);
   const vendors = result.success ? result.data : [];
 

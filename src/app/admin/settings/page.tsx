@@ -1,9 +1,9 @@
-import { requireAdmin } from "@/lib/auth/session";
+import { requireAdminPage } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { SettingsForm } from "@/components/admin/settings-form";
 
 export default async function SettingsPage() {
-  const ctx = await requireAdmin();
+  const ctx = await requireAdminPage();
 
   const settings = await prisma.systemSetting.findMany({
     where: { siteId: ctx.siteId },
