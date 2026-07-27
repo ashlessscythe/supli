@@ -12,6 +12,9 @@ import {
 } from "@/lib/actions/admin";
 
 export default async function AdminPage() {
+  // #region agent log
+  fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'B',location:'admin/page.tsx:entry',message:'admin overview page entered (before requireAdmin)',data:{},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const ctx = await requireAdmin();
 
   const [stats, receiptsData, supplyData, metrics, depletion, lowStockItems] =

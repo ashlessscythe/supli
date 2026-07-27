@@ -61,6 +61,9 @@ export async function requireSiteContext(): Promise<SiteContext> {
   if (role === Role.SUPERADMIN) {
     const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value;
     if (!activeSiteId) {
+      // #region agent log
+      fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'B',location:'session.ts:requireSiteContext',message:'throwing No active site selected for SUPERADMIN',data:{role,userId:id},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       throw new Error("No active site selected");
     }
     return {

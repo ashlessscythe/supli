@@ -27,12 +27,19 @@ export default async function AdminLayout({
 
   const pathname = headers().get("x-pathname") ?? "";
   const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value ?? null;
-
-  if (
+  const willRedirectToSites =
     role === Role.SUPERADMIN &&
     !activeSiteId &&
-    !pathname.startsWith("/admin/sites")
-  ) {
+    !pathname.startsWith("/admin/sites");
+
+  // #region agent log
+  fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'A',location:'admin/layout.tsx:gate',message:'admin layout SUPERADMIN site gate',data:{role,pathname,pathnameEmpty:pathname==='',hasActiveSiteCookie:Boolean(activeSiteId),willRedirectToSites,rawHeader:headers().get("x-pathname")},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
+
+  if (willRedirectToSites) {
+    // #region agent log
+    fetch('http://127.0.0.1:7767/ingest/b54409dd-63f2-48c1-b7ec-c1ef73a5869a',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'2fdd80'},body:JSON.stringify({sessionId:'2fdd80',runId:'pre-fix',hypothesisId:'A',location:'admin/layout.tsx:redirect',message:'redirecting SUPERADMIN to /admin/sites',data:{pathname,hasActiveSiteCookie:false},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     redirect("/admin/sites");
   }
 
