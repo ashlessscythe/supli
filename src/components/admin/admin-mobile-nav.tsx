@@ -25,7 +25,16 @@ export function AdminMobileNav({ role }: { role?: Role | string }) {
 
   return (
     <div className="md:hidden">
-      <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenu
+        modal={false}
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) {
+            document.body.style.removeProperty("pointer-events");
+          }
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button variant="outline" className="w-full justify-between">
             <span>{current}</span>
@@ -34,7 +43,7 @@ export function AdminMobileNav({ role }: { role?: Role | string }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="w-[min(24rem,calc(100vw-2rem))]"
+          className="z-[60] w-[min(24rem,calc(100vw-2rem))]"
         >
           {routes.map((route) => (
             <DropdownMenuItem key={route.href} asChild>
