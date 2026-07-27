@@ -77,7 +77,7 @@ export function DashboardCharts({
             </ul>
           </CardContent>
         </Card>
-        <Card className="col-span-2">
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle className="text-sm font-medium">
               Reorder Forecast
