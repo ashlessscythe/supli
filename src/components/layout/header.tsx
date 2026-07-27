@@ -56,7 +56,16 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full max-w-[100vw] border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 min-w-0 items-center gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <DropdownMenu open={mobileOpen} onOpenChange={setMobileOpen}>
+          <DropdownMenu
+            modal={false}
+            open={mobileOpen}
+            onOpenChange={(next) => {
+              setMobileOpen(next);
+              if (!next) {
+                document.body.style.removeProperty("pointer-events");
+              }
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
@@ -69,7 +78,7 @@ export function Header() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="w-[min(18rem,calc(100vw-2rem))]"
+              className="z-[60] w-[min(18rem,calc(100vw-2rem))]"
             >
               {staffNavigationItems.map((item) => {
                 const Icon = navIcons[item.name];
