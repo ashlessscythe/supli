@@ -27,8 +27,9 @@ export function computeKioskToken(passwordHash: string): string {
 }
 
 export async function isKioskAuthenticated(): Promise<boolean> {
-  const token = cookies().get(KIOSK_COOKIE)?.value;
-  const siteId = cookies().get(KIOSK_SITE_COOKIE)?.value;
+  const jar = await cookies();
+  const token = jar.get(KIOSK_COOKIE)?.value;
+  const siteId = jar.get(KIOSK_SITE_COOKIE)?.value;
   if (!token || !siteId) return false;
 
   const hash = await settingsService.getKioskPasswordHash(siteId);
@@ -52,7 +53,7 @@ export async function getKioskSite(): Promise<{
   name: string;
   slug: string;
 } | null> {
-  const siteId = cookies().get(KIOSK_SITE_COOKIE)?.value;
+  const siteId = (await cookies()).get(KIOSK_SITE_COOKIE)?.value;
   if (!siteId) return null;
 
   const site = await prisma.site.findUnique({
@@ -68,7 +69,7 @@ export async function getKioskSite(): Promise<{
  */
 export async function getKioskUserId(siteId?: string): Promise<string> {
   const resolvedSiteId =
-    siteId ?? cookies().get(KIOSK_SITE_COOKIE)?.value ?? null;
+    siteId ?? (await cookies()).get(KIOSK_SITE_COOKIE)?.value ?? null;
   if (!resolvedSiteId) {
     throw new Error("No kiosk site selected");
   }

@@ -4,11 +4,12 @@ import { supplyService } from "@/server/services/supply.service";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await requireSiteContext();
-    const result = await supplyService.getById(ctx.siteId, params.id);
+    const { id } = await params;
+    const result = await supplyService.getById(ctx.siteId, id);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 404 });
     }
@@ -20,10 +21,11 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await requireAdmin();
+    const { id } = await params;
     const { quantity } = await request.json();
     if (typeof quantity !== "number") {
       return NextResponse.json(
@@ -35,7 +37,7 @@ export async function PATCH(
     const result = await supplyService.updateQuantity(
       ctx.userId,
       ctx.siteId,
-      params.id,
+      id,
       quantity
     );
 

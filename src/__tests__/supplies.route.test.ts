@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE } from "@/app/api/supplies/route";
 import { supplyService } from "@/server/services/supply.service";
-import { getServerSession } from "next-auth";
+import { requireAdmin } from "@/lib/auth/session";
 
-vi.mock("next-auth", () => ({
-  getServerSession: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAdmin: vi.fn(),
+  requireSiteContext: vi.fn(),
 }));
 
 vi.mock("@/server/services/supply.service", () => ({
@@ -15,8 +16,12 @@ vi.mock("@/server/services/supply.service", () => ({
 
 const SITE_ID = "site-1";
 
-const adminSession = {
-  user: { id: "admin-1", role: "ADMIN", siteId: SITE_ID },
+const adminCtx = {
+  userId: "admin-1",
+  username: "admin",
+  role: "ADMIN",
+  siteId: SITE_ID,
+  isSuperAdmin: false,
 };
 
 function createDeleteRequest(id: string) {
@@ -28,7 +33,7 @@ function createDeleteRequest(id: string) {
 describe("DELETE /api/supplies", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getServerSession).mockResolvedValue(adminSession as never);
+    vi.mocked(requireAdmin).mockResolvedValue(adminCtx as never);
   });
 
   it("returns 400 when pending requests block deletion", async () => {
@@ -42,7 +47,11 @@ describe("DELETE /api/supplies", () => {
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Cannot delete supply with pending requests");
-    expect(supplyService.delete).toHaveBeenCalledWith("admin-1", SITE_ID, "supply-1");
+    expect(supplyService.delete).toHaveBeenCalledWith(
+      "admin-1",
+      SITE_ID,
+      "supply-1"
+    );
   });
 
   it("returns 400 when remaining quantity blocks deletion", async () => {
@@ -51,45 +60,34 @@ describe("DELETE /api/supplies", () => {
       error: "Cannot delete supply with remaining quantity",
     });
 
-    const response = await DELETE(createDeleteRequest("supply-2"));
+    const response = await DELETE(createDeleteRequest("supply-1"));
     const body = await response.json();
 
     expect(response.status).toBe(400);
     expect(body.error).toBe("Cannot delete supply with remaining quantity");
   });
 
-  it("returns 400 when open orders block deletion", async () => {
-    vi.mocked(supplyService.delete).mockResolvedValue({
-      success: false,
-      error: "Cannot delete supply with open orders",
-    });
-
-    const response = await DELETE(createDeleteRequest("supply-3"));
-    const body = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(body.error).toBe("Cannot delete supply with open orders");
-  });
-
-  it("returns deleted supply when deletion succeeds", async () => {
+  it("returns success payload when deletion succeeds", async () => {
     vi.mocked(supplyService.delete).mockResolvedValue({
       success: true,
-      data: { id: "supply-4", name: "Gloves" },
+      data: { id: "supply-1" },
     } as never);
 
-    const response = await DELETE(createDeleteRequest("supply-4"));
+    const response = await DELETE(createDeleteRequest("supply-1"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.id).toBe("supply-4");
+    expect(body).toEqual({ id: "supply-1" });
   });
 
-  it("returns 401 when not authenticated", async () => {
-    vi.mocked(getServerSession).mockResolvedValue(null);
+  it("returns 401 when unauthenticated", async () => {
+    vi.mocked(requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
     const response = await DELETE(createDeleteRequest("supply-1"));
+    const body = await response.json();
 
     expect(response.status).toBe(401);
+    expect(body.error).toBe("Unauthorized");
     expect(supplyService.delete).not.toHaveBeenCalled();
   });
 });

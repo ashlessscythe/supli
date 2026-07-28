@@ -60,7 +60,7 @@ describe("isKioskAuthenticated", () => {
   });
 
   it("returns false when the kiosk cookie is missing", async () => {
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: () => undefined,
     } as never);
 
@@ -69,7 +69,7 @@ describe("isKioskAuthenticated", () => {
   });
 
   it("returns false when the site cookie is missing", async () => {
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: (name: string) =>
         name === KIOSK_COOKIE ? { value: "any-token" } : undefined,
     } as never);
@@ -79,7 +79,7 @@ describe("isKioskAuthenticated", () => {
   });
 
   it("returns false when no password hash is configured", async () => {
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: (name: string) => {
         if (name === KIOSK_COOKIE) return { value: "any-token" };
         if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
@@ -94,7 +94,7 @@ describe("isKioskAuthenticated", () => {
   it("returns true for a token matching the current hash", async () => {
     const hash = "current-hash";
     const token = computeKioskToken(hash);
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: (name: string) => {
         if (name === KIOSK_COOKIE) return { value: token };
         if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
@@ -109,7 +109,7 @@ describe("isKioskAuthenticated", () => {
 
   it("returns false after password change (old token vs new hash)", async () => {
     const oldToken = computeKioskToken("old-hash");
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: (name: string) => {
         if (name === KIOSK_COOKIE) return { value: oldToken };
         if (name === KIOSK_SITE_COOKIE) return { value: "site-1" };
@@ -125,7 +125,7 @@ describe("isKioskAuthenticated", () => {
 
   it("returns false for truncated tokens (length mismatch)", async () => {
     const hash = "current-hash";
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: (name: string) => {
         if (name === KIOSK_COOKIE)
           return { value: computeKioskToken(hash).slice(0, 10) };
@@ -184,7 +184,7 @@ describe("getKioskUserId", () => {
   });
 
   it("reads site id from the kiosk site cookie when omitted", async () => {
-    vi.mocked(cookies).mockReturnValue({
+    vi.mocked(cookies).mockResolvedValue({
       get: (name: string) =>
         name === KIOSK_SITE_COOKIE ? { value: "site-cookie" } : undefined,
     } as never);

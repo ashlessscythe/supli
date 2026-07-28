@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Role } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth-config";
 import { prisma } from "@/lib/prisma";
 
 vi.mock("@/lib/prisma", () => ({

@@ -1,13 +1,12 @@
-import { getServerSession } from "next-auth";
 import { Role } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { InboundClient } from "@/app/admin/inbound/inbound-client";
 import { getInboundPageData } from "@/lib/inbound-page-data";
 import type { Request } from "@/types";
 
 export default async function DashboardInboundPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session) {
     redirect("/login");
   }

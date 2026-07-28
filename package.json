@@ -44,15 +44,15 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "date-fns": "^4.1.0",
-    "lucide-react": "^0.356.0",
-    "next": "^14.2.35",
-    "next-auth": "^4.24.14",
+    "lucide-react": "^0.577.0",
+    "next": "^15.5.22",
+    "next-auth": "^5.0.0-beta.32",
     "next-themes": "^0.4.3",
     "qrcode.react": "^4.2.0",
-    "react": "^18.0.0",
-    "react-dom": "^18.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-hook-form": "^7.0.0",
-    "recharts": "^2.13.3",
+    "recharts": "^2.15.4",
     "resend": "^6.17.1",
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.0.0",
@@ -63,15 +63,15 @@
     "@faker-js/faker": "^9.2.0",
     "@types/bcrypt": "^5.0.0",
     "@types/node": "^20.0.0",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.0.0",
     "eslint": "^8.0.0",
-    "eslint-config-next": "^14.2.35",
-    "postcss": "^8.5.10",
+    "eslint-config-next": "^15.5.22",
+    "postcss": "^8.5.18",
     "prettier": "^3.4.2",
     "prisma": "^5.0.0",
-    "tailwindcss": "^3.0.0",
+    "tailwindcss": "^3.4.17",
     "ts-node": "^10.0.0",
     "typescript": "^5.0.0",
     "vitest": "^4.1.10",
@@ -79,14 +79,15 @@
   },
   "overrides": {
     "cookie": "^0.7.2",
-    "postcss": "^8.5.10",
+    "postcss": "^8.5.18",
     "tar": "^7.5.16",
     "uuid": "^11.1.1",
-    "@typescript-eslint/typescript-estree": {
-      "minimatch": "^9.0.7"
-    },
-    "@next/eslint-plugin-next": {
-      "glob": "^11.1.0"
+    "brace-expansion": "^5.0.8",
+    "glob": "^11.1.0",
+    "@auth/core": "0.41.3",
+    "sharp": "0.35.3",
+    "next": {
+      "sharp": "0.35.3"
     }
   }
 }

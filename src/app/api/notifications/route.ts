@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { z } from "zod";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { notificationService } from "@/server/services/notification.service";
 
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -33,7 +32,7 @@ const patchSchema = z.object({
 
 export async function PATCH(request: Request) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

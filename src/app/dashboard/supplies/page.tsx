@@ -11,7 +11,7 @@ import { CheckoutDialog } from "@/components/inventory/checkout-dialog";
 export default async function SuppliesPage({
   searchParams,
 }: {
-  searchParams: { q?: string; stock?: string };
+  searchParams: Promise<{ q?: string; stock?: string }>;
 }) {
   let ctx;
   try {
@@ -20,6 +20,7 @@ export default async function SuppliesPage({
     redirect("/login");
   }
 
+  const sp = await searchParams;
   const [result, locationsResult] = await Promise.all([
     getSupplies(),
     locationService.list(ctx.siteId),
@@ -32,12 +33,10 @@ export default async function SuppliesPage({
   const defaultLocationId =
     locations.find((location) => location.name === "Watchpoint Delta")?.id ??
     locations[0]?.id;
-  const initialSearch = searchParams.q ?? "";
+  const initialSearch = sp.q ?? "";
   const initialStockFilter =
-    searchParams.stock === "low" ||
-    searchParams.stock === "ok" ||
-    searchParams.stock === "all"
-      ? searchParams.stock
+    sp.stock === "low" || sp.stock === "ok" || sp.stock === "all"
+      ? sp.stock
       : "all";
 
   const isAdmin =

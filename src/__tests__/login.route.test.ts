@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Role } from "@prisma/client";
 import bcrypt from "bcrypt";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/lib/auth-config";
 import { prisma } from "@/lib/prisma";
 import { rateLimitService } from "@/server/services/auth.service";
 
@@ -29,19 +29,22 @@ vi.mock("@/server/services/auth.service", () => ({
 }));
 
 function getAuthorize() {
-  const provider = authOptions.providers[0];
-  const authorize =
-    provider &&
-    "options" in provider &&
-    provider.options &&
-    "authorize" in provider.options
-      ? provider.options.authorize
-      : null;
+  const provider = authOptions.providers[0] as unknown as {
+    options?: {
+      authorize?: (
+        credentials: Partial<Record<string, unknown>> | undefined,
+        request: Request
+      ) => Promise<unknown>;
+    };
+  };
+  const authorize = provider?.options?.authorize;
   if (!authorize) {
     throw new Error("Credentials authorize handler not found");
   }
   return authorize;
 }
+
+const dummyRequest = new Request("http://localhost/api/auth/callback/credentials");
 
 describe("credentials login (NextAuth authorize)", () => {
   const authorize = getAuthorize();
@@ -52,7 +55,7 @@ describe("credentials login (NextAuth authorize)", () => {
   });
 
   it("returns null when credentials are missing", async () => {
-    const result = await authorize(undefined);
+    const result = await authorize(undefined, dummyRequest);
     expect(result).toBeNull();
   });
 
@@ -62,7 +65,7 @@ describe("credentials login (NextAuth authorize)", () => {
     const result = await authorize({
       username: "lockeduser",
       password: "Password1",
-    });
+    }, dummyRequest);
 
     expect(result).toBeNull();
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
@@ -81,7 +84,7 @@ describe("credentials login (NextAuth authorize)", () => {
     const result = await authorize({
       username: "staffuser",
       password: "Password1",
-    });
+    }, dummyRequest);
 
     expect(result).toEqual({
       id: "user-1",
@@ -99,7 +102,7 @@ describe("credentials login (NextAuth authorize)", () => {
     const result = await authorize({
       username: "unknown",
       password: "Password1",
-    });
+    }, dummyRequest);
 
     expect(result).toBeNull();
     expect(rateLimitService.recordFailure).toHaveBeenCalledWith("unknown");
@@ -117,7 +120,7 @@ describe("credentials login (NextAuth authorize)", () => {
     const result = await authorize({
       username: "staffuser",
       password: "WrongPass1",
-    });
+    }, dummyRequest);
 
     expect(result).toBeNull();
     expect(rateLimitService.recordFailure).toHaveBeenCalledWith("staffuser");
@@ -135,7 +138,7 @@ describe("credentials login (NextAuth authorize)", () => {
     const result = await authorize({
       username: "pendinguser",
       password: "Password1",
-    });
+    }, dummyRequest);
 
     expect(result).toBeNull();
     expect(rateLimitService.recordFailure).not.toHaveBeenCalled();

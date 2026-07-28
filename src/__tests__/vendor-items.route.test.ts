@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PATCH, POST, GET } from "@/app/api/vendors/[id]/items/route";
 import { vendorService } from "@/server/services/vendor.service";
-import { getServerSession } from "next-auth";
+import { requireAdmin } from "@/lib/auth/session";
 import { buildLeadTimePatch } from "@/lib/vendor-link";
 
-vi.mock("next-auth", () => ({
-  getServerSession: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAdmin: vi.fn(),
 }));
 
 vi.mock("@/server/services/vendor.service", () => ({
@@ -19,14 +19,18 @@ vi.mock("@/server/services/vendor.service", () => ({
 
 const SITE_ID = "site-1";
 
-const adminSession = {
-  user: { id: "admin-1", role: "ADMIN", siteId: SITE_ID },
+const adminCtx = {
+  userId: "admin-1",
+  username: "admin",
+  role: "ADMIN",
+  siteId: SITE_ID,
+  isSuperAdmin: false,
 };
 
-const params = { id: "vendor-1" };
+const params = Promise.resolve({ id: "vendor-1" });
 
 function createJsonRequest(method: string, body: unknown) {
-  return new Request(`http://localhost/api/vendors/${params.id}/items`, {
+  return new Request("http://localhost/api/vendors/vendor-1/items", {
     method,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -36,7 +40,7 @@ function createJsonRequest(method: string, body: unknown) {
 describe("GET /api/vendors/[id]/items", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getServerSession).mockResolvedValue(adminSession as never);
+    vi.mocked(requireAdmin).mockResolvedValue(adminCtx as never);
   });
 
   it("returns linked items including leadTimeDays for the modal list", async () => {
@@ -67,9 +71,7 @@ describe("GET /api/vendors/[id]/items", () => {
   });
 
   it("returns 401 when not an admin", async () => {
-    vi.mocked(getServerSession).mockResolvedValue({
-      user: { id: "staff-1", role: "STAFF" },
-    } as never);
+    vi.mocked(requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
     const response = await GET(new Request("http://localhost"), { params });
 
@@ -81,7 +83,7 @@ describe("GET /api/vendors/[id]/items", () => {
 describe("POST /api/vendors/[id]/items (link form with lead time)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getServerSession).mockResolvedValue(adminSession as never);
+    vi.mocked(requireAdmin).mockResolvedValue(adminCtx as never);
   });
 
   it("forwards leadTimeDays from the link supply/vendor form", async () => {
@@ -120,7 +122,7 @@ describe("POST /api/vendors/[id]/items (link form with lead time)", () => {
 describe("PATCH /api/vendors/[id]/items (inline lead days + edit form)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getServerSession).mockResolvedValue(adminSession as never);
+    vi.mocked(requireAdmin).mockResolvedValue(adminCtx as never);
   });
 
   it("updates leadTimeDays via the inline editor patch body", async () => {
@@ -184,7 +186,7 @@ describe("PATCH /api/vendors/[id]/items (inline lead days + edit form)", () => {
   });
 
   it("returns 401 for unauthenticated inline saves", async () => {
-    vi.mocked(getServerSession).mockResolvedValue(null);
+    vi.mocked(requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
     const response = await PATCH(
       createJsonRequest("PATCH", buildLeadTimePatch("supply-1", 3)),

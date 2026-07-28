@@ -1,8 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Role } from "@prisma/client";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { ACTIVE_SITE_COOKIE } from "@/lib/sites";
 
 export type SessionUser = {
@@ -23,7 +22,7 @@ export type SiteContext = {
 };
 
 export async function requireSession() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session?.user?.id) {
     throw new Error("Unauthorized");
   }
@@ -88,7 +87,7 @@ export async function requireSiteContext(): Promise<SiteContext> {
   const { id, username, role, siteId } = session.user;
 
   if (role === Role.SUPERADMIN) {
-    const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value;
+    const activeSiteId = (await cookies()).get(ACTIVE_SITE_COOKIE)?.value;
     if (!activeSiteId) {
       throw new Error("No active site selected");
     }
@@ -124,10 +123,10 @@ export async function getSiteContext(): Promise<SiteContext | null> {
 }
 
 export async function getActiveSiteIdForSession(): Promise<string | null> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   if (!session?.user?.id) return null;
   if (session.user.role === Role.SUPERADMIN) {
-    return cookies().get(ACTIVE_SITE_COOKIE)?.value ?? null;
+    return (await cookies()).get(ACTIVE_SITE_COOKIE)?.value ?? null;
   }
   return session.user.siteId;
 }

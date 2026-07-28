@@ -4,11 +4,12 @@ import { supplyService } from "@/server/services/supply.service";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await requireSiteContext();
-    const result = await supplyService.getDetails(ctx.siteId, params.id);
+    const { id } = await params;
+    const result = await supplyService.getDetails(ctx.siteId, id);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 404 });
     }

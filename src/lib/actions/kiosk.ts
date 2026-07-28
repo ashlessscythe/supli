@@ -29,14 +29,16 @@ export async function kioskLogin(siteId: string, password: string) {
     maxAge: KIOSK_SESSION_MAX_AGE,
   };
 
-  cookies().set(KIOSK_COOKIE, computeKioskToken(hash), cookieOptions);
-  cookies().set(KIOSK_SITE_COOKIE, siteId, cookieOptions);
+  const jar = await cookies();
+  jar.set(KIOSK_COOKIE, computeKioskToken(hash), cookieOptions);
+  jar.set(KIOSK_SITE_COOKIE, siteId, cookieOptions);
 
   return { success: true as const };
 }
 
 export async function kioskLogout() {
-  cookies().delete(KIOSK_COOKIE);
-  cookies().delete(KIOSK_SITE_COOKIE);
+  const jar = await cookies();
+  jar.delete(KIOSK_COOKIE);
+  jar.delete(KIOSK_SITE_COOKIE);
   return { success: true as const };
 }

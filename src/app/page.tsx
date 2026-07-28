@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { LandingPage } from "@/components/landing/landing-page";
 import { homeJsonLd, homeMetadata } from "@/lib/site";
 
 export const metadata: Metadata = homeMetadata;
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   return (
     <>

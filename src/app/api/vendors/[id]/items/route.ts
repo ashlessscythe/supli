@@ -12,14 +12,15 @@ async function getAdminContext() {
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await getAdminContext();
   if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await vendorService.listItems(ctx.siteId, params.id);
+  const { id } = await params;
+  const result = await vendorService.listItems(ctx.siteId, id);
   if (!result.success) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
@@ -28,7 +29,7 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await getAdminContext();
   if (!ctx) {
@@ -36,9 +37,10 @@ export async function POST(
   }
 
   try {
+    const { id } = await params;
     const json = await request.json();
     const result = await vendorService.linkItem(
-      params.id,
+      id,
       ctx.userId,
       ctx.siteId,
       json
@@ -63,7 +65,7 @@ export async function POST(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await getAdminContext();
   if (!ctx) {
@@ -71,9 +73,10 @@ export async function PATCH(
   }
 
   try {
+    const { id } = await params;
     const json = await request.json();
     const result = await vendorService.updateItemLink(
-      params.id,
+      id,
       ctx.userId,
       ctx.siteId,
       json
@@ -92,7 +95,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = await getAdminContext();
   if (!ctx) {
@@ -100,6 +103,7 @@ export async function DELETE(
   }
 
   try {
+    const { id } = await params;
     const json = await request.json();
     const supplyId = json?.supplyId;
     if (!supplyId || typeof supplyId !== "string") {
@@ -110,7 +114,7 @@ export async function DELETE(
     }
 
     const result = await vendorService.unlinkItem(
-      params.id,
+      id,
       supplyId,
       ctx.userId,
       ctx.siteId

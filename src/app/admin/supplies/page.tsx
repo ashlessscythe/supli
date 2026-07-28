@@ -8,9 +8,10 @@ import { SupplyDialog } from "@/components/supplies/supply-dialog";
 export default async function AdminSuppliesPage({
   searchParams,
 }: {
-  searchParams: { q?: string; stock?: string };
+  searchParams: Promise<{ q?: string; stock?: string }>;
 }) {
   const ctx = await requireAdminPage();
+  const sp = await searchParams;
 
   const [supplies, locationsResult] = await Promise.all([
     prisma.supply.findMany({
@@ -25,10 +26,8 @@ export default async function AdminSuppliesPage({
     : [];
 
   const initialStockFilter =
-    searchParams.stock === "low" ||
-    searchParams.stock === "ok" ||
-    searchParams.stock === "all"
-      ? searchParams.stock
+    sp.stock === "low" || sp.stock === "ok" || sp.stock === "all"
+      ? sp.stock
       : "all";
 
   return (
@@ -54,7 +53,7 @@ export default async function AdminSuppliesPage({
             data={supplies}
             isAdmin={true}
             locations={locations}
-            initialSearch={searchParams.q ?? ""}
+            initialSearch={sp.q ?? ""}
             initialStockFilter={initialStockFilter}
           />
         </CardContent>
