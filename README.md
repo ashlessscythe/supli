@@ -2,7 +2,7 @@
 
 Inventory management for tracking supplies, logging inbound corporate POs, receiving stock (with photo/document attachments), searching history, and recording consumption — with vendor lead times, MOQ, barcode **QR** codes, and a **kiosk** for walk-up checkout.
 
-Built with **Next.js 14** (App Router), **Prisma**, **PostgreSQL**, **NextAuth**, and **shadcn/ui**. Runs locally via Docker Compose or on the edge (Neon + Vercel / Render / Koyeb).
+Built with **Next.js 15** (App Router), **Prisma**, **PostgreSQL**, **Auth.js (next-auth v5)**, and **shadcn/ui**. Runs locally via Docker Compose or on the edge (Neon + Vercel / Render / Koyeb).
 
 ---
 
@@ -91,9 +91,9 @@ Roles:
 
 | Layer | Technology |
 |-------|------------|
-| App | Next.js 14 (App Router), TypeScript |
+| App | Next.js 15 (App Router), TypeScript |
 | Data | Prisma 5, PostgreSQL (Docker locally, Neon on the edge) |
-| Auth | NextAuth.js (credentials / JWT) |
+| Auth | Auth.js / next-auth v5 (credentials / JWT) |
 | UI | Tailwind CSS, shadcn/ui, Radix, Recharts |
 | Email | Resend (optional; invites & password reset) |
 | Local | Docker Compose (`compose.yaml`) — Postgres, optional app container |

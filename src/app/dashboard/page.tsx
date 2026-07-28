@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
-import { getServerSession } from "next-auth";
 import { Role } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
@@ -18,14 +17,14 @@ import {
 } from "@/lib/actions/admin";
 
 export default async function DashboardPage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session) {
     redirect("/login");
   }
 
   if (session.user.role === Role.SUPERADMIN) {
-    const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value;
+    const activeSiteId = (await cookies()).get(ACTIVE_SITE_COOKIE)?.value;
     redirect(activeSiteId ? "/admin" : "/admin/sites");
   }
 

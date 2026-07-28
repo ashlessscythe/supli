@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET, PUT } from "@/app/api/vendors/route";
 import { vendorService } from "@/server/services/vendor.service";
-import { getServerSession } from "next-auth";
+import { requireAdmin } from "@/lib/auth/session";
 
-vi.mock("next-auth", () => ({
-  getServerSession: vi.fn(),
+vi.mock("@/lib/auth/session", () => ({
+  requireAdmin: vi.fn(),
 }));
 
 vi.mock("@/server/services/vendor.service", () => ({
@@ -16,8 +16,12 @@ vi.mock("@/server/services/vendor.service", () => ({
 
 const SITE_ID = "site-1";
 
-const adminSession = {
-  user: { id: "admin-1", role: "ADMIN", siteId: SITE_ID },
+const adminCtx = {
+  userId: "admin-1",
+  username: "admin",
+  role: "ADMIN",
+  siteId: SITE_ID,
+  isSuperAdmin: false,
 };
 
 function createPutRequest(body: unknown) {
@@ -31,7 +35,7 @@ function createPutRequest(body: unknown) {
 describe("PUT /api/vendors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getServerSession).mockResolvedValue(adminSession as never);
+    vi.mocked(requireAdmin).mockResolvedValue(adminCtx as never);
   });
 
   it("returns updated vendor when marking inactive", async () => {
@@ -63,7 +67,7 @@ describe("PUT /api/vendors", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    vi.mocked(getServerSession).mockResolvedValue(null);
+    vi.mocked(requireAdmin).mockRejectedValue(new Error("Unauthorized"));
 
     const response = await PUT(
       createPutRequest({
@@ -81,7 +85,7 @@ describe("PUT /api/vendors", () => {
 describe("GET /api/vendors", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getServerSession).mockResolvedValue(adminSession as never);
+    vi.mocked(requireAdmin).mockResolvedValue(adminCtx as never);
   });
 
   it("returns only active vendors from the service", async () => {

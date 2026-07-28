@@ -1,7 +1,6 @@
 import { cookies, headers } from "next/headers";
-import { getServerSession } from "next-auth";
 import { Role } from "@prisma/client";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
@@ -15,18 +14,16 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   const role = session?.user?.role;
 
-  if (
-    !session ||
-    (role !== Role.ADMIN && role !== Role.SUPERADMIN)
-  ) {
+  if (!session || (role !== Role.ADMIN && role !== Role.SUPERADMIN)) {
     redirect("/dashboard");
   }
 
-  const pathname = headers().get("x-pathname") ?? "";
-  const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value ?? null;
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const activeSiteId =
+    (await cookies()).get(ACTIVE_SITE_COOKIE)?.value ?? null;
 
   if (
     role === Role.SUPERADMIN &&

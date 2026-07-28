@@ -12,7 +12,8 @@ export default async function AdminSitesPage() {
   ]);
   const sites = sitesResult.success ? sitesResult.data : [];
   const users = usersResult.success ? usersResult.data : [];
-  const activeSiteId = cookies().get(ACTIVE_SITE_COOKIE)?.value ?? null;
+  const activeSiteId =
+    (await cookies()).get(ACTIVE_SITE_COOKIE)?.value ?? null;
 
   return (
     <SitesClient

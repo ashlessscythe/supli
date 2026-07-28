@@ -4,11 +4,12 @@ import { locationService } from "@/server/services/location.service";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const ctx = await requireAdmin();
-    const result = await locationService.listStockItems(ctx.siteId, params.id);
+    const { id } = await params;
+    const result = await locationService.listStockItems(ctx.siteId, id);
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 500 });
     }

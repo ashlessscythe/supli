@@ -2,17 +2,17 @@
 
 ## Overview
 
-Supli Mart is a Next.js 14 (App Router) application for supplies inventory management. It uses server components for data fetching, server actions for mutations, and Prisma ORM against PostgreSQL — either local Docker Postgres or a hosted provider such as Neon on the edge.
+Supli Mart is a Next.js 15 (App Router) application for supplies inventory management. It uses server components for data fetching, server actions for mutations, and Prisma ORM against PostgreSQL — either local Docker Postgres or a hosted provider such as Neon on the edge.
 
 ## Stack
 
 | Layer | Technology |
 |-------|------------|
-| Framework | Next.js 14 (App Router) |
+| Framework | Next.js 15 (App Router) |
 | Language | TypeScript (strict) |
 | ORM | Prisma 5 |
 | Database | PostgreSQL (Docker locally via `compose.yaml`, Neon or other hosted on the edge) |
-| Auth | NextAuth.js (JWT, credentials) |
+| Auth | Auth.js / next-auth v5 (JWT, credentials) |
 | UI | shadcn/ui, Tailwind CSS, Radix |
 | Validation | Zod |
 | Email | Resend (M2+) |

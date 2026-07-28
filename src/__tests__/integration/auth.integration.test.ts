@@ -79,18 +79,23 @@ describe.skipIf(!isIntegrationEnabled())("credentials login (database)", () => {
   });
 
   async function getAuthorize() {
-    const { authOptions } = await import("@/lib/auth");
-    const provider = authOptions.providers[0];
-    const authorize =
-      provider &&
-      "options" in provider &&
-      provider.options &&
-      "authorize" in provider.options
-        ? provider.options.authorize
-        : null;
+    const { authOptions } = await import("@/lib/auth-config");
+    const provider = authOptions.providers[0] as unknown as {
+      options?: {
+        authorize?: (
+          credentials: Partial<Record<string, unknown>> | undefined,
+          request: Request
+        ) => Promise<{ id?: string; username?: string; role?: string } | null>;
+      };
+    };
+    const authorize = provider?.options?.authorize;
     if (!authorize) throw new Error("authorize handler not found");
     return authorize;
   }
+
+  const dummyRequest = new Request(
+    "http://localhost/api/auth/callback/credentials"
+  );
 
   it("authenticates a staff user with a real password hash", async () => {
     await createStaffUser({
@@ -99,10 +104,13 @@ describe.skipIf(!isIntegrationEnabled())("credentials login (database)", () => {
     });
 
     const authorize = await getAuthorize();
-    const result = await authorize({
-      username: "realstaff",
-      password: "StaffPass1",
-    });
+    const result = await authorize(
+      {
+        username: "realstaff",
+        password: "StaffPass1",
+      },
+      dummyRequest
+    );
 
     expect(result).toMatchObject({
       username: "realstaff",
@@ -124,10 +132,13 @@ describe.skipIf(!isIntegrationEnabled())("credentials login (database)", () => {
     });
 
     const authorize = await getAuthorize();
-    const result = await authorize({
-      username: "pendinguser",
-      password: "PendingPass1",
-    });
+    const result = await authorize(
+      {
+        username: "pendinguser",
+        password: "PendingPass1",
+      },
+      dummyRequest
+    );
 
     expect(result).toBeNull();
   });

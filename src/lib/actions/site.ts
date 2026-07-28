@@ -15,7 +15,7 @@ export async function switchActiveSite(siteId: string) {
       return { success: false as const, error: result.error };
     }
 
-    cookies().set(ACTIVE_SITE_COOKIE, siteId, {
+    (await cookies()).set(ACTIVE_SITE_COOKIE, siteId, {
       httpOnly: true,
       sameSite: "lax",
       secure: env.NODE_ENV === "production",
@@ -32,7 +32,7 @@ export async function switchActiveSite(siteId: string) {
 export async function clearActiveSite() {
   try {
     await requireSuperAdmin();
-    cookies().delete(ACTIVE_SITE_COOKIE);
+    (await cookies()).delete(ACTIVE_SITE_COOKIE);
     revalidatePath("/admin");
     return { success: true as const };
   } catch {

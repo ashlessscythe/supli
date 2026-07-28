@@ -3,15 +3,18 @@
 function serverActionAllowedOrigins() {
   const origins = new Set();
 
-  if (process.env.NEXTAUTH_URL) {
+  for (const value of [process.env.AUTH_URL, process.env.NEXTAUTH_URL]) {
+    if (!value) continue;
     try {
-      origins.add(new URL(process.env.NEXTAUTH_URL).hostname);
+      origins.add(new URL(value).hostname);
     } catch {
-      // ignore invalid NEXTAUTH_URL at build time
+      // ignore invalid URL at build time
     }
   }
 
-  for (const origin of (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "").split(",")) {
+  for (const origin of (process.env.SERVER_ACTIONS_ALLOWED_ORIGINS ?? "").split(
+    ","
+  )) {
     const trimmed = origin.trim();
     if (trimmed) origins.add(trimmed);
   }
