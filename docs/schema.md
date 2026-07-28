@@ -46,6 +46,8 @@ Existing workflow and configuration models, now site-scoped
 ## Migrations
 
 ```bash
-npx prisma migrate deploy   # production
-npx prisma migrate dev      # development
+npm run db:up               # local Docker Postgres
+npx prisma migrate deploy   # apply migrations (local or edge)
+npm run db:seed             # demo data
+npx prisma migrate dev      # create new migrations during development
 ```

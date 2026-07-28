@@ -1,0 +1,54 @@
+# Local stack for Supli Mart (desktop / self-hosted).
+# Cloud / edge deploys (Neon + Vercel / Render / Koyeb) do not use this file.
+#
+# Postgres only (host runs Next.js):
+#   docker compose up -d
+#   npm run db:setup && npm run dev
+#
+# Full local server (Postgres + app container):
+#   docker compose --profile full up -d --build
+#   docker compose --profile full run --rm app npm run db:seed
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: supli-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: supli
+      POSTGRES_PASSWORD: supli
+      POSTGRES_DB: supli
+    ports:
+      - "5432:5432"
+    volumes:
+      - supli_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supli -d supli"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supli-app
+    restart: unless-stopped
+    profiles: ["full"]
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://supli:supli@postgres:5432/supli?sslmode=disable
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-local-dev-secret-change-me}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NODE_ENV: production
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      SUPERADMIN_EMAIL: ${SUPERADMIN_EMAIL:-}
+      SUPERADMIN_INITIAL_PASSWORD: ${SUPERADMIN_INITIAL_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  supli_pgdata:
