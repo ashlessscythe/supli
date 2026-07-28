@@ -2,7 +2,7 @@
 
 Inventory management for tracking supplies, logging inbound corporate POs, receiving stock (with photo/document attachments), searching history, and recording consumption — with vendor lead times, MOQ, barcode **QR** codes, and a **kiosk** for walk-up checkout.
 
-Built with **Next.js 14** (App Router), **Prisma**, **PostgreSQL (Neon)**, **NextAuth**, and **shadcn/ui**.
+Built with **Next.js 14** (App Router), **Prisma**, **PostgreSQL**, **NextAuth**, and **shadcn/ui**. Runs locally via Docker Compose or on the edge (Neon + Vercel / Render / Koyeb).
 
 ---
 
@@ -92,11 +92,12 @@ Roles:
 | Layer | Technology |
 |-------|------------|
 | App | Next.js 14 (App Router), TypeScript |
-| Data | Prisma 5, PostgreSQL (Neon) |
+| Data | Prisma 5, PostgreSQL (Docker locally, Neon on the edge) |
 | Auth | NextAuth.js (credentials / JWT) |
 | UI | Tailwind CSS, shadcn/ui, Radix, Recharts |
 | Email | Resend (optional; invites & password reset) |
-| Deploy | Vercel, Render, or [Koyeb](koyeb.toml) |
+| Local | Docker Compose (`compose.yaml`) — Postgres, optional app container |
+| Edge | Vercel, Render, or [Koyeb](koyeb.toml) + hosted Postgres (e.g. Neon) |
 
 More detail: [docs/architecture.md](docs/architecture.md) · [docs/schema.md](docs/schema.md) · [docs/api.md](docs/api.md) · [docs/roadmap.md](docs/roadmap.md)
 
@@ -104,25 +105,60 @@ More detail: [docs/architecture.md](docs/architecture.md) · [docs/schema.md](do
 
 ## Getting started
 
+Two deploy targets are supported:
+
+| Target | Database | App |
+|--------|----------|-----|
+| **Local / desktop** | Docker Postgres (`compose.yaml`) | `npm run dev` on the host, or full stack via `npm run local:up` |
+| **Edge / cloud** | Neon (or any hosted Postgres) | Vercel, Render, or Koyeb |
+
 ### Prerequisites
 
 - Node.js 20+
-- A PostgreSQL database (Neon works well)
+- Docker + Docker Compose (local Postgres / full local server)
+- Or a hosted PostgreSQL URL (edge)
 
-### Setup
+### Local setup (Docker Postgres + Next on the host)
 
 ```bash
 cp .env.example .env
-# Fill in DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
-# Optional: RESEND_API_KEY / EMAIL_FROM for email flows
+# Defaults point at local Docker Postgres. Set NEXTAUTH_SECRET:
+#   openssl rand -base64 32
 
 npm install
-npx prisma migrate dev
-npm run db:seed          # demo users + sample inventory
+npm run db:up            # start Postgres on localhost:5432
+npm run db:setup         # migrate + seed demo data
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) — the landing page with sign-in and registration links.
+Open [http://localhost:3000](http://localhost:3000).
+
+### Full local server (Postgres + app in Docker)
+
+```bash
+cp .env.example .env
+# Set NEXTAUTH_SECRET (and optional SUPERADMIN_* / Resend vars)
+
+npm run local:up         # build & start postgres + app
+npm run local:seed       # demo users + sample inventory
+```
+
+App: [http://localhost:3000](http://localhost:3000). Stop with `npm run local:down`.
+
+### Edge / cloud setup
+
+```bash
+cp .env.example .env
+# Set DATABASE_URL to your Neon (or other) connection string (sslmode=require)
+# Set NEXTAUTH_SECRET and NEXTAUTH_URL to your public URL
+
+npm install
+npx prisma migrate deploy
+npm run db:seed          # optional on first boot
+npm run build && npm start
+```
+
+Or deploy with the existing [render.yaml](render.yaml) / [koyeb.toml](koyeb.toml) configs — same env vars, no Docker required on the host.
 
 ### Seed logins
 
@@ -141,9 +177,15 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 | Command | Purpose |
 |---------|---------|
 | `npm run dev` | Dev server |
-| `npm run build` | Generate Prisma client, migrate, production build |
-| `npm start` | Run production server |
-| `npm run db:seed` | Seed demo data |
+| `npm run build` | Generate Prisma client + production build |
+| `npm start` | Migrate deploy + production server |
+| `npm run db:up` / `db:down` | Start/stop local Docker Postgres |
+| `npm run db:setup` | Migrate deploy + seed |
+| `npm run db:seed` | Seed demo data (optional flags: `--clear`, `--use-faker`) |
+| `npm run db:reset` | Reset DB, re-apply migrations, seed |
+| `npm run local:up` / `local:down` | Full local stack (Postgres + app container) |
+| `npm run local:seed` | Seed against the full local stack |
+| `npm run test:db:up` / `test:db:down` | Integration-test Postgres on port 5433 |
 | `npm test` | Vitest |
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
@@ -170,10 +212,12 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 
 See [`.env.example`](.env.example):
 
-- `DATABASE_URL` — Neon / Postgres connection string  
-- `NEXTAUTH_SECRET` / `NEXTAUTH_URL` — auth  
-- `RESEND_API_KEY` / `EMAIL_FROM` — email (invites, reset)  
-- `STORAGE_*` — file attachments when enabled  
+- `DATABASE_URL` — local Docker default, or Neon / hosted Postgres for edge
+- `NEXTAUTH_SECRET` / `NEXTAUTH_URL` — auth
+- `RESEND_API_KEY` / `EMAIL_FROM` — email (invites, reset)
+- `SUPERADMIN_EMAIL` / `SUPERADMIN_INITIAL_PASSWORD` — optional bootstrap
+- `SERVER_ACTIONS_ALLOWED_ORIGINS` — extra hostnames behind Cloudflare / edge proxies
+- `STORAGE_*` — legacy file path (attachments default to Postgres blobs)
 
 ---
 

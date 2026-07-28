@@ -1,3 +1,4 @@
+# Integration-test DB only (port 5433). For local app Postgres see compose.yaml.
 services:
   postgres-test:
     image: postgres:16-alpine
