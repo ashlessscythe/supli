@@ -24,7 +24,7 @@ export const authOptions = {
       async authorize(credentials) {
         const username =
           typeof credentials?.username === "string"
-            ? credentials.username
+            ? credentials.username.trim().toLowerCase()
             : "";
         const password =
           typeof credentials?.password === "string"
@@ -35,25 +35,24 @@ export const authOptions = {
           return null;
         }
 
-        const identifier = username.toLowerCase();
-
-        if (await rateLimitService.isLocked(identifier)) {
+        if (await rateLimitService.isLocked(username)) {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { username },
+        // Usernames are stored lowercase; use insensitive match as a safeguard.
+        const user = await prisma.user.findFirst({
+          where: { username: { equals: username, mode: "insensitive" } },
         });
 
         if (!user || isKioskUsername(user.username)) {
-          await rateLimitService.recordFailure(identifier);
+          await rateLimitService.recordFailure(username);
           return null;
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
-          await rateLimitService.recordFailure(identifier);
+          await rateLimitService.recordFailure(username);
           return null;
         }
 
@@ -65,7 +64,7 @@ export const authOptions = {
           return null;
         }
 
-        await rateLimitService.reset(identifier);
+        await rateLimitService.reset(username);
 
         return {
           id: user.id,

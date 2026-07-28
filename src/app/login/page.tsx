@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +29,7 @@ const formSchema = z.object({
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [sites, setSites] = useState<
     Array<{ id: string; name: string; slug: string }>
@@ -72,7 +73,7 @@ export default function LoginPage() {
       }
 
       const result = await signIn("credentials", {
-        username: values.username,
+        username,
         password: values.password,
         redirect: false,
       });
@@ -83,7 +84,7 @@ export default function LoginPage() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              username: values.username,
+              username,
               password: values.password,
             }),
           });
@@ -101,7 +102,14 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      const callbackUrl = searchParams.get("callbackUrl");
+      const nextPath =
+        callbackUrl &&
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//")
+          ? callbackUrl
+          : "/dashboard";
+      router.push(nextPath);
       router.refresh();
     } catch (error) {
       setError("An error occurred. Please try again.");

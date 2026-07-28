@@ -7,9 +7,17 @@ import { getToken } from "next-auth/jwt";
  * bundle stays compatible with the Edge runtime.
  */
 export async function middleware(req: NextRequest) {
+  // Auth.js v5 names the session cookie `__Secure-authjs.session-token` on
+  // HTTPS. getToken defaults secureCookie=false, so without this it never
+  // finds the cookie and every protected route bounces back to /login.
+  const secureCookie =
+    req.nextUrl.protocol === "https:" ||
+    req.headers.get("x-forwarded-proto") === "https";
+
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+    secureCookie,
   });
 
   if (!token?.sub) {

@@ -9,6 +9,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
     },
   },
 }));
@@ -68,11 +69,11 @@ describe("credentials login (NextAuth authorize)", () => {
     }, dummyRequest);
 
     expect(result).toBeNull();
-    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    expect(prisma.user.findFirst).not.toHaveBeenCalled();
   });
 
   it("returns user data for valid credentials", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
       id: "user-1",
       username: "staffuser",
       password: "hashed-password",
@@ -96,8 +97,29 @@ describe("credentials login (NextAuth authorize)", () => {
     expect(rateLimitService.recordFailure).not.toHaveBeenCalled();
   });
 
+  it("normalizes username case before lookup", async () => {
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
+      id: "user-1",
+      username: "walter",
+      password: "hashed-password",
+      role: Role.ADMIN,
+      siteId: "site-1",
+    } as never);
+    vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+    const result = await authorize({
+      username: "  Walter  ",
+      password: "admin123",
+    }, dummyRequest);
+
+    expect(prisma.user.findFirst).toHaveBeenCalledWith({
+      where: { username: { equals: "walter", mode: "insensitive" } },
+    });
+    expect(result).toMatchObject({ username: "walter" });
+  });
+
   it("returns null and records failure for unknown users", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.user.findFirst).mockResolvedValue(null);
 
     const result = await authorize({
       username: "unknown",
@@ -109,7 +131,7 @@ describe("credentials login (NextAuth authorize)", () => {
   });
 
   it("returns null and records failure for invalid passwords", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
       id: "user-1",
       username: "staffuser",
       password: "hashed-password",
@@ -127,7 +149,7 @@ describe("credentials login (NextAuth authorize)", () => {
   });
 
   it("returns null for pending users without recording a failure", async () => {
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+    vi.mocked(prisma.user.findFirst).mockResolvedValue({
       id: "user-1",
       username: "pendinguser",
       password: "hashed-password",
