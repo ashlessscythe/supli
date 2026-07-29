@@ -19,10 +19,10 @@ export function SiteSwitcher({
   if (sites.length === 0) return null;
 
   return (
-    <div className="mb-4 space-y-1 px-1">
+    <div className="space-y-1 px-1 md:mb-4">
       <p className="text-xs font-medium text-muted-foreground">Active site</p>
       <select
-        className="flex h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+        className="flex h-8 w-full rounded-md border border-input bg-background px-2 text-sm md:h-9"
         value={activeSiteId ?? ""}
         disabled={pending}
         onChange={(e) => {

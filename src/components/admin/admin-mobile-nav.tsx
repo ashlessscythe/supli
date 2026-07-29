@@ -36,9 +36,13 @@ export function AdminMobileNav({ role }: { role?: Role | string }) {
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="w-full justify-between">
-            <span>{current}</span>
-            <Menu className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 w-full justify-between px-3"
+          >
+            <span className="truncate text-sm font-medium">{current}</span>
+            <Menu className="h-4 w-4 shrink-0" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent

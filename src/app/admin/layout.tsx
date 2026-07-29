@@ -56,7 +56,7 @@ export default async function AdminLayout({
       <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
         <Header />
         <div className="container grid min-w-0 flex-1 gap-6 py-4 md:grid-cols-[200px_1fr] md:gap-12">
-          <aside className="hidden w-[200px] flex-col md:flex">
+          <aside className="sticky top-14 hidden max-h-[calc(100vh-3.5rem)] w-[200px] flex-col self-start overflow-y-auto py-2 md:flex">
             {role === Role.SUPERADMIN && (
               <SiteSwitcher sites={switcherSites} activeSiteId={activeSiteId} />
             )}
@@ -66,7 +66,7 @@ export default async function AdminLayout({
             id="main-content"
             className="flex min-w-0 w-full flex-1 flex-col"
           >
-            <div className="mb-4 md:hidden">
+            <div className="sticky top-14 z-40 -mx-4 mb-4 space-y-2 border-b bg-background/95 px-4 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:-mx-6 sm:px-6 md:hidden">
               {role === Role.SUPERADMIN && (
                 <SiteSwitcher
                   sites={switcherSites}
