@@ -30,7 +30,7 @@ import { TablePagination } from "@/components/ui/table-pagination";
 import { useClientTable } from "@/hooks/use-client-table";
 import { useRequests } from "@/hooks/use-requests";
 import { MoreHorizontal, CheckCircle, XCircle } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { useFormatDate } from "@/components/providers/site-timezone-provider";
 import { Request } from "@/types";
 
 interface RequestsTableProps {
@@ -42,6 +42,7 @@ type SortKey = "supply" | "requester" | "quantity" | "status" | "date";
 type StatusFilter = "all" | "PENDING" | "APPROVED" | "DENIED";
 
 export function RequestsTable({ data, isAdmin }: RequestsTableProps) {
+  const formatDate = useFormatDate();
   const { handleUpdateStatus, isLoading } = useRequests();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 

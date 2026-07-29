@@ -11,8 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBarcode } from "@/lib/barcode";
-import { formatDate } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { useFormatDate } from "@/components/providers/site-timezone-provider";
 import { useSupplyDetailViewMode } from "@/hooks/use-supply-detail-view-mode";
 import { SupplyQrDialog } from "@/components/supplies/supply-qr-dialog";
 import { LayoutList, Loader2, ScrollText } from "lucide-react";
@@ -182,6 +182,7 @@ function OverviewContent({
   isLowStock: boolean;
   preferredVendor: SupplyDetails["vendors"][number] | undefined;
 }) {
+  const formatDate = useFormatDate();
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -291,6 +292,7 @@ function VendorsContent({ details }: { details: SupplyDetails }) {
 }
 
 function LastReceiptContent({ details }: { details: SupplyDetails }) {
+  const formatDate = useFormatDate();
   if (!details.lastReceipt) return null;
 
   return (
@@ -314,6 +316,7 @@ function LastReceiptContent({ details }: { details: SupplyDetails }) {
 }
 
 function OpenOrdersContent({ details }: { details: SupplyDetails }) {
+  const formatDate = useFormatDate();
   return (
     <ul className="divide-y rounded-md border text-sm">
       {details.openReorders.map((order) => (
@@ -341,6 +344,7 @@ function OpenOrdersContent({ details }: { details: SupplyDetails }) {
 }
 
 function RecentActivityContent({ details }: { details: SupplyDetails }) {
+  const formatDate = useFormatDate();
   return (
     <ul className="divide-y rounded-md border text-sm">
       {details.recentMovements.map((movement) => (
@@ -369,6 +373,7 @@ function RecentActivityContent({ details }: { details: SupplyDetails }) {
 }
 
 function RecentRequestsContent({ details }: { details: SupplyDetails }) {
+  const formatDate = useFormatDate();
   return (
     <ul className="divide-y rounded-md border text-sm">
       {details.recentRequests.map((request) => (

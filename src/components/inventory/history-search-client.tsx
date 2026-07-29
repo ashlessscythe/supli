@@ -30,7 +30,8 @@ import {
 } from "@/components/ui/dialog";
 import { searchInventoryHistory } from "@/lib/actions/inventory-history";
 import type { InventoryHistoryItem } from "@/lib/validation/inventory-history";
-import { cn, formatDate } from "@/lib/utils";
+import { useFormatDate } from "@/components/providers/site-timezone-provider";
+import { cn } from "@/lib/utils";
 
 const KIND_LABELS = {
   order: "Order",
@@ -47,6 +48,7 @@ export function HistorySearchClient({
   initialResults,
   suppliesPath,
 }: HistorySearchClientProps) {
+  const formatDate = useFormatDate();
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<"all" | "order" | "receipt" | "consumption">(
     "all"

@@ -1,16 +1,11 @@
 import { requireAdminPage } from "@/lib/auth/session";
-import { prisma } from "@/lib/prisma";
+import { settingsService } from "@/server/services/settings.service";
 import { SettingsForm } from "@/components/admin/settings-form";
 
 export default async function SettingsPage() {
   const ctx = await requireAdminPage();
-
-  const settings = await prisma.systemSetting.findMany({
-    where: { siteId: ctx.siteId },
-    orderBy: {
-      key: "asc",
-    },
-  });
+  const result = await settingsService.list(ctx.siteId);
+  const settings = result.success ? result.data : [];
 
   return (
     <div className="space-y-6">

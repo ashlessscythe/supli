@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin, requireSiteContext } from "@/lib/auth/session";
 import { settingsService } from "@/server/services/settings.service";
 import type { SettingInput } from "@/lib/validation/settings";
+import { DEFAULT_SITE_TIMEZONE } from "@/lib/timezone";
 
 export async function getSystemSetting(key: string) {
   try {
@@ -77,5 +78,14 @@ export async function getLowStockThreshold() {
     return settingsService.getLowStockThreshold(ctx.siteId);
   } catch {
     return 5;
+  }
+}
+
+export async function getSiteTimezone() {
+  try {
+    const ctx = await requireSiteContext();
+    return settingsService.getSiteTimezone(ctx.siteId);
+  } catch {
+    return DEFAULT_SITE_TIMEZONE;
   }
 }

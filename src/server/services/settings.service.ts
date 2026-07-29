@@ -5,16 +5,39 @@ import { failure, success } from "@/lib/result";
 import { prisma } from "@/lib/prisma";
 import { settingsRepository } from "@/server/repositories/settings.repository";
 import { executeWithAudit } from "@/server/audit";
+import {
+  DEFAULT_SITE_TIMEZONE,
+  isValidTimeZone,
+  resolveTimeZone,
+  SITE_TIMEZONE_DESCRIPTION,
+  SITE_TIMEZONE_KEY,
+} from "@/lib/timezone";
 
 export const DEFAULT_KIOSK_PASSWORD = "kiosk1234";
 
 export const settingsService = {
   async list(siteId: string) {
     try {
+      await this.ensureDefaultSettings(siteId);
       const settings = await settingsRepository.findAll(siteId);
       return success(settings);
     } catch {
       return failure("Failed to fetch settings");
+    }
+  },
+
+  async ensureDefaultSettings(siteId: string) {
+    const existing = await settingsRepository.findByKey(
+      siteId,
+      SITE_TIMEZONE_KEY
+    );
+    if (!existing) {
+      await settingsRepository.upsertByKey(
+        siteId,
+        SITE_TIMEZONE_KEY,
+        DEFAULT_SITE_TIMEZONE,
+        SITE_TIMEZONE_DESCRIPTION
+      );
     }
   },
 
@@ -25,6 +48,16 @@ export const settingsService = {
   ) {
     try {
       const data = settingsSchema.parse(settings);
+
+      for (const setting of data) {
+        if (
+          setting.key === SITE_TIMEZONE_KEY &&
+          !isValidTimeZone(setting.value)
+        ) {
+          return failure(`Invalid timezone: ${setting.value}`);
+        }
+      }
+
       await executeWithAudit(
         actorId,
         "Updated system settings",
@@ -46,6 +79,11 @@ export const settingsService = {
   async getSetting(siteId: string, key: string): Promise<string | null> {
     const setting = await settingsRepository.findByKey(siteId, key);
     return setting?.value ?? null;
+  },
+
+  async getSiteTimezone(siteId: string): Promise<string> {
+    const value = await this.getSetting(siteId, SITE_TIMEZONE_KEY);
+    return resolveTimeZone(value);
   },
 
   async shouldShowAllRequests(siteId: string): Promise<boolean> {

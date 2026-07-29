@@ -24,7 +24,8 @@ import {
   classifyAuditDirection,
   type AuditDirection,
 } from "@/lib/audit-action";
-import { cn, formatDate } from "@/lib/utils";
+import { useFormatDate } from "@/components/providers/site-timezone-provider";
+import { cn } from "@/lib/utils";
 
 interface AuditLog {
   id: string;
@@ -43,6 +44,7 @@ type SortKey = "action" | "user" | "date" | "type";
 type TypeFilter = "all" | AuditDirection;
 
 export function AuditLogTable({ data }: AuditLogTableProps) {
+  const formatDate = useFormatDate();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
 
   const typedData = useMemo(() => {

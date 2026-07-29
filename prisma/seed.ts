@@ -271,6 +271,12 @@ async function createDefaultSettings(siteId: string) {
       value: "100",
       description: "Maximum quantity allowed per request",
     },
+    {
+      key: "SITE_TIMEZONE",
+      value: "UTC",
+      description:
+        "IANA timezone used when displaying dates and times across the app",
+    },
   ];
 
   for (const setting of defaultSettings) {

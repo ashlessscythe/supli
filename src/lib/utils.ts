@@ -5,13 +5,16 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatDate(date: Date | string) {
+export function formatDate(
+  date: Date | string,
+  timeZone: string = "UTC"
+) {
   return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "numeric",
-    timeZone: "UTC",
+    timeZone,
   }).format(new Date(date));
 }

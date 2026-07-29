@@ -6,8 +6,11 @@ import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminMobileNav } from "@/components/admin/admin-mobile-nav";
 import { SiteSwitcher } from "@/components/admin/site-switcher";
 import { Header } from "@/components/layout/header";
+import { SiteTimezoneProvider } from "@/components/providers/site-timezone-provider";
 import { ACTIVE_SITE_COOKIE } from "@/lib/sites";
 import { prisma } from "@/lib/prisma";
+import { settingsService } from "@/server/services/settings.service";
+import { DEFAULT_SITE_TIMEZONE } from "@/lib/timezone";
 
 export default async function AdminLayout({
   children,
@@ -42,29 +45,40 @@ export default async function AdminLayout({
         })
       : [];
 
+  const siteIdForTimezone =
+    role === Role.SUPERADMIN ? activeSiteId : session.user.siteId;
+  const timeZone = siteIdForTimezone
+    ? await settingsService.getSiteTimezone(siteIdForTimezone)
+    : DEFAULT_SITE_TIMEZONE;
+
   return (
-    <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
-      <Header />
-      <div className="container grid min-w-0 flex-1 gap-6 py-4 md:grid-cols-[200px_1fr] md:gap-12">
-        <aside className="hidden w-[200px] flex-col md:flex">
-          {role === Role.SUPERADMIN && (
-            <SiteSwitcher sites={switcherSites} activeSiteId={activeSiteId} />
-          )}
-          <AdminNav role={role} />
-        </aside>
-        <main
-          id="main-content"
-          className="flex min-w-0 w-full flex-1 flex-col"
-        >
-          <div className="mb-4 md:hidden">
+    <SiteTimezoneProvider timeZone={timeZone}>
+      <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
+        <Header />
+        <div className="container grid min-w-0 flex-1 gap-6 py-4 md:grid-cols-[200px_1fr] md:gap-12">
+          <aside className="hidden w-[200px] flex-col md:flex">
             {role === Role.SUPERADMIN && (
               <SiteSwitcher sites={switcherSites} activeSiteId={activeSiteId} />
             )}
-            <AdminMobileNav role={role} />
-          </div>
-          {children}
-        </main>
+            <AdminNav role={role} />
+          </aside>
+          <main
+            id="main-content"
+            className="flex min-w-0 w-full flex-1 flex-col"
+          >
+            <div className="mb-4 md:hidden">
+              {role === Role.SUPERADMIN && (
+                <SiteSwitcher
+                  sites={switcherSites}
+                  activeSiteId={activeSiteId}
+                />
+              )}
+              <AdminMobileNav role={role} />
+            </div>
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </SiteTimezoneProvider>
   );
 }

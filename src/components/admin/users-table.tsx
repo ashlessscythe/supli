@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Role } from "@prisma/client";
 import { MoreHorizontal, Edit, Trash, Check, X } from "lucide-react";
-import { formatDate } from "@/lib/utils";
+import { useFormatDate } from "@/components/providers/site-timezone-provider";
 
 interface User {
   id: string;
@@ -109,6 +109,7 @@ export function UsersTable({
   onApprove,
   onReject,
 }: UsersTableProps) {
+  const formatDate = useFormatDate();
   return (
     <>
       <div className="hidden rounded-md border md:block">

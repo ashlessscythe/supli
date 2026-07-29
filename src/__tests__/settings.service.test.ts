@@ -31,6 +31,7 @@ vi.mock("@/server/repositories/settings.repository", () => ({
     findAll: vi.fn(),
     findByKey: vi.fn(),
     updateMany: vi.fn(),
+    upsertByKey: vi.fn(),
   },
 }));
 
@@ -59,6 +60,50 @@ describe("settingsService max request / defaults", () => {
     await expect(
       settingsService.getMaxRequestQuantity(SITE_ID)
     ).resolves.toBe(25);
+  });
+
+  it("defaults getSiteTimezone to UTC when unset", async () => {
+    vi.mocked(settingsRepository.findByKey).mockResolvedValue(null as never);
+
+    await expect(settingsService.getSiteTimezone(SITE_ID)).resolves.toBe("UTC");
+    expect(settingsRepository.findByKey).toHaveBeenCalledWith(
+      SITE_ID,
+      "SITE_TIMEZONE"
+    );
+  });
+
+  it("returns SITE_TIMEZONE when present", async () => {
+    vi.mocked(settingsRepository.findByKey).mockResolvedValue({
+      value: "America/Chicago",
+    } as never);
+
+    await expect(settingsService.getSiteTimezone(SITE_ID)).resolves.toBe(
+      "America/Chicago"
+    );
+  });
+
+  it("falls back to UTC for an invalid SITE_TIMEZONE value", async () => {
+    vi.mocked(settingsRepository.findByKey).mockResolvedValue({
+      value: "Not/A_Real_Zone",
+    } as never);
+
+    await expect(settingsService.getSiteTimezone(SITE_ID)).resolves.toBe("UTC");
+  });
+
+  it("rejects invalid timezone on update", async () => {
+    const result = await settingsService.update("user-1", SITE_ID, [
+      {
+        id: "s1",
+        key: "SITE_TIMEZONE",
+        value: "Not/A_Real_Zone",
+        description: "tz",
+      },
+    ]);
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("Invalid timezone");
+    }
   });
 });
 

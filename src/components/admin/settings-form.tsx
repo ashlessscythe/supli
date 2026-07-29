@@ -16,9 +16,20 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { updateSettings, updateKioskPassword } from "@/lib/actions/settings";
+import {
+  SITE_TIMEZONE_KEY,
+  timeZoneOptionsForValue,
+} from "@/lib/timezone";
 
 const KIOSK_PASSWORD_KEY = "KIOSK_PASSWORD_HASH";
 
@@ -80,7 +91,9 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       toast.success("Settings updated successfully");
       router.refresh();
     } catch (error) {
-      toast.error("Failed to update settings");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update settings"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -127,33 +140,49 @@ export function SettingsForm({ settings }: SettingsFormProps) {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           {visibleSettings.map((setting, index) => (
-          <FormField
-            key={setting.id}
-            control={form.control}
-            name={`settings.${index}.value`}
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel>{formatSettingName(setting.key)}</FormLabel>
-                  <FormDescription>{setting.description}</FormDescription>
-                </div>
-                <FormControl>
-                  {setting.key === "ALLOW_ALL_REQUESTS_VISIBLE" ? (
-                    <Switch
-                      checked={field.value === "true"}
-                      onCheckedChange={(checked: boolean) => {
-                        field.onChange(checked.toString());
-                      }}
-                    />
-                  ) : (
-                    <Input {...field} className="w-[200px]" />
-                  )}
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ))}
+            <FormField
+              key={setting.id}
+              control={form.control}
+              name={`settings.${index}.value`}
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                  <div className="space-y-0.5">
+                    <FormLabel>{formatSettingName(setting.key)}</FormLabel>
+                    <FormDescription>{setting.description}</FormDescription>
+                  </div>
+                  <FormControl>
+                    {setting.key === "ALLOW_ALL_REQUESTS_VISIBLE" ? (
+                      <Switch
+                        checked={field.value === "true"}
+                        onCheckedChange={(checked: boolean) => {
+                          field.onChange(checked.toString());
+                        }}
+                      />
+                    ) : setting.key === SITE_TIMEZONE_KEY ? (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger className="w-[240px]">
+                          <SelectValue placeholder="Select timezone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {timeZoneOptionsForValue(field.value).map((tz) => (
+                            <SelectItem key={tz} value={tz}>
+                              {tz.replace(/_/g, " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <Input {...field} className="w-[200px]" />
+                    )}
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ))}
 
           <Button type="submit" disabled={isLoading}>
             Save changes
