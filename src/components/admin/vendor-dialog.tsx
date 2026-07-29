@@ -157,7 +157,11 @@ export function VendorDialog({
                 <FormItem>
                   <FormLabel>Contact (optional)</FormLabel>
                   <FormControl>
-                    <Input {...field} value={field.value || ""} />
+                    <Input
+                      placeholder="procurement@vendor.com"
+                      {...field}
+                      value={field.value || ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

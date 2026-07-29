@@ -19,6 +19,8 @@ import {
   type VendorFormValues,
 } from "@/components/admin/vendor-dialog";
 import { LinkedItemsDialog } from "@/components/admin/linked-items-dialog";
+import { VendorContactActions } from "@/components/vendors/vendor-contact-actions";
+import { isVendorEmail, normalizeWebsiteUrl } from "@/lib/vendor-contact";
 import { useClientTable } from "@/hooks/use-client-table";
 import { toast } from "sonner";
 import { Edit } from "lucide-react";
@@ -226,17 +228,40 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                       <TableCell className="font-medium">
                         {vendor.name}
                       </TableCell>
-                      <TableCell>{vendor.contact ?? "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {vendor.contact ? (
+                            isVendorEmail(vendor.contact) ? (
+                              <a
+                                href={`mailto:${vendor.contact.trim()}`}
+                                className="text-primary hover:underline"
+                              >
+                                {vendor.contact}
+                              </a>
+                            ) : (
+                              vendor.contact
+                            )
+                          ) : (
+                            "—"
+                          )}
+                          {isVendorEmail(vendor.contact) && (
+                            <VendorContactActions contact={vendor.contact} />
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         {vendor.website ? (
-                          <a
-                            href={vendor.website}
-                            className="text-primary hover:underline"
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {vendor.website}
-                          </a>
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={normalizeWebsiteUrl(vendor.website)}
+                              className="text-primary hover:underline"
+                              target="_blank"
+                              rel="noreferrer noopener"
+                            >
+                              {vendor.website}
+                            </a>
+                            <VendorContactActions website={vendor.website} />
+                          </div>
                         ) : (
                           "—"
                         )}
@@ -283,7 +308,13 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                   className="rounded-md border p-4 space-y-3"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="font-medium break-words">{vendor.name}</p>
+                    <div className="flex min-w-0 flex-1 items-center gap-1">
+                      <p className="font-medium break-words">{vendor.name}</p>
+                      <VendorContactActions
+                        website={vendor.website}
+                        contact={vendor.contact}
+                      />
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -297,9 +328,22 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div>
                       <p className="text-muted-foreground">Contact</p>
-                      <p className="font-medium break-words">
-                        {vendor.contact ?? "—"}
-                      </p>
+                      {vendor.contact ? (
+                        isVendorEmail(vendor.contact) ? (
+                          <a
+                            href={`mailto:${vendor.contact.trim()}`}
+                            className="font-medium break-words text-primary hover:underline"
+                          >
+                            {vendor.contact}
+                          </a>
+                        ) : (
+                          <p className="font-medium break-words">
+                            {vendor.contact}
+                          </p>
+                        )
+                      ) : (
+                        <p className="font-medium">—</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-muted-foreground">Status</p>
@@ -311,10 +355,10 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
                       <p className="text-muted-foreground">Website</p>
                       {vendor.website ? (
                         <a
-                          href={vendor.website}
+                          href={normalizeWebsiteUrl(vendor.website)}
                           className="font-medium text-primary break-all hover:underline"
                           target="_blank"
-                          rel="noreferrer"
+                          rel="noreferrer noopener"
                         >
                           {vendor.website}
                         </a>

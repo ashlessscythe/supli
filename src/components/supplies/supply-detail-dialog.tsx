@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { useFormatDate } from "@/components/providers/site-timezone-provider";
 import { useSupplyDetailViewMode } from "@/hooks/use-supply-detail-view-mode";
 import { SupplyQrDialog } from "@/components/supplies/supply-qr-dialog";
+import { VendorContactActions } from "@/components/vendors/vendor-contact-actions";
+import { isVendorEmail } from "@/lib/vendor-contact";
 import { LayoutList, Loader2, ScrollText } from "lucide-react";
 
 export interface SupplyDetails {
@@ -268,13 +270,19 @@ function VendorsContent({ details }: { details: SupplyDetails }) {
     <ul className="divide-y rounded-md border text-sm">
       {details.vendors.map((vendor) => (
         <li key={vendor.id} className="space-y-1 px-3 py-2.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{vendor.name}</span>
-            {vendor.isPreferred && (
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
-                Preferred
-              </span>
-            )}
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              <span className="font-medium">{vendor.name}</span>
+              {vendor.isPreferred && (
+                <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
+                  Preferred
+                </span>
+              )}
+            </div>
+            <VendorContactActions
+              website={vendor.website}
+              contact={vendor.contact}
+            />
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
             {vendor.vendorSku && <span>Vendor SKU: {vendor.vendorSku}</span>}
@@ -283,7 +291,20 @@ function VendorsContent({ details }: { details: SupplyDetails }) {
             )}
             {vendor.moq != null && <span>MOQ: {vendor.moq}</span>}
             {vendor.cost != null && <span>${vendor.cost.toFixed(2)}</span>}
-            {vendor.contact && <span>Contact: {vendor.contact}</span>}
+            {vendor.contact &&
+              (isVendorEmail(vendor.contact) ? (
+                <span>
+                  Contact:{" "}
+                  <a
+                    href={`mailto:${vendor.contact.trim()}`}
+                    className="text-primary hover:underline"
+                  >
+                    {vendor.contact}
+                  </a>
+                </span>
+              ) : (
+                <span>Contact: {vendor.contact}</span>
+              ))}
           </div>
         </li>
       ))}
