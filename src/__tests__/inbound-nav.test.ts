@@ -43,4 +43,22 @@ describe("inbound navigation surfaces", () => {
       })
     ).toBe("/dashboard/inbound");
   });
+
+  it("routes low-stock notifications to the supply search when itemName is present", () => {
+    expect(
+      hrefForNotification({
+        type: NotificationType.LOW_STOCK,
+        metadata: { itemName: "Nitrile Gloves", quantity: 2 },
+      })
+    ).toBe("/admin/supplies?q=Nitrile%20Gloves");
+  });
+
+  it("falls back to supplies list for low-stock without itemName", () => {
+    expect(
+      hrefForNotification({
+        type: NotificationType.LOW_STOCK,
+        metadata: { quantity: 2 },
+      })
+    ).toBe("/admin/supplies");
+  });
 });

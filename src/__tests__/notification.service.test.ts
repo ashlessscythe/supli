@@ -15,6 +15,12 @@ vi.mock("@/lib/prisma", () => ({
     user: {
       findMany: vi.fn(),
     },
+    vendorReorder: {
+      findFirst: vi.fn(),
+    },
+    stockMovement: {
+      findFirst: vi.fn(),
+    },
   },
 }));
 
@@ -109,6 +115,8 @@ describe("notificationService.notifyAdminsLowStock", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(prisma.notification.create).mockResolvedValue({} as never);
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue(null as never);
+    vi.mocked(prisma.stockMovement.findFirst).mockResolvedValue(null as never);
   });
 
   it("notifies all admins and skips reorder email when email is null", async () => {
@@ -128,12 +136,78 @@ describe("notificationService.notifyAdminsLowStock", () => {
       where: { role: Role.ADMIN, siteId: "site-1" },
       select: { id: true, email: true },
     });
+    expect(prisma.vendorReorder.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { supplyId: "supply-1", supply: { siteId: "site-1" } },
+      })
+    );
+    expect(prisma.stockMovement.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          supplyId: "supply-1",
+          supply: { siteId: "site-1" },
+        }),
+      })
+    );
     expect(prisma.notification.create).toHaveBeenCalledTimes(2);
     expect(emailService.sendReorderAlert).toHaveBeenCalledTimes(1);
     expect(emailService.sendReorderAlert).toHaveBeenCalledWith(
       "b@example.com",
+      {
+        itemName: "Gloves",
+        quantity: 2,
+        lastOrder: null,
+        lastReceipt: null,
+      }
+    );
+  });
+
+  it("passes last order and last receipt into the reorder email", async () => {
+    vi.mocked(prisma.user.findMany).mockResolvedValue([
+      { id: "admin-1", email: "a@example.com" },
+    ] as never);
+    vi.mocked(prisma.vendorReorder.findFirst).mockResolvedValue({
+      quantity: 40,
+      orderedAt: new Date("2026-06-01T00:00:00.000Z"),
+      status: "ORDERED",
+      externalPoNumber: "PO-9",
+      vendor: { name: "Acme" },
+    } as never);
+    vi.mocked(prisma.stockMovement.findFirst).mockResolvedValue({
+      quantity: 15,
+      createdAt: new Date("2026-06-10T00:00:00.000Z"),
+      vendorReorder: {
+        externalPoNumber: "PO-8",
+        vendor: { name: "Acme" },
+      },
+    } as never);
+
+    await notificationService.notifyAdminsLowStock(
+      "site-1",
       "Gloves",
-      2
+      2,
+      "supply-1"
+    );
+
+    expect(emailService.sendReorderAlert).toHaveBeenCalledWith(
+      "a@example.com",
+      {
+        itemName: "Gloves",
+        quantity: 2,
+        lastOrder: {
+          vendorName: "Acme",
+          quantity: 40,
+          orderedAt: new Date("2026-06-01T00:00:00.000Z"),
+          status: "ORDERED",
+          externalPoNumber: "PO-9",
+        },
+        lastReceipt: {
+          quantity: 15,
+          createdAt: new Date("2026-06-10T00:00:00.000Z"),
+          externalPoNumber: "PO-8",
+          vendorName: "Acme",
+        },
+      }
     );
   });
 });

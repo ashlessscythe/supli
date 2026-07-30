@@ -2,13 +2,19 @@ import { requireAdminPage } from "@/lib/auth/session";
 import { vendorService } from "@/server/services/vendor.service";
 import { VendorsClient } from "./vendors-client";
 
-export default async function AdminVendorsPage() {
+export default async function AdminVendorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
   const ctx = await requireAdminPage();
+  const sp = await searchParams;
   const result = await vendorService.listAll(ctx.siteId);
   const vendors = result.success ? result.data : [];
 
   return (
     <VendorsClient
+      initialSearch={sp.q ?? ""}
       initialVendors={vendors.map((vendor) => ({
         id: vendor.id,
         name: vendor.name,

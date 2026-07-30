@@ -37,11 +37,15 @@ interface Vendor {
 
 interface VendorsClientProps {
   initialVendors: Vendor[];
+  initialSearch?: string;
 }
 
 type SortKey = "name" | "contact" | "linkedItems";
 
-export function VendorsClient({ initialVendors }: VendorsClientProps) {
+export function VendorsClient({
+  initialVendors,
+  initialSearch = "",
+}: VendorsClientProps) {
   const [vendors, setVendors] = useState(initialVendors);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
@@ -67,6 +71,7 @@ export function VendorsClient({ initialVendors }: VendorsClientProps) {
   const table = useClientTable({
     data: vendors,
     initialSortKey: "name" as SortKey,
+    initialSearch,
     filterFn,
     compareFn,
   });

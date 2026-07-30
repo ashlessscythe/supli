@@ -1,5 +1,6 @@
 import { emailProvider } from "@/server/email/resend.provider";
 import { env } from "@/lib/env";
+import { formatDate } from "@/lib/utils";
 
 function appUrl(path: string) {
   return `${env.NEXTAUTH_URL}${path}`;
@@ -11,6 +12,91 @@ function escapeHtml(value: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
+}
+
+export type ReorderAlertLastOrder = {
+  vendorName: string | null;
+  quantity: number;
+  orderedAt: Date;
+  status: string;
+  externalPoNumber: string | null;
+};
+
+export type ReorderAlertLastReceipt = {
+  quantity: number;
+  createdAt: Date;
+  externalPoNumber: string | null;
+  vendorName: string | null;
+};
+
+export type ReorderAlertPayload = {
+  itemName: string;
+  quantity: number;
+  lastOrder?: ReorderAlertLastOrder | null;
+  lastReceipt?: ReorderAlertLastReceipt | null;
+};
+
+function humanizeReorderStatus(status: string): string {
+  switch (status) {
+    case "ORDERED":
+      return "Ordered";
+    case "PARTIALLY_RECEIVED":
+      return "Partially received";
+    case "RECEIVED":
+      return "Received";
+    default:
+      return status;
+  }
+}
+
+function buildReorderAlertBodyHtml(alert: ReorderAlertPayload): string {
+  const parts: string[] = [
+    `<p style="margin:0 0 12px;"><strong>${escapeHtml(alert.itemName)}</strong> is low on stock (<strong>${alert.quantity}</strong> remaining). Please review inventory.</p>`,
+  ];
+
+  if (alert.lastOrder) {
+    const order = alert.lastOrder;
+    const bits = [
+      `${order.quantity} unit${order.quantity === 1 ? "" : "s"}`,
+      order.vendorName ? `from ${escapeHtml(order.vendorName)}` : null,
+      `on ${escapeHtml(formatDate(order.orderedAt))}`,
+      humanizeReorderStatus(order.status),
+      order.externalPoNumber
+        ? `PO ${escapeHtml(order.externalPoNumber)}`
+        : null,
+    ].filter(Boolean);
+    parts.push(
+      `<p style="margin:0 0 12px;"><strong>Last order:</strong> ${bits.join(" · ")}</p>`
+    );
+  }
+
+  if (alert.lastReceipt) {
+    const receipt = alert.lastReceipt;
+    const bits = [
+      `${receipt.quantity} unit${receipt.quantity === 1 ? "" : "s"}`,
+      receipt.vendorName ? `from ${escapeHtml(receipt.vendorName)}` : null,
+      `on ${escapeHtml(formatDate(receipt.createdAt))}`,
+      receipt.externalPoNumber
+        ? `PO ${escapeHtml(receipt.externalPoNumber)}`
+        : null,
+    ].filter(Boolean);
+    parts.push(
+      `<p style="margin:0 0 12px;"><strong>Last received:</strong> ${bits.join(" · ")}</p>`
+    );
+  }
+
+  const vendorName =
+    alert.lastOrder?.vendorName ?? alert.lastReceipt?.vendorName ?? null;
+  if (vendorName) {
+    const vendorHref = appUrl(
+      `/admin/vendors?q=${encodeURIComponent(vendorName)}`
+    );
+    parts.push(
+      `<p style="margin:0;"><a href="${escapeHtml(vendorHref)}" style="color:#1f4e79;">View vendor: ${escapeHtml(vendorName)}</a></p>`
+    );
+  }
+
+  return parts.join("");
 }
 
 type EmailCta = {
@@ -181,16 +267,18 @@ export const emailService = {
     });
   },
 
-  async sendReorderAlert(email: string, itemName: string, quantity: number) {
-    const link = appUrl("/admin/supplies");
+  async sendReorderAlert(email: string, alert: ReorderAlertPayload) {
+    const link = appUrl(
+      `/admin/supplies?q=${encodeURIComponent(alert.itemName)}`
+    );
     await emailProvider.send({
       to: email,
-      subject: `Reorder alert: ${itemName}`,
+      subject: `Reorder alert: ${alert.itemName}`,
       html: renderEmail({
         title: "Low stock alert",
-        preview: `${itemName} has ${quantity} remaining`,
-        bodyHtml: `<p style="margin:0;"><strong>${escapeHtml(itemName)}</strong> is low on stock (<strong>${quantity}</strong> remaining). Please review inventory.</p>`,
-        cta: { label: "Review supplies", href: link },
+        preview: `${alert.itemName} has ${alert.quantity} remaining`,
+        bodyHtml: buildReorderAlertBodyHtml(alert),
+        cta: { label: "View supply", href: link },
       }),
     });
   },

@@ -12,6 +12,7 @@ interface UseClientTableOptions<T, SortKey extends string> {
   initialSortKey: SortKey;
   initialSortDirection?: SortDirection;
   initialPageSize?: number;
+  initialSearch?: string;
   filterFn: (item: T, search: string) => boolean;
   compareFn: (a: T, b: T, sortKey: SortKey) => number;
 }
@@ -21,10 +22,11 @@ export function useClientTable<T, SortKey extends string>({
   initialSortKey,
   initialSortDirection = "asc",
   initialPageSize = 25,
+  initialSearch = "",
   filterFn,
   compareFn,
 }: UseClientTableOptions<T, SortKey>) {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearch);
   const [sortKey, setSortKey] = useState<SortKey>(initialSortKey);
   const [sortDirection, setSortDirection] =
     useState<SortDirection>(initialSortDirection);
