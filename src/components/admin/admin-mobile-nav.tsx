@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import type { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,10 +13,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { handleNavReselectClick } from "@/lib/nav-reselect";
 import { getAdminRoutes } from "./admin-nav";
 
 export function AdminMobileNav({ role }: { role?: Role | string }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const routes = getAdminRoutes(role);
 
@@ -53,6 +55,14 @@ export function AdminMobileNav({ role }: { role?: Role | string }) {
             <DropdownMenuItem key={route.href} asChild>
               <Link
                 href={route.href}
+                onClick={(event) =>
+                  handleNavReselectClick(event, {
+                    href: route.href,
+                    pathname,
+                    replace: router.replace,
+                    onNavigate: () => setOpen(false),
+                  })
+                }
                 className={cn(
                   "flex items-center",
                   pathname === route.href &&

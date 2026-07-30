@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { staffNavigationItems } from "@/lib/nav-config";
+import { handleNavReselectClick } from "@/lib/nav-reselect";
 
 const navIcons = {
   Dashboard: LayoutDashboard,
@@ -43,6 +44,7 @@ function navLinkClass(active: boolean) {
 
 export function Header() {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const isAdmin =
     session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN";
@@ -91,7 +93,14 @@ export function Header() {
                         pathname === item.href &&
                           "bg-accent text-accent-foreground"
                       )}
-                      onClick={() => setMobileOpen(false)}
+                      onClick={(event) =>
+                        handleNavReselectClick(event, {
+                          href: item.href,
+                          pathname,
+                          replace: router.replace,
+                          onNavigate: () => setMobileOpen(false),
+                        })
+                      }
                     >
                       <Icon className="mr-2 h-4 w-4" />
                       <span>{item.name}</span>
@@ -152,6 +161,13 @@ export function Header() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={(event) =>
+                    handleNavReselectClick(event, {
+                      href: item.href,
+                      pathname,
+                      replace: router.replace,
+                    })
+                  }
                   className={navLinkClass(pathname === item.href)}
                 >
                   <Icon className="h-4 w-4" />

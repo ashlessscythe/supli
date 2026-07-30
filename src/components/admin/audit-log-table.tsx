@@ -16,9 +16,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ClearFiltersButton } from "@/components/ui/clear-filters-button";
 import { SortableHead } from "@/components/ui/sortable-head";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { useClientTable } from "@/hooks/use-client-table";
+import { useClearFiltersOnNavReselect } from "@/hooks/use-clear-filters-on-nav-reselect";
 import {
   auditDirectionLabel,
   classifyAuditDirection,
@@ -91,6 +93,16 @@ export function AuditLogTable({ data }: AuditLogTableProps) {
     filterFn,
     compareFn,
   });
+  const { clearSearch } = table;
+
+  const clearFilters = useCallback(() => {
+    clearSearch();
+    setTypeFilter("all");
+  }, [clearSearch]);
+
+  useClearFiltersOnNavReselect(clearFilters);
+
+  const filtersActive = table.search.trim() !== "" || typeFilter !== "all";
 
   return (
     <div className="space-y-4">
@@ -101,23 +113,29 @@ export function AuditLogTable({ data }: AuditLogTableProps) {
           onChange={(e) => table.setSearch(e.target.value)}
           className="sm:max-w-xs"
         />
-        <Select
-          value={typeFilter}
-          onValueChange={(value) => {
-            setTypeFilter(value as TypeFilter);
-            table.resetPage();
-          }}
-        >
-          <SelectTrigger className="sm:w-[180px]">
-            <SelectValue placeholder="Filter type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            <SelectItem value="in">In</SelectItem>
-            <SelectItem value="out">Out</SelectItem>
-            <SelectItem value="other">Other</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={typeFilter}
+            onValueChange={(value) => {
+              setTypeFilter(value as TypeFilter);
+              table.resetPage();
+            }}
+          >
+            <SelectTrigger className="sm:w-[180px]">
+              <SelectValue placeholder="Filter type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All types</SelectItem>
+              <SelectItem value="in">In</SelectItem>
+              <SelectItem value="out">Out</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
+          <ClearFiltersButton
+            onClick={clearFilters}
+            disabled={!filtersActive}
+          />
+        </div>
       </div>
 
       <div className="rounded-md border">

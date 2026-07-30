@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Role } from "@prisma/client";
 import { cn } from "@/lib/utils";
 import {
@@ -17,6 +17,7 @@ import {
   Building2,
 } from "lucide-react";
 import { adminNavigationItems } from "@/lib/nav-config";
+import { handleNavReselectClick } from "@/lib/nav-reselect";
 
 const adminIcons = {
   Overview: BarChart3,
@@ -57,6 +58,7 @@ export function AdminNav({
   role?: Role | string;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const routes = getAdminRoutes(role);
 
   return (
@@ -65,7 +67,14 @@ export function AdminNav({
         <Link
           key={route.href}
           href={route.href}
-          onClick={onNavigate}
+          onClick={(event) =>
+            handleNavReselectClick(event, {
+              href: route.href,
+              pathname,
+              replace: router.replace,
+              onNavigate,
+            })
+          }
           className={cn(
             "group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
             pathname === route.href

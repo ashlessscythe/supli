@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ClearFiltersButton } from "@/components/ui/clear-filters-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { searchInventoryHistory } from "@/lib/actions/inventory-history";
 import type { InventoryHistoryItem } from "@/lib/validation/inventory-history";
+import { useClearFiltersOnNavReselect } from "@/hooks/use-clear-filters-on-nav-reselect";
 import { useFormatDate } from "@/components/providers/site-timezone-provider";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +71,24 @@ export function HistorySearchClient({
     ],
     []
   );
+
+  const filtersActive =
+    q.trim() !== "" ||
+    kind !== "all" ||
+    status !== "all" ||
+    from !== "" ||
+    to !== "";
+
+  const clearFilters = useCallback(() => {
+    setQ("");
+    setKind("all");
+    setStatus("all");
+    setFrom("");
+    setTo("");
+    setResults(initialResults);
+  }, [initialResults]);
+
+  useClearFiltersOnNavReselect(clearFilters);
 
   const runSearch = () => {
     startTransition(async () => {
@@ -164,10 +184,16 @@ export function HistorySearchClient({
               />
             </div>
           </div>
-          <Button onClick={runSearch} disabled={isPending}>
-            <Search className="mr-2 h-4 w-4" />
-            {isPending ? "Searching…" : "Search"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button onClick={runSearch} disabled={isPending}>
+              <Search className="mr-2 h-4 w-4" />
+              {isPending ? "Searching…" : "Search"}
+            </Button>
+            <ClearFiltersButton
+              onClick={clearFilters}
+              disabled={!filtersActive}
+            />
+          </div>
         </CardContent>
       </Card>
 

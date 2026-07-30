@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ClearFiltersButton } from "@/components/ui/clear-filters-button";
 import { SortableHead } from "@/components/ui/sortable-head";
 import { TablePagination } from "@/components/ui/table-pagination";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import {
 } from "@/components/admin/location-dialog";
 import { LinkedItemsDialog } from "@/components/admin/linked-items-dialog";
 import { useClientTable } from "@/hooks/use-client-table";
+import { useClearFiltersOnNavReselect } from "@/hooks/use-clear-filters-on-nav-reselect";
 import { toast } from "sonner";
 import { Edit } from "lucide-react";
 
@@ -77,6 +79,16 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
     filterFn,
     compareFn,
   });
+  const { clearSearch } = table;
+
+  const clearFilters = useCallback(() => {
+    clearSearch();
+    setStatusFilter("all");
+  }, [clearSearch]);
+
+  useClearFiltersOnNavReselect(clearFilters);
+
+  const filtersActive = table.search.trim() !== "" || statusFilter !== "all";
 
   const handleCreate = async (data: LocationFormValues) => {
     try {
@@ -181,22 +193,28 @@ export function LocationsClient({ initialLocations }: LocationsClientProps) {
               onChange={(e) => table.setSearch(e.target.value)}
               className="sm:max-w-xs"
             />
-            <Select
-              value={statusFilter}
-              onValueChange={(value) => {
-                setStatusFilter(value as StatusFilter);
-                table.resetPage();
-              }}
-            >
-              <SelectTrigger className="sm:w-[180px]">
-                <SelectValue placeholder="Filter status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={statusFilter}
+                onValueChange={(value) => {
+                  setStatusFilter(value as StatusFilter);
+                  table.resetPage();
+                }}
+              >
+                <SelectTrigger className="sm:w-[180px]">
+                  <SelectValue placeholder="Filter status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+              <ClearFiltersButton
+                onClick={clearFilters}
+                disabled={!filtersActive}
+              />
+            </div>
           </div>
 
           <div className="hidden rounded-md border md:block">

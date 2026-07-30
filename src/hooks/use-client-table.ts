@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export type SortDirection = "asc" | "desc";
 
@@ -43,10 +43,15 @@ export function useClientTable<T, SortKey extends string>({
     setPage(0);
   };
 
-  const setSearchAndReset = (value: string) => {
+  const setSearchAndReset = useCallback((value: string) => {
     setSearch(value);
     setPage(0);
-  };
+  }, []);
+
+  const clearSearch = useCallback(() => {
+    setSearch("");
+    setPage(0);
+  }, []);
 
   const setPageSizeAndReset = (value: number) => {
     setPageSize(value);
@@ -83,6 +88,7 @@ export function useClientTable<T, SortKey extends string>({
   return {
     search,
     setSearch: setSearchAndReset,
+    clearSearch,
     sortKey,
     sortDirection,
     toggleSort,

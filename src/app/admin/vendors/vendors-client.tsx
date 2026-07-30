@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ClearFiltersButton } from "@/components/ui/clear-filters-button";
 import { SortableHead } from "@/components/ui/sortable-head";
 import { TablePagination } from "@/components/ui/table-pagination";
 import {
@@ -22,6 +24,7 @@ import { LinkedItemsDialog } from "@/components/admin/linked-items-dialog";
 import { VendorContactActions } from "@/components/vendors/vendor-contact-actions";
 import { isVendorEmail, normalizeWebsiteUrl } from "@/lib/vendor-contact";
 import { useClientTable } from "@/hooks/use-client-table";
+import { useClearFiltersOnNavReselect } from "@/hooks/use-clear-filters-on-nav-reselect";
 import { toast } from "sonner";
 import { Edit } from "lucide-react";
 
@@ -46,6 +49,8 @@ export function VendorsClient({
   initialVendors,
   initialSearch = "",
 }: VendorsClientProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [vendors, setVendors] = useState(initialVendors);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
 
@@ -75,6 +80,16 @@ export function VendorsClient({
     filterFn,
     compareFn,
   });
+  const { clearSearch } = table;
+
+  const clearFilters = useCallback(() => {
+    clearSearch();
+    if (typeof window !== "undefined" && window.location.search) {
+      router.replace(pathname);
+    }
+  }, [clearSearch, pathname, router]);
+
+  useClearFiltersOnNavReselect(clearFilters);
 
   const handleLinksChanged = (vendorId: string, newCount: number) => {
     setVendors((prev) =>
@@ -187,6 +202,10 @@ export function VendorsClient({
               value={table.search}
               onChange={(e) => table.setSearch(e.target.value)}
               className="sm:max-w-xs"
+            />
+            <ClearFiltersButton
+              onClick={clearFilters}
+              disabled={table.search.trim() === ""}
             />
           </div>
 

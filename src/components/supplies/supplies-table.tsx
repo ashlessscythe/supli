@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -25,7 +26,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { ClearFiltersButton } from "@/components/ui/clear-filters-button";
 import { useSupplies } from "@/hooks/use-supplies";
+import { useClearFiltersOnNavReselect } from "@/hooks/use-clear-filters-on-nav-reselect";
 import { SupplyDialog } from "@/components/supplies/supply-dialog";
 import { SupplyDetailDialog } from "@/components/supplies/supply-detail-dialog";
 import { ReceiveDialog } from "@/components/inventory/receive-dialog";
@@ -78,6 +81,8 @@ export function SuppliesTable({
   initialStockFilter = "all",
   locations = [],
 }: SuppliesTableProps) {
+  const pathname = usePathname();
+  const router = useRouter();
   const { handleDeleteSupply, isLoading } = useSupplies();
   const [editingSupply, setEditingSupply] = useState<Supply | null>(null);
   const [receivingSupplyId, setReceivingSupplyId] = useState<string | null>(
@@ -96,6 +101,19 @@ export function SuppliesTable({
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [pageSize, setPageSize] = useState<number>(25);
   const [page, setPage] = useState(0);
+
+  const clearFilters = useCallback(() => {
+    setSearch("");
+    setStockFilter("all");
+    setPage(0);
+    if (typeof window !== "undefined" && window.location.search) {
+      router.replace(pathname);
+    }
+  }, [pathname, router]);
+
+  useClearFiltersOnNavReselect(clearFilters);
+
+  const filtersActive = search.trim() !== "" || stockFilter !== "all";
 
   const supplyOptions = useMemo(
     () =>
@@ -272,22 +290,28 @@ export function SuppliesTable({
           }}
           className="sm:max-w-xs"
         />
-        <Select
-          value={stockFilter}
-          onValueChange={(value) => {
-            setStockFilter(value as StockFilter);
-            setPage(0);
-          }}
-        >
-          <SelectTrigger className="sm:w-[180px]">
-            <SelectValue placeholder="Filter stock" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All items</SelectItem>
-            <SelectItem value="low">Low stock</SelectItem>
-            <SelectItem value="ok">In stock</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={stockFilter}
+            onValueChange={(value) => {
+              setStockFilter(value as StockFilter);
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="sm:w-[180px]">
+              <SelectValue placeholder="Filter stock" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All items</SelectItem>
+              <SelectItem value="low">Low stock</SelectItem>
+              <SelectItem value="ok">In stock</SelectItem>
+            </SelectContent>
+          </Select>
+          <ClearFiltersButton
+            onClick={clearFilters}
+            disabled={!filtersActive}
+          />
+        </div>
       </div>
 
       <div className="hidden rounded-md border md:block">
