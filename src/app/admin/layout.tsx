@@ -53,10 +53,10 @@ export default async function AdminLayout({
 
   return (
     <SiteTimezoneProvider timeZone={timeZone}>
-      <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
+      <div className="relative flex min-h-[100dvh] max-w-[100vw] flex-col overflow-x-clip pb-standalone-nav">
         <Header />
         <div className="container grid min-w-0 flex-1 gap-6 py-4 md:grid-cols-[200px_1fr] md:gap-12">
-          <aside className="sticky top-14 hidden max-h-[calc(100vh-3.5rem)] w-[200px] flex-col self-start overflow-y-auto py-2 md:flex">
+          <aside className="sticky top-14 hidden max-h-[calc(100dvh-3.5rem)] w-[200px] flex-col self-start overflow-y-auto py-2 md:flex">
             {role === Role.SUPERADMIN && (
               <SiteSwitcher sites={switcherSites} activeSiteId={activeSiteId} />
             )}

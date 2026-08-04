@@ -117,7 +117,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background safe-pad">
       <div className="w-full max-w-md space-y-8 p-6 bg-card rounded-lg shadow-lg border">
         <div className="text-center">
           <h2 className="text-3xl font-bold tracking-tight text-foreground">
@@ -151,6 +151,10 @@ export default function LoginPage() {
                   <FormControl>
                     <Input
                       placeholder="Enter your username"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       {...field}
                       className="bg-background"
                     />
@@ -170,6 +174,7 @@ export default function LoginPage() {
                     <Input
                       type="password"
                       placeholder="Enter your password"
+                      autoComplete="current-password"
                       {...field}
                       className="bg-background"
                     />

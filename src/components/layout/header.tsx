@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ThemeSelector } from "@/components/theme-selector";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { InstallAppButton } from "@/components/pwa/install-app-button";
+import { OfflineBanner } from "@/components/pwa/offline-banner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -55,7 +57,9 @@ export function Header() {
   const adminLabel = isInAdminSection ? "Regular View" : "Admin";
 
   return (
-    <header className="sticky top-0 z-50 w-full max-w-[100vw] border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <>
+      <OfflineBanner />
+      <header className="sticky top-0 z-50 w-full max-w-[100vw] border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 safe-top">
       <div className="container flex h-14 min-w-0 items-center gap-2">
         <div className="flex min-w-0 items-center gap-2">
           <DropdownMenu
@@ -196,6 +200,7 @@ export function Header() {
         </div>
 
         <div className="ml-auto flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+          <InstallAppButton />
           {session?.user && <NotificationBell />}
           <ThemeSelector />
           {session?.user && (
@@ -217,5 +222,6 @@ export function Header() {
         </div>
       </div>
     </header>
+    </>
   );
 }

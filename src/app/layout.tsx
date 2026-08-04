@@ -4,10 +4,11 @@ import { Inter } from "next/font/google";
 import { NextAuthProvider } from "@/components/providers/next-auth-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { ToasterProvider } from "@/components/providers/toaster-provider";
+import { PwaProvider } from "@/components/pwa/pwa-provider";
 import { defaultMetadata } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 
 export const metadata = defaultMetadata;
 
@@ -15,6 +16,11 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+  colorScheme: "light dark",
 };
 
 export default function RootLayout({
@@ -26,7 +32,8 @@ export default function RootLayout({
     <html lang="en" className="overflow-x-clip" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen max-w-[100vw] overflow-x-clip bg-background font-sans antialiased",
+          "min-h-[100dvh] max-w-[100vw] overflow-x-clip bg-background font-sans antialiased",
+          inter.variable,
           inter.className
         )}
       >
@@ -44,7 +51,7 @@ export default function RootLayout({
         >
           <NextAuthProvider>
             <ToasterProvider />
-            {children}
+            <PwaProvider>{children}</PwaProvider>
           </NextAuthProvider>
         </ThemeProvider>
       </body>

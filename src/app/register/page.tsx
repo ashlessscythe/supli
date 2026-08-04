@@ -85,7 +85,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background safe-pad">
       <div className="w-full max-w-md space-y-8 p-6 bg-card rounded-lg shadow-lg border">
         <div className="text-center">
           <Link href="/" className="text-sm text-primary hover:underline">
@@ -144,6 +144,10 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         placeholder="Choose a username"
+                        autoComplete="username"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
                         {...field}
                         className="bg-background"
                       />
@@ -161,6 +165,8 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         type="email"
+                        inputMode="email"
+                        autoComplete="email"
                         placeholder="you@example.com"
                         {...field}
                         className="bg-background"
@@ -179,6 +185,7 @@ export default function RegisterPage() {
                     <FormControl>
                       <Input
                         type="password"
+                        autoComplete="new-password"
                         placeholder="At least 8 characters"
                         {...field}
                         className="bg-background"
