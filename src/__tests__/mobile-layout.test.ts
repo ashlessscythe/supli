@@ -29,5 +29,12 @@ describe("mobile layout confinement", () => {
     expect(src).toContain("export const viewport");
     expect(src).toContain('width: "device-width"');
     expect(src).toContain("overflow-x-clip");
+    expect(src).toContain("viewportFit: \"cover\"");
+    expect(src).toContain("themeColor");
+  });
+
+  it("wires PWA provider into the root layout", () => {
+    const src = readFileSync("src/app/layout.tsx", "utf8");
+    expect(src).toContain("PwaProvider");
   });
 });

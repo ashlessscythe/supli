@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
-import { Copy, Download, QrCode } from "lucide-react";
+import { Copy, Download, QrCode, Share2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import {
   formatBarcode,
   normalizeBarcode,
 } from "@/lib/barcode";
+import { canShare, shareOrCopy } from "@/lib/share";
 
 interface SupplyQrDialogProps {
   barcode: string | null | undefined;
@@ -98,6 +99,16 @@ export function SupplyQrDialog({ barcode, supplyName }: SupplyQrDialogProps) {
     toast.success("QR image downloaded");
   };
 
+  const shareBarcode = async () => {
+    const result = await shareOrCopy({
+      title: supplyName,
+      text: `Barcode for ${supplyName}: ${canonical}`,
+    });
+    if (result === "shared") toast.success("Shared");
+    else if (result === "copied") toast.success("Barcode copied");
+    else toast.error("Unable to share");
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -126,15 +137,41 @@ export function SupplyQrDialog({ barcode, supplyName }: SupplyQrDialogProps) {
           </div>
           <p className="font-mono text-sm tracking-wide">{display}</p>
           <div className="flex flex-wrap justify-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={copyBarcodeText}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={copyBarcodeText}
+            >
               <Copy className="mr-1.5 h-3.5 w-3.5" />
               Copy barcode
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={copyQrImage}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={copyQrImage}
+            >
               <Copy className="mr-1.5 h-3.5 w-3.5" />
               Copy QR image
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={downloadQrImage}>
+            {canShare() && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={shareBarcode}
+              >
+                <Share2 className="mr-1.5 h-3.5 w-3.5" />
+                Share
+              </Button>
+            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={downloadQrImage}
+            >
               <Download className="mr-1.5 h-3.5 w-3.5" />
               Download
             </Button>

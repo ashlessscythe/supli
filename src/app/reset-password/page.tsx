@@ -52,6 +52,7 @@ function ResetPasswordForm() {
         <Input
           id="password"
           type="password"
+          autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -71,7 +72,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background safe-pad">
       <div className="w-full max-w-md space-y-6 p-6 bg-card rounded-lg shadow-lg border">
         <h2 className="text-2xl font-bold text-center">Reset password</h2>
         <Suspense>

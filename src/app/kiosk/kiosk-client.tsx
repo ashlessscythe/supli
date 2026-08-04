@@ -2,12 +2,15 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Scan, LogOut } from "lucide-react";
 import { kioskLogout } from "@/lib/actions/kiosk";
 import { formatBarcode } from "@/lib/barcode";
+import { haptic } from "@/lib/haptics";
+import { enqueueOfflineMutation } from "@/lib/offline-queue";
 
 type Step = "scan" | "quantity" | "complete";
 
@@ -36,28 +39,73 @@ export function KioskClient({ siteName }: { siteName: string }) {
     setLoading(true);
     setError(null);
 
-    const res = await fetch("/api/kiosk/consume", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ barcode, quantity }),
-    });
+    const payload = JSON.stringify({ barcode, quantity });
 
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "Failed to record consumption");
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      enqueueOfflineMutation({
+        url: "/api/kiosk/consume",
+        method: "POST",
+        body: payload,
+        label: `Consume ${quantity}× ${formatBarcode(barcode)}`,
+      });
+      setLoading(false);
+      haptic([12, 40, 12]);
+      setLastItem(formatBarcode(barcode));
+      setStep("complete");
+      toast.message("Saved offline — will sync when you’re back online");
+      setTimeout(() => {
+        setBarcode("");
+        setQuantity(1);
+        setStep("scan");
+        setLastItem(null);
+      }, 2000);
       return;
     }
 
-    setLastItem(data.name ?? barcode);
-    setStep("complete");
-    setTimeout(() => {
-      setBarcode("");
-      setQuantity(1);
-      setStep("scan");
-      setLastItem(null);
-    }, 2000);
+    try {
+      const res = await fetch("/api/kiosk/consume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: payload,
+      });
+
+      const data = await res.json();
+      setLoading(false);
+
+      if (!res.ok) {
+        setError(data.error ?? "Failed to record consumption");
+        haptic(30);
+        return;
+      }
+
+      haptic([10, 30, 10]);
+      setLastItem(data.name ?? barcode);
+      setStep("complete");
+      setTimeout(() => {
+        setBarcode("");
+        setQuantity(1);
+        setStep("scan");
+        setLastItem(null);
+      }, 2000);
+    } catch {
+      enqueueOfflineMutation({
+        url: "/api/kiosk/consume",
+        method: "POST",
+        body: payload,
+        label: `Consume ${quantity}× ${formatBarcode(barcode)}`,
+      });
+      setLoading(false);
+      haptic([12, 40, 12]);
+      setLastItem(formatBarcode(barcode));
+      setStep("complete");
+      toast.message("Saved offline — will sync when you’re back online");
+      setTimeout(() => {
+        setBarcode("");
+        setQuantity(1);
+        setStep("scan");
+        setLastItem(null);
+      }, 2000);
+    }
   }
 
   async function handleExit() {
@@ -67,12 +115,13 @@ export function KioskClient({ siteName }: { siteName: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background p-4 safe-pad">
       <Button
         variant="ghost"
         size="sm"
         onClick={handleExit}
-        className="absolute top-4 right-4 text-muted-foreground"
+        className="absolute right-4 top-4 text-muted-foreground"
+        style={{ top: "max(1rem, env(safe-area-inset-top))" }}
       >
         <LogOut className="mr-2 h-4 w-4" />
         Exit
@@ -95,10 +144,13 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
                 placeholder="Scan or enter barcode"
-                className="text-lg h-14 text-center"
+                className="h-14 text-center text-lg"
                 autoComplete="off"
+                inputMode="text"
+                enterKeyHint="done"
+                aria-label="Barcode"
               />
-              <Button type="submit" className="w-full h-12 text-lg" disabled={!barcode}>
+              <Button type="submit" className="h-12 w-full text-lg" disabled={!barcode}>
                 Continue
               </Button>
             </form>
@@ -115,10 +167,11 @@ export function KioskClient({ siteName }: { siteName: string }) {
                   size="lg"
                   className="h-14 w-14 text-xl"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  aria-label="Decrease quantity"
                 >
                   −
                 </Button>
-                <span className="text-4xl font-bold w-16 text-center">
+                <span className="w-16 text-center text-4xl font-bold" aria-live="polite">
                   {quantity}
                 </span>
                 <Button
@@ -126,12 +179,13 @@ export function KioskClient({ siteName }: { siteName: string }) {
                   size="lg"
                   className="h-14 w-14 text-xl"
                   onClick={() => setQuantity(quantity + 1)}
+                  aria-label="Increase quantity"
                 >
                   +
                 </Button>
               </div>
               <Button
-                className="w-full h-14 text-lg"
+                className="h-14 w-full text-lg"
                 onClick={handleComplete}
                 disabled={loading}
               >
@@ -151,8 +205,8 @@ export function KioskClient({ siteName }: { siteName: string }) {
           )}
 
           {step === "complete" && (
-            <div className="text-center space-y-4 py-8">
-              <CheckCircle2 className="h-16 w-16 text-green-500 mx-auto" />
+            <div className="space-y-4 py-8 text-center">
+              <CheckCircle2 className="mx-auto h-16 w-16 text-green-500" />
               <p className="text-xl font-semibold">Done!</p>
               {lastItem && (
                 <p className="text-muted-foreground">
@@ -163,7 +217,9 @@ export function KioskClient({ siteName }: { siteName: string }) {
           )}
 
           {error && (
-            <p className="text-destructive text-center text-sm">{error}</p>
+            <p className="text-center text-sm text-destructive" role="alert">
+              {error}
+            </p>
           )}
         </CardContent>
       </Card>

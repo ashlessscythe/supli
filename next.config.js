@@ -1,4 +1,7 @@
 /** @type {import('next').NextConfig} */
+const { spawnSync } = require("node:child_process");
+const { randomUUID } = require("node:crypto");
+const withSerwistInit = require("@serwist/next").default;
 
 function serverActionAllowedOrigins() {
   const origins = new Set();
@@ -22,6 +25,17 @@ function serverActionAllowedOrigins() {
   return [...origins];
 }
 
+const revision =
+  spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf-8" }).stdout?.trim() ||
+  randomUUID();
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  additionalPrecacheEntries: [{ url: "/~offline", revision }],
+  disable: process.env.NODE_ENV === "development",
+});
+
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
@@ -29,7 +43,8 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=()",
+    // camera=self enables optional in-app barcode scanning on supported devices
+    value: "camera=(self), microphone=(), geolocation=()",
   },
 ];
 
@@ -51,4 +66,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withSerwist(nextConfig);

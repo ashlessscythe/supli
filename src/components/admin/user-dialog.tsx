@@ -157,7 +157,13 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
                 <FormItem>
                   <FormLabel>Username</FormLabel>
                   <FormControl>
-                    <Input {...field} />
+                    <Input
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -172,6 +178,8 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
                   <FormControl>
                     <Input
                       type="email"
+                      inputMode="email"
+                      autoComplete="email"
                       placeholder="user@example.com"
                       {...field}
                       value={field.value || ""}
@@ -192,6 +200,7 @@ export function UserDialog({ user, onSubmit, trigger }: UserDialogProps) {
                   <FormControl>
                     <Input
                       type="password"
+                      autoComplete="new-password"
                       {...field}
                       value={field.value || ""}
                     />

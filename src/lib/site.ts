@@ -36,6 +36,24 @@ export const defaultMetadata: Metadata = {
   applicationName: siteConfig.name,
   authors: [{ name: siteConfig.name }],
   creator: siteConfig.name,
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: siteConfig.name,
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }],
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   openGraph: {
     type: "website",
     locale: "en_US",

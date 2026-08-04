@@ -22,10 +22,10 @@ export default async function DashboardLayout({
 
   return (
     <SiteTimezoneProvider timeZone={timeZone}>
-      <div className="relative flex min-h-screen max-w-[100vw] flex-col overflow-x-clip">
+      <div className="relative flex min-h-[100dvh] max-w-[100vw] flex-col overflow-x-clip pb-standalone-nav">
         <Header />
         <main id="main-content" className="min-w-0 flex-1">
-          <div className="container min-w-0">{children}</div>
+          <div className="container min-w-0 py-4 sm:py-6">{children}</div>
         </main>
       </div>
     </SiteTimezoneProvider>

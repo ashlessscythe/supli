@@ -116,13 +116,61 @@
     max-width: 100vw;
     overflow-x: clip;
     transition: background-color 0.2s ease, color 0.2s ease;
+    min-height: 100dvh;
   }
   [data-theme="cyberpunk"] body {
     letter-spacing: 0.01em;
   }
+
+  /* Improve tap targets without redesigning desktop density */
+  @media (pointer: coarse) {
+    button:not([data-compact]),
+    [role="button"]:not([data-compact]),
+    a[href].touch-target {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
 @layer utilities {
+  .safe-pad {
+    padding-top: max(1rem, env(safe-area-inset-top));
+    padding-right: max(1rem, env(safe-area-inset-right));
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+  }
+
+  .safe-bottom {
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  /* Reserve space for standalone bottom tab bar on small screens */
+  .pb-standalone-nav {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+
+  @media (min-width: 768px) {
+    .pb-standalone-nav {
+      padding-bottom: 0;
+    }
+  }
+
   .landing-hero-bg {
     background-color: hsl(var(--background));
     background-image:
