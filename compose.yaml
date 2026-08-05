@@ -1,4 +1,5 @@
-# Local stack for Supli Mart (desktop / self-hosted).
+# Onsite stack for Supli Mart (LAN / self-hosted).
+# Bare-metal Postgres: skip this file and use scripts/setup-postgres.sh
 # Cloud / edge deploys (Neon + Vercel / Render / Koyeb) do not use this file.
 #
 # Postgres only (host runs Next.js):

@@ -1,10 +1,12 @@
-# Local / self-hosted image. Edge hosts (Vercel, Render, Koyeb) build with npm directly.
+# Local / onsite image (Docker Compose). Edge hosts build with npm directly.
 FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -13,6 +15,7 @@ RUN npx prisma generate
 RUN npx next build
 
 FROM node:20-alpine AS runner
+RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1

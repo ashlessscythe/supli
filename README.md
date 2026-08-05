@@ -2,7 +2,7 @@
 
 Inventory management for tracking supplies, logging inbound corporate POs, receiving stock (with photo/document attachments), searching history, and recording consumption — with vendor lead times, MOQ, barcode **QR** codes, and a **kiosk** for walk-up checkout.
 
-Built with **Next.js 15** (App Router), **Prisma**, **PostgreSQL**, **Auth.js (next-auth v5)**, and **shadcn/ui**. Runs locally via Docker Compose or on the edge (Neon + Vercel / Render / Koyeb).
+Built with **Next.js 15** (App Router), **Prisma**, **PostgreSQL**, **Auth.js (next-auth v5)**, and **shadcn/ui**. Designed for **onsite / LAN** deploy (bare-metal or Docker Postgres). Cloud (Neon + Vercel / Render / Koyeb) is optional.
 
 ---
 
@@ -92,12 +92,12 @@ Roles:
 | Layer | Technology |
 |-------|------------|
 | App | Next.js 15 (App Router), TypeScript |
-| Data | Prisma 5, PostgreSQL (Docker locally, Neon on the edge) |
+| Data | Prisma 5, PostgreSQL 16 (bare-metal or Docker onsite; Neon optional) |
 | Auth | Auth.js / next-auth v5 (credentials / JWT) |
 | UI | Tailwind CSS, shadcn/ui, Radix, Recharts |
-| Email | Resend (optional; invites & password reset) |
-| Local | Docker Compose (`compose.yaml`) — Postgres, optional app container |
-| Edge | Vercel, Render, or [Koyeb](koyeb.toml) + hosted Postgres (e.g. Neon) |
+| Email | Resend (optional; without keys, email is logged and skipped) |
+| Onsite | Docker Compose and/or host Postgres + Node — see [docs/onsite.md](docs/onsite.md) |
+| Edge | Optional: Vercel, Render, or [Koyeb](koyeb.toml) + hosted Postgres |
 
 More detail: [docs/architecture.md](docs/architecture.md) · [docs/schema.md](docs/schema.md) · [docs/api.md](docs/api.md) · [docs/roadmap.md](docs/roadmap.md)
 
@@ -105,24 +105,39 @@ More detail: [docs/architecture.md](docs/architecture.md) · [docs/schema.md](do
 
 ## Getting started
 
-Two deploy targets are supported:
+**Onsite is the primary target.** Cloud is optional.
 
 | Target | Database | App |
 |--------|----------|-----|
-| **Local / desktop** | Docker Postgres (`compose.yaml`) | `npm run dev` on the host, or full stack via `npm run local:up` |
-| **Edge / cloud** | Neon (or any hosted Postgres) | Vercel, Render, or Koyeb |
+| **Onsite (Docker DB)** | `compose.yaml` Postgres | `npm run dev` / `npm start` on the host |
+| **Onsite (bare-metal DB)** | OS PostgreSQL | same |
+| **Onsite (appliance)** | Compose | Compose `--profile full` (`npm run local:up`) |
+| **Edge / cloud** (optional) | Neon / hosted Postgres | Vercel, Render, or Koyeb |
+
+Full walkthrough: **[docs/onsite.md](docs/onsite.md)**.
 
 ### Prerequisites
 
 - Node.js 20+
-- Docker + Docker Compose (local Postgres / full local server)
-- Or a hosted PostgreSQL URL (edge)
+- PostgreSQL 16 — either Docker Compose **or** an OS/package install
+- Docker only if you want containerized Postgres / full-stack Compose
+
+### Fastest onsite bring-up
+
+```bash
+cp .env.example .env
+chmod +x scripts/*.sh
+./scripts/onsite-up.sh --docker-db --seed   # or --host-db --seed
+npm run build && npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000). For LAN clients set `NEXTAUTH_URL=http://<server-ip>:3000`.
 
 ### Local setup (Docker Postgres + Next on the host)
 
 ```bash
 cp .env.example .env
-# Defaults point at local Docker Postgres. Set NEXTAUTH_SECRET:
+# Defaults point at local Postgres. Set NEXTAUTH_SECRET:
 #   openssl rand -base64 32
 
 npm install
@@ -131,7 +146,17 @@ npm run db:setup         # migrate + seed demo data
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+### Local setup (bare-metal Postgres)
+
+```bash
+# Ubuntu example: sudo apt install postgresql postgresql-contrib && sudo systemctl enable --now postgresql
+cp .env.example .env
+openssl rand -base64 32   # → NEXTAUTH_SECRET
+npm run db:host-setup     # creates role/db supli/supli
+npm install
+npm run db:setup
+npm run dev
+```
 
 ### Full local server (Postgres + app in Docker)
 
@@ -145,7 +170,7 @@ npm run local:seed       # demo users + sample inventory
 
 App: [http://localhost:3000](http://localhost:3000). Stop with `npm run local:down`.
 
-### Edge / cloud setup
+### Edge / cloud setup (optional)
 
 ```bash
 cp .env.example .env
@@ -179,10 +204,12 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 | `npm run dev` | Dev server |
 | `npm run build` | Generate Prisma client + production build |
 | `npm start` | Migrate deploy + production server |
-| `npm run db:up` / `db:down` | Start/stop local Docker Postgres |
+| `npm run db:up` / `db:down` | Start/stop Docker Postgres |
+| `npm run db:host-setup` | Create bare-metal Postgres role + database |
 | `npm run db:setup` | Migrate deploy + seed |
 | `npm run db:seed` | Seed demo data (optional flags: `--clear`, `--use-faker`) |
 | `npm run db:reset` | Reset DB, re-apply migrations, seed |
+| `npm run onsite:up` / `onsite:host` / `onsite:docker` | One-shot onsite DB bring-up (+ seed helpers) |
 | `npm run local:up` / `local:down` | Full local stack (Postgres + app container) |
 | `npm run local:seed` | Seed against the full local stack |
 | `npm run test:db:up` / `test:db:down` | Integration-test Postgres on port 5433 |
@@ -212,12 +239,14 @@ Kiosk PIN (change under **Admin → Settings**): `kiosk1234`
 
 See [`.env.example`](.env.example):
 
-- `DATABASE_URL` — local Docker default, or Neon / hosted Postgres for edge
-- `NEXTAUTH_SECRET` / `NEXTAUTH_URL` — auth
-- `RESEND_API_KEY` / `EMAIL_FROM` — email (invites, reset)
+- `DATABASE_URL` — local Docker or bare-metal Postgres (default), or Neon / hosted for edge
+- `NEXTAUTH_SECRET` / `NEXTAUTH_URL` — auth (set `NEXTAUTH_URL` to your LAN URL onsite)
+- `RESEND_API_KEY` / `EMAIL_FROM` — email (optional; without keys, messages are logged and skipped)
 - `SUPERADMIN_EMAIL` / `SUPERADMIN_INITIAL_PASSWORD` — optional bootstrap
-- `SERVER_ACTIONS_ALLOWED_ORIGINS` — extra hostnames behind Cloudflare / edge proxies
+- `SERVER_ACTIONS_ALLOWED_ORIGINS` — extra hostnames behind reverse proxies
 - `STORAGE_*` — legacy file path (attachments default to Postgres blobs)
+
+Onsite guide: [docs/onsite.md](docs/onsite.md).
 
 ---
 
