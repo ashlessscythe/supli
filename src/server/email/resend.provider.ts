@@ -2,6 +2,11 @@ import { Resend } from "resend";
 import { env } from "@/lib/env";
 import type { EmailMessage, EmailProvider } from "./email.provider";
 
+/**
+ * Resend when configured; otherwise log and no-op.
+ * Onsite / air-gapped installs work without an outbound email SaaS —
+ * invites, resets, and alerts stay in-app / appear in server logs.
+ */
 class ResendEmailProvider implements EmailProvider {
   private client: Resend | null;
 
@@ -11,11 +16,13 @@ class ResendEmailProvider implements EmailProvider {
 
   async send(message: EmailMessage): Promise<void> {
     if (!this.client || !env.EMAIL_FROM) {
-      if (process.env.NODE_ENV === "development") {
-        console.info("[email:dev]", message.to, message.subject);
-        return;
-      }
-      throw new Error("Email is not configured");
+      console.info(
+        "[email:unconfigured]",
+        message.to,
+        message.subject,
+        "(set RESEND_API_KEY + EMAIL_FROM to send)"
+      );
+      return;
     }
 
     const { error } = await this.client.emails.send({

@@ -1,0 +1,27 @@
+[Unit]
+Description=Supli Mart inventory app
+Documentation=file:///opt/supli/docs/onsite.md
+After=network-online.target postgresql.service docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=supli
+Group=supli
+WorkingDirectory=/opt/supli
+EnvironmentFile=/opt/supli/.env
+# Ensure production defaults if omitted from .env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+# Attachments / uploads stay under the app tree when using local storage
+ReadWritePaths=/opt/supli
+
+# Hardening (adjust if you use local file uploads outside the tree)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
