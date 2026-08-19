@@ -35,8 +35,10 @@ import { Label } from "@/components/ui/label";
 import { PackagePlus } from "lucide-react";
 import { useStockMovements } from "@/hooks/use-stock-movements";
 import { createSupply } from "@/lib/actions/supply";
+import { formatBarcode, generateBarcode } from "@/lib/barcode";
 import { DocumentUploadField } from "@/components/inventory/document-upload-field";
 import { readFilesAsAttachments } from "@/lib/read-files-as-attachments";
+import { GenerateBarcodeButton } from "@/components/supplies/generate-barcode-button";
 
 const receiveFormSchema = z.object({
   supplyId: z.string().optional(),
@@ -287,9 +289,19 @@ export function ReceiveDialog({
                     name="newBarcode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Barcode</FormLabel>
+                        <div className="flex items-center justify-between gap-2">
+                          <FormLabel>Barcode</FormLabel>
+                          <GenerateBarcodeButton
+                            onClick={() =>
+                              field.onChange(formatBarcode(generateBarcode()))
+                            }
+                          />
+                        </div>
                         <FormControl>
-                          <Input {...field} />
+                          <Input
+                            placeholder="Scan or enter barcode"
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

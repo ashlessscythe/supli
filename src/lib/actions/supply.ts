@@ -25,6 +25,24 @@ export async function createSupply(formData: SupplyInput) {
   }
 }
 
+export async function assignGeneratedBarcode(id: string) {
+  try {
+    const ctx = await requireAdmin();
+    const result = await supplyService.assignGeneratedBarcode(
+      ctx.userId,
+      ctx.siteId,
+      id
+    );
+    if (result.success) {
+      revalidatePath("/dashboard/supplies");
+      revalidatePath("/admin/supplies");
+    }
+    return result;
+  } catch {
+    return { success: false as const, error: "Unauthorized" };
+  }
+}
+
 export async function updateSupply(
   id: string,
   formData: SupplyInput | SupplyStaffUpdateInput

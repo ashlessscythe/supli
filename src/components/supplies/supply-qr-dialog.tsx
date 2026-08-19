@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { Copy, Download, QrCode, Share2 } from "lucide-react";
@@ -23,9 +23,14 @@ import { canShare, shareOrCopy } from "@/lib/share";
 interface SupplyQrDialogProps {
   barcode: string | null | undefined;
   supplyName: string;
+  emptyAction?: ReactNode;
 }
 
-export function SupplyQrDialog({ barcode, supplyName }: SupplyQrDialogProps) {
+export function SupplyQrDialog({
+  barcode,
+  supplyName,
+  emptyAction,
+}: SupplyQrDialogProps) {
   const [open, setOpen] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const canonical = normalizeBarcode(barcode);
@@ -33,9 +38,12 @@ export function SupplyQrDialog({ barcode, supplyName }: SupplyQrDialogProps) {
 
   if (!canShowSupplyQr(barcode) || !canonical) {
     return (
-      <p className="text-xs text-muted-foreground">
-        No QR code available because this item has no barcode.
-      </p>
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          No QR code available because this item has no barcode.
+        </p>
+        {emptyAction}
+      </div>
     );
   }
 

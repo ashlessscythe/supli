@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useSupplies } from "@/hooks/use-supplies";
-import { formatBarcode } from "@/lib/barcode";
+import { formatBarcode, generateBarcode } from "@/lib/barcode";
+import { GenerateBarcodeButton } from "./generate-barcode-button";
 import { SupplyVendorLinks } from "./supply-vendor-pricing";
 
 const supplyFormSchema = z.object({
@@ -188,19 +189,33 @@ export function SupplyForm({
             <FormField
               control={form.control}
               name="barcode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Barcode</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Scan or enter barcode"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const hasBarcode = Boolean(field.value?.trim());
+                const showGenerate = !initialData || !hasBarcode;
+
+                return (
+                  <FormItem>
+                    <div className="flex items-center justify-between gap-2">
+                      <FormLabel>Barcode</FormLabel>
+                      {showGenerate && (
+                        <GenerateBarcodeButton
+                          onClick={() =>
+                            field.onChange(formatBarcode(generateBarcode()))
+                          }
+                        />
+                      )}
+                    </div>
+                    <FormControl>
+                      <Input
+                        placeholder="Scan or enter barcode"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField

@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  BARCODE_ALPHABET,
+  GENERATED_BARCODE_LENGTH,
   canShowSupplyQr,
   formatBarcode,
+  generateBarcode,
   normalizeBarcode,
 } from "@/lib/barcode";
 
@@ -24,5 +27,20 @@ describe("QR payload barcode helpers", () => {
     const raw = "hdml-4ndr-8k23";
     expect(normalizeBarcode(raw)).toBe("HDML4NDR8K23");
     expect(formatBarcode(raw)).toBe("HDML-4NDR-8K23");
+  });
+});
+
+describe("generateBarcode", () => {
+  it("returns a 12-character Crockford-alphabet code", () => {
+    const barcode = generateBarcode();
+    expect(barcode).toHaveLength(GENERATED_BARCODE_LENGTH);
+    expect(barcode).toMatch(new RegExp(`^[${BARCODE_ALPHABET}]{12}$`));
+  });
+
+  it("formats generated codes in groups of four", () => {
+    const barcode = generateBarcode();
+    expect(formatBarcode(barcode)).toMatch(
+      new RegExp(`^[${BARCODE_ALPHABET}]{4}-[${BARCODE_ALPHABET}]{4}-[${BARCODE_ALPHABET}]{4}$`)
+    );
   });
 });

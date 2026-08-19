@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -12,8 +15,10 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBarcode } from "@/lib/barcode";
 import { cn } from "@/lib/utils";
+import { assignGeneratedBarcode } from "@/lib/actions/supply";
 import { useFormatDate } from "@/components/providers/site-timezone-provider";
 import { useSupplyDetailViewMode } from "@/hooks/use-supply-detail-view-mode";
+import { GenerateBarcodeButton } from "@/components/supplies/generate-barcode-button";
 import { SupplyQrDialog } from "@/components/supplies/supply-qr-dialog";
 import { VendorContactActions } from "@/components/vendors/vendor-contact-actions";
 import { isVendorEmail } from "@/lib/vendor-contact";
@@ -179,10 +184,16 @@ function OverviewContent({
   details,
   isLowStock,
   preferredVendor,
+  canGenerateBarcode,
+  generatingBarcode,
+  onGenerateBarcode,
 }: {
   details: SupplyDetails;
   isLowStock: boolean;
   preferredVendor: SupplyDetails["vendors"][number] | undefined;
+  canGenerateBarcode: boolean;
+  generatingBarcode: boolean;
+  onGenerateBarcode: () => void;
 }) {
   const formatDate = useFormatDate();
   return (
@@ -198,23 +209,40 @@ function OverviewContent({
         />
         <DetailRow label="Min. threshold" value={details.minimumThreshold} />
         <DetailRow label="Internal SKU" value={details.internalSku ?? "—"} />
-        <DetailRow
-          label="Barcode"
-          value={
-            details.barcode ? (
-              <span className="font-mono text-xs">
-                {formatBarcode(details.barcode)}
-              </span>
-            ) : (
-              "—"
-            )
-          }
-        />
+        <div>
+          <p className="text-xs text-muted-foreground">Barcode</p>
+          {details.barcode ? (
+            <p className="font-mono text-xs font-medium">
+              {formatBarcode(details.barcode)}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-sm font-medium">—</p>
+              {canGenerateBarcode && (
+                <GenerateBarcodeButton
+                  onClick={onGenerateBarcode}
+                  loading={generatingBarcode}
+                />
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div>
         <p className="mb-1.5 text-xs text-muted-foreground">QR code</p>
-        <SupplyQrDialog barcode={details.barcode} supplyName={details.name} />
+        <SupplyQrDialog
+          barcode={details.barcode}
+          supplyName={details.name}
+          emptyAction={
+            canGenerateBarcode ? (
+              <GenerateBarcodeButton
+                onClick={onGenerateBarcode}
+                loading={generatingBarcode}
+              />
+            ) : undefined
+          }
+        />
       </div>
 
       {details.itemType && (
@@ -429,10 +457,16 @@ function ScrollView({
   details,
   isLowStock,
   preferredVendor,
+  canGenerateBarcode,
+  generatingBarcode,
+  onGenerateBarcode,
 }: {
   details: SupplyDetails;
   isLowStock: boolean;
   preferredVendor: SupplyDetails["vendors"][number] | undefined;
+  canGenerateBarcode: boolean;
+  generatingBarcode: boolean;
+  onGenerateBarcode: () => void;
 }) {
   return (
     <div className="max-h-[calc(90vh-8rem)] space-y-5 overflow-y-auto pr-1">
@@ -440,6 +474,9 @@ function ScrollView({
         details={details}
         isLowStock={isLowStock}
         preferredVendor={preferredVendor}
+        canGenerateBarcode={canGenerateBarcode}
+        generatingBarcode={generatingBarcode}
+        onGenerateBarcode={onGenerateBarcode}
       />
 
       {details.stockLevels.length > 0 && (
@@ -487,12 +524,18 @@ function TabbedView({
   preferredVendor,
   activeTab,
   onActiveTabChange,
+  canGenerateBarcode,
+  generatingBarcode,
+  onGenerateBarcode,
 }: {
   details: SupplyDetails;
   isLowStock: boolean;
   preferredVendor: SupplyDetails["vendors"][number] | undefined;
   activeTab: string;
   onActiveTabChange: (tab: string) => void;
+  canGenerateBarcode: boolean;
+  generatingBarcode: boolean;
+  onGenerateBarcode: () => void;
 }) {
   return (
     <Tabs
@@ -530,6 +573,9 @@ function TabbedView({
           details={details}
           isLowStock={isLowStock}
           preferredVendor={preferredVendor}
+          canGenerateBarcode={canGenerateBarcode}
+          generatingBarcode={generatingBarcode}
+          onGenerateBarcode={onGenerateBarcode}
         />
       </TabsContent>
 
@@ -595,11 +641,16 @@ export function SupplyDetailDialog({
   open,
   onOpenChange,
 }: SupplyDetailDialogProps) {
+  const router = useRouter();
+  const { data: session } = useSession();
   const [details, setDetails] = useState<SupplyDetails | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [generatingBarcode, setGeneratingBarcode] = useState(false);
   const { viewMode, setViewMode } = useSupplyDetailViewMode();
+  const canGenerateBarcode =
+    session?.user?.role === "ADMIN" || session?.user?.role === "SUPERADMIN";
 
   useEffect(() => {
     if (!open || !supplyId) {
@@ -639,6 +690,38 @@ export function SupplyDetailDialog({
     details != null && details.quantity <= details.minimumThreshold;
 
   const preferredVendor = details?.vendors.find((v) => v.isPreferred);
+
+  const handleGenerateBarcode = async () => {
+    if (!details || generatingBarcode) return;
+
+    setGeneratingBarcode(true);
+    try {
+      const result = await assignGeneratedBarcode(details.id);
+      if (!result.success) {
+        const errorMessage = Array.isArray(result.error)
+          ? result.error.map((err) => err.message).join(", ")
+          : result.error;
+        toast.error(errorMessage);
+        return;
+      }
+
+      setDetails((prev) =>
+        prev
+          ? {
+              ...prev,
+              barcode: result.data.barcode,
+              updatedAt: new Date().toISOString(),
+            }
+          : prev
+      );
+      toast.success("Barcode generated");
+      router.refresh();
+    } catch {
+      toast.error("Failed to generate barcode");
+    } finally {
+      setGeneratingBarcode(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -682,6 +765,9 @@ export function SupplyDetailDialog({
                 details={details}
                 isLowStock={isLowStock}
                 preferredVendor={preferredVendor}
+                canGenerateBarcode={canGenerateBarcode}
+                generatingBarcode={generatingBarcode}
+                onGenerateBarcode={handleGenerateBarcode}
               />
             ) : (
               <TabbedView
@@ -690,6 +776,9 @@ export function SupplyDetailDialog({
                 preferredVendor={preferredVendor}
                 activeTab={activeTab}
                 onActiveTabChange={setActiveTab}
+                canGenerateBarcode={canGenerateBarcode}
+                generatingBarcode={generatingBarcode}
+                onGenerateBarcode={handleGenerateBarcode}
               />
             )}
           </>

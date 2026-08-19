@@ -6,11 +6,14 @@ import {
   type SupplyInput,
   type SupplyStaffUpdateInput,
 } from "@/lib/validation/supply";
+import { generateBarcode } from "@/lib/barcode";
 import { failure, success, type ActionResult } from "@/lib/result";
 import { prisma } from "@/lib/prisma";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { executeWithAudit, executeWithAudits } from "@/server/audit";
 import { notificationService } from "@/server/services/notification.service";
+
+const BARCODE_ASSIGN_ATTEMPTS = 8;
 
 // Prisma unique-constraint violation
 function isUniqueViolation(error: unknown): boolean {
@@ -164,6 +167,54 @@ export const supplyService = {
         return failure("A supply with that barcode or SKU already exists");
       }
       return failure("Failed to create supply");
+    }
+  },
+
+  async assignGeneratedBarcode(userId: string, siteId: string, id: string) {
+    try {
+      const existing = await supplyRepository.findById(id, siteId);
+      if (!existing) return failure("Supply not found");
+      if (existing.barcode) {
+        return failure("This supply already has a barcode");
+      }
+
+      for (let attempt = 0; attempt < BARCODE_ASSIGN_ATTEMPTS; attempt++) {
+        const barcode = generateBarcode();
+        const collision = await supplyRepository.findByBarcode(barcode, siteId);
+        if (collision) continue;
+
+        try {
+          await executeWithAudit(
+            userId,
+            `Generated barcode for ${existing.name}`,
+            async (tx) => {
+              const result = await supplyRepository.update(
+                id,
+                siteId,
+                { barcode },
+                tx
+              );
+              if (result.count === 0) {
+                throw new Error("Supply not found");
+              }
+            },
+            siteId
+          );
+          return success({ barcode });
+        } catch (error) {
+          if (isUniqueViolation(error) && attempt < BARCODE_ASSIGN_ATTEMPTS - 1) {
+            continue;
+          }
+          if (error instanceof Error && error.message === "Supply not found") {
+            return failure("Supply not found");
+          }
+          return failure("Failed to generate barcode");
+        }
+      }
+
+      return failure("Failed to generate a unique barcode");
+    } catch {
+      return failure("Failed to generate barcode");
     }
   },
 

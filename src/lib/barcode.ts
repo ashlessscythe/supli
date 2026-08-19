@@ -3,9 +3,24 @@
 // "SUP-PAPR-A4WH-7K21" and "suppapra4wh7k21" resolve to the same item.
 // Dashes are purely a display concern (see `formatBarcode`).
 
+// Crockford-style alphabet (no ambiguous 0/O/1/I) for generated barcodes.
+export const BARCODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+export const GENERATED_BARCODE_LENGTH = 12;
+
 export function normalizeBarcode(raw: string | null | undefined): string {
   if (!raw) return "";
   return raw.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+}
+
+/** Canonical 12-character barcode, e.g. "7K2QXB4M9AZ3". */
+export function generateBarcode(): string {
+  const bytes = new Uint8Array(GENERATED_BARCODE_LENGTH);
+  crypto.getRandomValues(bytes);
+  let out = "";
+  for (const byte of bytes) {
+    out += BARCODE_ALPHABET[byte % BARCODE_ALPHABET.length];
+  }
+  return out;
 }
 
 // Human-readable barcode with dashes, for display only. Never persist this.

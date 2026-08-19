@@ -26,6 +26,7 @@ vi.mock("@/server/repositories/supply.repository", () => ({
     hasPendingRequests: vi.fn(),
     hasRemainingStock: vi.fn(),
     hasOpenOrders: vi.fn(),
+    findByBarcode: vi.fn(),
   },
 }));
 
@@ -253,5 +254,65 @@ describe("supplyService.update", () => {
       input.quantity,
       "supply-1"
     );
+  });
+});
+
+describe("supplyService.assignGeneratedBarcode", () => {
+  const userId = "admin-1";
+  const existing = {
+    id: "supply-1",
+    name: "Jingle",
+    barcode: null,
+  };
+  const tx = {
+    auditLog: { create: vi.fn() },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (operation) =>
+      operation(tx as never)
+    );
+    vi.mocked(supplyRepository.findById).mockResolvedValue(existing as never);
+    vi.mocked(supplyRepository.findByBarcode).mockResolvedValue(null);
+    vi.mocked(supplyRepository.update).mockResolvedValue({ count: 1 } as never);
+  });
+
+  it("assigns a generated barcode when the supply has none", async () => {
+    const result = await supplyService.assignGeneratedBarcode(
+      userId,
+      SITE_ID,
+      existing.id
+    );
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.barcode).toMatch(/^[A-Z2-9]{12}$/);
+    }
+    expect(supplyRepository.update).toHaveBeenCalledWith(
+      existing.id,
+      SITE_ID,
+      { barcode: expect.stringMatching(/^[A-Z2-9]{12}$/) },
+      tx
+    );
+  });
+
+  it("does not overwrite an existing barcode", async () => {
+    vi.mocked(supplyRepository.findById).mockResolvedValue({
+      ...existing,
+      barcode: "HDML4NDR8K23",
+    } as never);
+
+    const result = await supplyService.assignGeneratedBarcode(
+      userId,
+      SITE_ID,
+      existing.id
+    );
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toBe("This supply already has a barcode");
+    }
+    expect(supplyRepository.update).not.toHaveBeenCalled();
   });
 });
