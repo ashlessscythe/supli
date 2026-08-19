@@ -151,7 +151,11 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 enterKeyHint="done"
                 aria-label="Barcode"
               />
-              <Button type="submit" className="h-12 w-full text-lg" disabled={!barcode}>
+              <Button
+                type="submit"
+                className="h-12 w-full text-lg"
+                disabled={!barcode}
+              >
                 Continue
               </Button>
             </form>
@@ -172,7 +176,10 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 >
                   −
                 </Button>
-                <span className="w-16 text-center text-4xl font-bold" aria-live="polite">
+                <span
+                  className="w-16 text-center text-4xl font-bold"
+                  aria-live="polite"
+                >
                   {quantity}
                 </span>
                 <Button

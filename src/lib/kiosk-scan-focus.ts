@@ -24,10 +24,10 @@ export function shouldOpenVirtualKeyboard(pointerType: string): boolean {
 
 export function shouldIdleRefocusScanInput(options: {
   enabled: boolean;
-  input: EventTarget | null | undefined;
-  activeElement: EventTarget | null | undefined;
+  input: unknown;
+  activeElement: unknown;
 }): boolean {
-  if (!options.enabled || !options.input) return false;
+  if (!options.enabled || options.input == null) return false;
   return options.activeElement !== options.input;
 }
 
