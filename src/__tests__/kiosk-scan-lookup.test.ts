@@ -55,5 +55,7 @@ describe("kiosk scan lookup wiring", () => {
     expect(src).not.toMatch(
       /handleScan[\s\S]*setStep\("quantity"\);\s*setError\(null\)/
     );
+    expect(src).toContain("selectScanInputForRetry");
+    expect(src).toContain("aria-invalid");
   });
 });

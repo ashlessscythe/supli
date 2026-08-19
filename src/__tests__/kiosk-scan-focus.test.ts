@@ -6,6 +6,7 @@ import {
   inputModeForScanKeyboard,
   KIOSK_SCAN_IDLE_FOCUS_MS,
   requestVirtualKeyboardFromUserGesture,
+  selectScanInputForRetry,
   shouldIdleRefocusScanInput,
   shouldOpenVirtualKeyboard,
   virtualKeyboardPolicyForScanKeyboard,
@@ -20,6 +21,7 @@ function createFakeInput(
     readOnly: false,
     focus: vi.fn(),
     blur: vi.fn(),
+    select: vi.fn(),
     setAttribute(name: string, value: string) {
       attributes.set(name, value);
     },
@@ -107,6 +109,21 @@ describe("kiosk scan keyboard policy", () => {
     expect(hideKeyboard).toHaveBeenCalled();
   });
 
+  it("selects the current barcode so a retry scan replaces it", () => {
+    const hideKeyboard = vi.fn();
+    const input = createFakeInput();
+
+    selectScanInputForRetry(input, hideKeyboard);
+
+    expect(input.focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(input.select).toHaveBeenCalledOnce();
+    expect(hideKeyboard).toHaveBeenCalled();
+  });
+
+  it("does nothing when the scan input is missing", () => {
+    expect(() => selectScanInputForRetry(null)).not.toThrow();
+  });
+
   it("blur-refocuses an already focused field so a tap can open the keyboard", () => {
     const showKeyboard = vi.fn();
     const input = createFakeInput();
@@ -137,5 +154,12 @@ describe("kiosk scan field wiring", () => {
     expect(src).not.toContain('inputMode="text"');
     expect(src).not.toContain("inputRef.current?.focus()");
     expect(hook).toContain("KIOSK_SCAN_IDLE_FOCUS_MS");
+  });
+
+  it("highlights an unknown barcode and selects it for a rescan", () => {
+    const src = readFileSync("src/app/kiosk/kiosk-client.tsx", "utf8");
+    expect(src).toContain("selectScanInputForRetry");
+    expect(src).toContain("aria-invalid");
+    expect(src).toContain("border-destructive");
   });
 });

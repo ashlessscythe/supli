@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,10 @@ import { useKioskScanFocus } from "@/hooks/use-kiosk-scan-focus";
 import { kioskLogout } from "@/lib/actions/kiosk";
 import { formatBarcode } from "@/lib/barcode";
 import { haptic } from "@/lib/haptics";
+import { selectScanInputForRetry } from "@/lib/kiosk-scan-focus";
 import { resolveKioskScanLookup } from "@/lib/kiosk-scan-lookup";
 import { enqueueOfflineMutation } from "@/lib/offline-queue";
+import { cn } from "@/lib/utils";
 
 type Step = "scan" | "quantity" | "complete";
 
@@ -28,6 +30,11 @@ export function KioskClient({ siteName }: { siteName: string }) {
   const [itemName, setItemName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanFocus = useKioskScanFocus(inputRef, step === "scan");
+
+  useEffect(() => {
+    if (step !== "scan" || !error || lookingUp) return;
+    selectScanInputForRetry(inputRef.current);
+  }, [step, error, lookingUp]);
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
@@ -184,7 +191,12 @@ export function KioskClient({ siteName }: { siteName: string }) {
           {step === "scan" && (
             <form onSubmit={handleScan} className="space-y-4">
               <div className="flex justify-center">
-                <Scan className="h-16 w-16 text-muted-foreground" />
+                <Scan
+                  className={cn(
+                    "h-16 w-16",
+                    error ? "text-destructive" : "text-muted-foreground"
+                  )}
+                />
               </div>
               <Input
                 ref={inputRef}
@@ -196,13 +208,26 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 onPointerDown={scanFocus.onPointerDown}
                 onBlur={scanFocus.onBlur}
                 placeholder="Scan or enter barcode"
-                className="h-14 text-center text-lg"
+                className={cn(
+                  "h-14 text-center text-lg",
+                  error &&
+                    "border-destructive bg-destructive/10 text-destructive ring-2 ring-destructive focus-visible:ring-destructive"
+                )}
                 autoComplete="off"
                 inputMode={scanFocus.inputMode}
                 virtualKeyboardPolicy={scanFocus.virtualKeyboardPolicy}
                 enterKeyHint="done"
                 aria-label="Barcode"
+                aria-invalid={!!error}
               />
+              {error && (
+                <p
+                  className="text-center text-sm font-medium text-destructive"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              )}
               <Button
                 type="submit"
                 className="h-12 w-full text-lg"
@@ -282,7 +307,7 @@ export function KioskClient({ siteName }: { siteName: string }) {
             </div>
           )}
 
-          {error && (
+          {error && step !== "scan" && (
             <p className="text-center text-sm text-destructive" role="alert">
               {error}
             </p>

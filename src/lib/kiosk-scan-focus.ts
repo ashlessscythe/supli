@@ -99,6 +99,19 @@ export function focusWithoutVirtualKeyboard(
 }
 
 /**
+ * Keep the unknown barcode visible, focused, and selected so a HID scanner’s
+ * next read replaces it instead of appending.
+ */
+export function selectScanInputForRetry(
+  input: HTMLInputElement | null,
+  hideKeyboard: () => void = hideVirtualKeyboard
+): void {
+  if (!input) return;
+  focusWithoutVirtualKeyboard(input, hideKeyboard);
+  input.select();
+}
+
+/**
  * Open the OS keyboard in response to a real tap on the barcode field.
  * If the field is already focused from silent autofocus, blur+refocus so the
  * OS sees a user-gesture focus after inputMode switches to text.
