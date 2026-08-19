@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Scan, LogOut } from "lucide-react";
+import { useKioskScanFocus } from "@/hooks/use-kiosk-scan-focus";
 import { kioskLogout } from "@/lib/actions/kiosk";
 import { formatBarcode } from "@/lib/barcode";
 import { haptic } from "@/lib/haptics";
@@ -23,10 +24,7 @@ export function KioskClient({ siteName }: { siteName: string }) {
   const [loading, setLoading] = useState(false);
   const [lastItem, setLastItem] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-  }, [step]);
+  const scanFocus = useKioskScanFocus(inputRef, step === "scan");
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
@@ -143,14 +141,21 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 ref={inputRef}
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
+                onPointerDown={scanFocus.onPointerDown}
+                onBlur={scanFocus.onBlur}
                 placeholder="Scan or enter barcode"
                 className="h-14 text-center text-lg"
                 autoComplete="off"
-                inputMode="text"
+                inputMode={scanFocus.inputMode}
+                virtualKeyboardPolicy={scanFocus.virtualKeyboardPolicy}
                 enterKeyHint="done"
                 aria-label="Barcode"
               />
-              <Button type="submit" className="h-12 w-full text-lg" disabled={!barcode}>
+              <Button
+                type="submit"
+                className="h-12 w-full text-lg"
+                disabled={!barcode}
+              >
                 Continue
               </Button>
             </form>
@@ -171,7 +176,10 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 >
                   −
                 </Button>
-                <span className="w-16 text-center text-4xl font-bold" aria-live="polite">
+                <span
+                  className="w-16 text-center text-4xl font-bold"
+                  aria-live="polite"
+                >
                   {quantity}
                 </span>
                 <Button

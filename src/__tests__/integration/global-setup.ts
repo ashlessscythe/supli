@@ -3,6 +3,24 @@ import path from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { loadTestEnv } from "./load-env";
 
+function postgresSchemaFromUrl(databaseUrl: string): string {
+  try {
+    const url = new URL(databaseUrl);
+    const value = url.searchParams.get("schema") ?? "public";
+    return /^[a-zA-Z0-9_]+$/.test(value) ? value : "public";
+  } catch {
+    return "public";
+  }
+}
+
+function disableIntegration(message: string): void {
+  if (process.env.CI) {
+    throw new Error(message);
+  }
+  console.warn(message);
+  process.env.SKIP_INTEGRATION = "1";
+}
+
 async function canConnect(databaseUrl: string) {
   const client = new PrismaClient({
     datasources: { db: { url: databaseUrl } },
@@ -10,6 +28,10 @@ async function canConnect(databaseUrl: string) {
 
   try {
     await client.$connect();
+    const schema = postgresSchemaFromUrl(databaseUrl);
+    if (schema !== "public") {
+      await client.$executeRawUnsafe(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
+    }
     await client.$disconnect();
     return true;
   } catch {
@@ -22,12 +44,10 @@ export default async function globalSetup() {
   loadTestEnv();
 
   if (!process.env.DATABASE_TEST_URL) {
-    console.warn(
-      "\n⚠ DATABASE_TEST_URL is not set — integration tests will be skipped.\n" +
-        "  Start the test database: npm run test:db:up\n" +
-        "  Or set DATABASE_TEST_URL in .env (see .env.example).\n"
+    disableIntegration(
+      "DATABASE_TEST_URL is not set — integration tests cannot run. " +
+        "Start the test database: npm run test:db:up"
     );
-    process.env.SKIP_INTEGRATION = "1";
     return;
   }
 
@@ -48,11 +68,10 @@ export default async function globalSetup() {
 
   const reachable = await canConnect(process.env.DATABASE_TEST_URL);
   if (!reachable) {
-    console.warn(
-      "\n⚠ DATABASE_TEST_URL is set but the database is not reachable — integration tests will be skipped.\n" +
-        "  Start the test database: npm run test:db:up\n"
+    disableIntegration(
+      "DATABASE_TEST_URL is set but the database is not reachable. " +
+        "Start the test database: npm run test:db:up"
     );
-    process.env.SKIP_INTEGRATION = "1";
     return;
   }
 
@@ -64,12 +83,10 @@ export default async function globalSetup() {
       env: process.env,
       stdio: "inherit",
     });
-  } catch (e) {
-    console.warn(
-      "\n⚠ Failed to run `prisma migrate deploy` for integration tests.\n" +
-        "  Integration tests will be skipped for this run.\n" +
-        "  Tip: use a direct (non-pooler) Postgres URL for DATABASE_TEST_URL, or local Postgres.\n"
+  } catch {
+    disableIntegration(
+      "Failed to run `prisma migrate deploy` for integration tests. " +
+        "Use a direct (non-pooler) Postgres URL for DATABASE_TEST_URL, or local Postgres."
     );
-    process.env.SKIP_INTEGRATION = "1";
   }
 }

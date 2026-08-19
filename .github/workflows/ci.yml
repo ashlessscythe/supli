@@ -6,35 +6,76 @@ on:
   pull_request:
     branches: [dev]
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+env:
+  NODE_VERSION: "20"
+  NEXTAUTH_SECRET: "ci-build-secret-minimum-32-characters-long"
+  NEXTAUTH_URL: "http://localhost:3000"
 
+jobs:
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
-
       - run: npm ci
-
-      - run: npm run lint
-
-      - run: npm run test
-        env:
-          DATABASE_URL: "postgresql://user:password@localhost:5432/supli?sslmode=disable"
-          NEXTAUTH_SECRET: "ci-build-secret-minimum-32-characters-long"
-          NEXTAUTH_URL: "http://localhost:3000"
-
-      - run: npx tsc --noEmit
-
       - run: npx prisma generate
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run test:unit
+        env:
+          DATABASE_URL: "postgresql://test:test@localhost:5432/supli_test?sslmode=disable"
+          NEXTAUTH_SECRET: ${{ env.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}
 
+  integration:
+    name: integration
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: supli
+          POSTGRES_PASSWORD: supli
+          POSTGRES_DB: supli_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U supli -d supli_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm run test:integration
+        env:
+          DATABASE_URL: "postgresql://supli:supli@localhost:5433/supli_test?sslmode=disable"
+          DATABASE_TEST_URL: "postgresql://supli:supli@localhost:5433/supli_test?sslmode=disable"
+          NEXTAUTH_SECRET: ${{ env.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}
+
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+      - run: npm ci
+      - run: npx prisma generate
       - run: npm run build
         env:
-          DATABASE_URL: "postgresql://user:password@localhost:5432/supli?sslmode=disable"
-          DATABASE_TEST_URL: "postgresql://user:password@localhost:5432/supli_test?sslmode=disable"
-          NEXTAUTH_SECRET: "ci-build-secret-minimum-32-characters-long"
-          NEXTAUTH_URL: "http://localhost:3000"
+          DATABASE_URL: "postgresql://supli:supli@localhost:5432/supli?sslmode=disable"
+          NEXTAUTH_SECRET: ${{ env.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ env.NEXTAUTH_URL }}

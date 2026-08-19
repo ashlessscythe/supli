@@ -4,14 +4,21 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  virtualKeyboardPolicy?: "auto" | "manual";
+}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, inputMode, ...props }, ref) => {
+  ({ className, type, inputMode, virtualKeyboardPolicy, ...props }, ref) => {
     const resolvedInputMode =
       inputMode ??
-      (type === "number" ? "decimal" : type === "email" ? "email" : type === "tel" ? "tel" : undefined);
+      (type === "number"
+        ? "decimal"
+        : type === "email"
+          ? "email"
+          : type === "tel"
+            ? "tel"
+            : undefined);
 
     return (
       <input
@@ -24,6 +31,9 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         )}
         ref={ref}
         {...props}
+        {...(virtualKeyboardPolicy
+          ? { virtualkeyboardpolicy: virtualKeyboardPolicy }
+          : {})}
       />
     );
   }
