@@ -11,6 +11,7 @@ import { useKioskScanFocus } from "@/hooks/use-kiosk-scan-focus";
 import { kioskLogout } from "@/lib/actions/kiosk";
 import { formatBarcode } from "@/lib/barcode";
 import { haptic } from "@/lib/haptics";
+import { resolveKioskScanLookup } from "@/lib/kiosk-scan-lookup";
 import { enqueueOfflineMutation } from "@/lib/offline-queue";
 
 type Step = "scan" | "quantity" | "complete";
@@ -22,15 +23,60 @@ export function KioskClient({ siteName }: { siteName: string }) {
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
   const [lastItem, setLastItem] = useState<string | null>(null);
+  const [itemName, setItemName] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanFocus = useKioskScanFocus(inputRef, step === "scan");
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault();
-    if (!barcode.trim()) return;
-    setStep("quantity");
+    if (!barcode.trim() || lookingUp) return;
+
+    setLookingUp(true);
     setError(null);
+
+    try {
+      const online = typeof navigator === "undefined" || navigator.onLine;
+      if (!online) {
+        const skipped = resolveKioskScanLookup({ online: false });
+        setItemName(skipped.itemName);
+        setStep("quantity");
+        return;
+      }
+
+      const res = await fetch(
+        `/api/kiosk/lookup?barcode=${encodeURIComponent(barcode.trim())}`
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        name?: string;
+        error?: string;
+      };
+      const result = resolveKioskScanLookup({
+        online: true,
+        ok: res.ok,
+        name: data.name,
+        error: data.error,
+      });
+
+      if (!result.proceed) {
+        setError(result.error);
+        haptic(30);
+        return;
+      }
+
+      setItemName(result.itemName);
+      setStep("quantity");
+    } catch {
+      const skipped = resolveKioskScanLookup({
+        online: true,
+        lookupFailedNetwork: true,
+      });
+      setItemName(skipped.itemName);
+      setStep("quantity");
+    } finally {
+      setLookingUp(false);
+    }
   }
 
   async function handleComplete() {
@@ -54,6 +100,7 @@ export function KioskClient({ siteName }: { siteName: string }) {
       setTimeout(() => {
         setBarcode("");
         setQuantity(1);
+        setItemName(null);
         setStep("scan");
         setLastItem(null);
       }, 2000);
@@ -82,6 +129,7 @@ export function KioskClient({ siteName }: { siteName: string }) {
       setTimeout(() => {
         setBarcode("");
         setQuantity(1);
+        setItemName(null);
         setStep("scan");
         setLastItem(null);
       }, 2000);
@@ -100,6 +148,7 @@ export function KioskClient({ siteName }: { siteName: string }) {
       setTimeout(() => {
         setBarcode("");
         setQuantity(1);
+        setItemName(null);
         setStep("scan");
         setLastItem(null);
       }, 2000);
@@ -140,7 +189,10 @@ export function KioskClient({ siteName }: { siteName: string }) {
               <Input
                 ref={inputRef}
                 value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
+                onChange={(e) => {
+                  setBarcode(e.target.value);
+                  if (error) setError(null);
+                }}
                 onPointerDown={scanFocus.onPointerDown}
                 onBlur={scanFocus.onBlur}
                 placeholder="Scan or enter barcode"
@@ -154,15 +206,18 @@ export function KioskClient({ siteName }: { siteName: string }) {
               <Button
                 type="submit"
                 className="h-12 w-full text-lg"
-                disabled={!barcode}
+                disabled={!barcode || lookingUp}
               >
-                Continue
+                {lookingUp ? "Checking…" : "Continue"}
               </Button>
             </form>
           )}
 
           {step === "quantity" && (
             <div className="space-y-4">
+              {itemName && (
+                <p className="text-center text-xl font-semibold">{itemName}</p>
+              )}
               <p className="text-center text-muted-foreground">
                 Barcode: <strong>{formatBarcode(barcode)}</strong>
               </p>
@@ -205,6 +260,9 @@ export function KioskClient({ siteName }: { siteName: string }) {
                 onClick={() => {
                   setStep("scan");
                   setBarcode("");
+                  setQuantity(1);
+                  setItemName(null);
+                  setError(null);
                 }}
               >
                 Cancel
