@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -78,7 +78,7 @@ export function ItemVendorLinkForm({
   mode,
   vendorId,
   supplyId,
-  excludeIds = [],
+  excludeIds,
   initialData,
   submitLabel = "Save link",
   onSubmit,
@@ -90,11 +90,19 @@ export function ItemVendorLinkForm({
 
   const isEdit = Boolean(initialData);
   const pickerLabel = mode === "pick-vendor" ? "Vendor" : "Supply";
+  const excludedIdsKey = (excludeIds ?? []).join("\0");
+  const excludedIdSet = useMemo(
+    () => new Set(excludeIds ?? []),
+    // excludeIds is often an inline array; stabilize via joined key
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [excludedIdsKey]
+  );
 
   const form = useForm<ItemVendorLinkFormValues>({
     resolver: zodResolver(linkFormSchema),
     defaultValues: {
-      entityId: mode === "pick-supply" ? supplyId ?? "" : vendorId,
+      entityId:
+        mode === "pick-supply" ? (supplyId ?? "") : vendorId || "",
       vendorSku: initialData?.vendorSku ?? "",
       internalSku: initialData?.internalSku ?? "",
       isPreferred: initialData?.isPreferred ?? false,
@@ -125,9 +133,7 @@ export function ItemVendorLinkForm({
               name: item.name,
             }))
           : [];
-        setOptions(
-          mapped.filter((option) => !excludeIds.includes(option.id))
-        );
+        setOptions(mapped.filter((option) => !excludedIdSet.has(option.id)));
       })
       .catch(() => {
         if (!cancelled) setOptions([]);
@@ -139,7 +145,7 @@ export function ItemVendorLinkForm({
     return () => {
       cancelled = true;
     };
-  }, [mode, excludeIds, isEdit]);
+  }, [mode, excludedIdSet, isEdit]);
 
   const handleSubmit = async (values: ItemVendorLinkFormValues) => {
     const resolvedSupplyId =
@@ -183,7 +189,7 @@ export function ItemVendorLinkForm({
                   </div>
                 ) : (
                   <Select
-                    value={field.value}
+                    value={field.value || undefined}
                     onValueChange={field.onChange}
                     disabled={options.length === 0}
                   >

@@ -99,64 +99,45 @@ export function SupplyForm({
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {isAdmin ? (
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Enter supply name" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          initialData && (
-            <div className="space-y-1">
-              <p className="text-sm font-medium leading-none">Name</p>
-              <p className="text-sm text-muted-foreground">
-                {initialData.name}
-              </p>
-            </div>
-          )
-        )}
-
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Enter supply description"
-                  {...field}
-                  rows={3}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+    <div className="space-y-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          {isAdmin ? (
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Enter supply name" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          ) : (
+            initialData && (
+              <div className="space-y-1">
+                <p className="text-sm font-medium leading-none">Name</p>
+                <p className="text-sm text-muted-foreground">
+                  {initialData.name}
+                </p>
+              </div>
+            )
           )}
-        />
 
-        <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="quantity"
+            name="description"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Quantity</FormLabel>
+                <FormLabel>Description</FormLabel>
                 <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="Enter quantity"
+                  <Textarea
+                    placeholder="Enter supply description"
                     {...field}
-                    min={0}
+                    rows={3}
                   />
                 </FormControl>
                 <FormMessage />
@@ -164,71 +145,38 @@ export function SupplyForm({
             )}
           />
 
-          <FormField
-            control={form.control}
-            name="minimumThreshold"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Minimum Threshold</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    placeholder="Enter minimum threshold"
-                    {...field}
-                    min={0}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {isAdmin && (
           <div className="grid grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="barcode"
-              render={({ field }) => {
-                const hasBarcode = Boolean(field.value?.trim());
-                const showGenerate = !initialData || !hasBarcode;
-
-                return (
-                  <FormItem>
-                    <div className="flex items-center justify-between gap-2">
-                      <FormLabel>Barcode</FormLabel>
-                      {showGenerate && (
-                        <GenerateBarcodeButton
-                          onClick={() =>
-                            field.onChange(formatBarcode(generateBarcode()))
-                          }
-                        />
-                      )}
-                    </div>
-                    <FormControl>
-                      <Input
-                        placeholder="Scan or enter barcode"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
+              name="quantity"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantity</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      placeholder="Enter quantity"
+                      {...field}
+                      min={0}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
 
             <FormField
               control={form.control}
-              name="internalSku"
+              name="minimumThreshold"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Internal SKU</FormLabel>
+                  <FormLabel>Minimum Threshold</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Enter internal SKU"
+                      type="number"
+                      placeholder="Enter minimum threshold"
                       {...field}
-                      value={field.value ?? ""}
+                      min={0}
                     />
                   </FormControl>
                   <FormMessage />
@@ -236,25 +184,84 @@ export function SupplyForm({
               )}
             />
           </div>
-        )}
 
-        {isAdmin && initialData && (
-          <SupplyVendorLinks supplyId={initialData.id} />
-        )}
+          {isAdmin && (
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="barcode"
+                render={({ field }) => {
+                  const hasBarcode = Boolean(field.value?.trim());
+                  const showGenerate = !initialData || !hasBarcode;
 
-        <div className="flex justify-end gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => (onCancel ? onCancel() : window.history.back())}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isLoading}>
-            {initialData ? "Update" : "Create"} Supply
-          </Button>
-        </div>
-      </form>
-    </Form>
+                  return (
+                    <FormItem>
+                      <div className="flex items-center justify-between gap-2">
+                        <FormLabel>Barcode</FormLabel>
+                        {showGenerate && (
+                          <GenerateBarcodeButton
+                            onClick={() =>
+                              field.onChange(formatBarcode(generateBarcode()))
+                            }
+                          />
+                        )}
+                      </div>
+                      <FormControl>
+                        <Input
+                          placeholder="Scan or enter barcode"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
+                name="internalSku"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Internal SKU</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter internal SKU"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          )}
+        </form>
+      </Form>
+
+      {/* Outside the supply <form> so ItemVendorLinkForm is not nested */}
+      {isAdmin && initialData && (
+        <SupplyVendorLinks supplyId={initialData.id} />
+      )}
+
+      <div className="flex justify-end gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => (onCancel ? onCancel() : window.history.back())}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          disabled={isLoading}
+          onClick={form.handleSubmit(onSubmit)}
+        >
+          {initialData ? "Update" : "Create"} Supply
+        </Button>
+      </div>
+    </div>
   );
 }

@@ -210,174 +210,176 @@ function LinkedItemRow({
   };
 
   return (
-    <li className="flex items-start justify-between gap-3 px-1 py-3">
-      <div className="min-w-0 flex-1 space-y-2">
-        <div className="flex flex-wrap items-center gap-1">
-          <Link
-            href={`/admin/supplies?q=${encodeURIComponent(item.name)}`}
-            className="group inline-flex items-center gap-2 font-medium hover:underline"
-          >
-            <span className="truncate">{item.name}</span>
+    <li className="min-w-0 space-y-2 px-1 py-3">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+            <Link
+              href={`/admin/supplies?q=${encodeURIComponent(item.name)}`}
+              className="group inline-flex min-w-0 max-w-full items-center gap-1.5 font-medium hover:underline"
+            >
+              <span className="truncate">{item.name}</span>
+              <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+            </Link>
             {item.isPreferred && (
-              <span className="rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
+              <span className="shrink-0 rounded bg-primary/15 px-1.5 py-0.5 text-xs text-primary">
                 Preferred
               </span>
             )}
-            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-          </Link>
-          {vendorId && (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2"
-                onClick={onEdit}
-                aria-label={`Edit link for ${item.name}`}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              {confirmRemove ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7"
-                    disabled={removing}
-                    onClick={() => setConfirmRemove(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    className="h-7"
-                    disabled={removing}
-                    onClick={() => void handleUnlink()}
-                  >
-                    {removing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      "Unlink"
-                    )}
-                  </Button>
-                </>
-              ) : (
+            <span
+              className={cn(
+                "shrink-0 text-sm tabular-nums text-muted-foreground",
+                isLow && "text-red-500"
+              )}
+            >
+              Qty: {item.quantity}
+            </span>
+            {vendorId && (
+              <span className="ml-auto flex shrink-0 items-center gap-1">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="h-7 px-2 text-destructive hover:text-destructive"
-                  onClick={() => setConfirmRemove(true)}
+                  className="h-7 px-2"
+                  onClick={onEdit}
+                  aria-label={`Edit link for ${item.name}`}
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
+                {confirmRemove ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7"
+                      disabled={removing}
+                      onClick={() => setConfirmRemove(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="h-7"
+                      disabled={removing}
+                      onClick={() => void handleUnlink()}
+                    >
+                      {removing ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        "Unlink"
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-destructive hover:text-destructive"
+                    onClick={() => setConfirmRemove(true)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+        {item.vendorSku && <span>Vendor SKU: {item.vendorSku}</span>}
+        {item.internalSku && <span>Internal SKU: {item.internalSku}</span>}
+        {item.moq != null && <span>MOQ: {item.moq}</span>}
+      </div>
+      {vendorId ? (
+        <div className="space-y-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="w-16 shrink-0 text-xs text-muted-foreground">
+              Lead days
+            </span>
+            <Input
+              type="number"
+              min={1}
+              step={1}
+              value={leadInput}
+              onChange={(e) => setLeadInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleSaveLeadTime();
+                }
+              }}
+              className="h-8 w-28 min-w-0 text-sm"
+              placeholder="—"
+              disabled={savingLead}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={!leadDirty || savingLead}
+              onClick={() => void handleSaveLeadTime()}
+            >
+              {savingLead ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Save"
               )}
-            </>
-          )}
-        </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          {item.vendorSku && <span>Vendor SKU: {item.vendorSku}</span>}
-          {item.internalSku && <span>Internal SKU: {item.internalSku}</span>}
-          {item.moq != null && <span>MOQ: {item.moq}</span>}
-        </div>
-        {vendorId ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="w-16 shrink-0 text-xs text-muted-foreground">
-                Lead days
+            </Button>
+          </div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="w-16 shrink-0 text-xs text-muted-foreground">
+              Cost
+            </span>
+            <div className="relative w-28 min-w-0">
+              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                $
               </span>
               <Input
                 type="number"
-                min={1}
-                step={1}
-                value={leadInput}
-                onChange={(e) => setLeadInput(e.target.value)}
+                min={0}
+                step="0.01"
+                value={costInput}
+                onChange={(e) => setCostInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    void handleSaveLeadTime();
+                    void handleSaveCost();
                   }
                 }}
-                className="h-8 w-28 text-sm"
+                className="h-8 pl-5 text-sm"
                 placeholder="—"
-                disabled={savingLead}
+                disabled={savingCost}
               />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                disabled={!leadDirty || savingLead}
-                onClick={() => void handleSaveLeadTime()}
-              >
-                {savingLead ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="w-16 shrink-0 text-xs text-muted-foreground">
-                Cost
-              </span>
-              <div className="relative w-28">
-                <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  $
-                </span>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={costInput}
-                  onChange={(e) => setCostInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      void handleSaveCost();
-                    }
-                  }}
-                  className="h-8 pl-5 text-sm"
-                  placeholder="—"
-                  disabled={savingCost}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                disabled={!costDirty || savingCost}
-                onClick={() => void handleSaveCost()}
-              >
-                {savingCost ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  "Save"
-                )}
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8"
+              disabled={!costDirty || savingCost}
+              onClick={() => void handleSaveCost()}
+            >
+              {savingCost ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Save"
+              )}
+            </Button>
           </div>
-        ) : (
-          <div className="space-y-0.5 text-xs text-muted-foreground">
-            {item.leadTimeDays != null && (
-              <p>Lead time: {item.leadTimeDays}d</p>
-            )}
-            {item.cost != null && <p>${item.cost.toFixed(2)}</p>}
-          </div>
-        )}
-      </div>
-      <span
-        className={cn(
-          "whitespace-nowrap text-sm tabular-nums",
-          isLow && "text-red-500"
-        )}
-      >
-        Qty: {item.quantity}
-      </span>
+        </div>
+      ) : (
+        <div className="space-y-0.5 text-xs text-muted-foreground">
+          {item.leadTimeDays != null && (
+            <p>Lead time: {item.leadTimeDays}d</p>
+          )}
+          {item.cost != null && <p>${item.cost.toFixed(2)}</p>}
+        </div>
+      )}
     </li>
   );
 }
@@ -541,26 +543,28 @@ export function LinkedItemsDialog({
       </button>
 
       <Dialog open={open} onOpenChange={(next) => void handleOpenChange(next)}>
-        <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-lg">
+        <DialogContent className="flex max-h-[min(90dvh,calc(100dvh-2rem))] w-[calc(100%-1.5rem)] min-w-0 max-w-2xl flex-col gap-4 overflow-x-hidden overflow-y-hidden sm:max-w-2xl">
           {panel.type === "link" && vendorId ? (
-            <>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
               <DialogHeader>
                 <DialogTitle>Link supply</DialogTitle>
                 <DialogDescription>
                   Set SKU, lead time, MOQ, and cost for this vendor link.
                 </DialogDescription>
               </DialogHeader>
-              <ItemVendorLinkForm
-                mode="pick-supply"
-                vendorId={vendorId}
-                excludeIds={linkedSupplyIds}
-                submitLabel="Link supply"
-                onSubmit={handleLinkSupply}
-                onCancel={() => setPanel({ type: "list" })}
-              />
-            </>
+              <div className="mt-4">
+                <ItemVendorLinkForm
+                  mode="pick-supply"
+                  vendorId={vendorId}
+                  excludeIds={linkedSupplyIds}
+                  submitLabel="Link supply"
+                  onSubmit={handleLinkSupply}
+                  onCancel={() => setPanel({ type: "list" })}
+                />
+              </div>
+            </div>
           ) : panel.type === "edit" && vendorId ? (
-            <>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
               <DialogHeader>
                 <DialogTitle>Edit link — {panel.item.name}</DialogTitle>
                 <DialogDescription>
@@ -568,27 +572,29 @@ export function LinkedItemsDialog({
                   link.
                 </DialogDescription>
               </DialogHeader>
-              <ItemVendorLinkForm
-                key={panel.item.supplyId}
-                mode="pick-supply"
-                vendorId={vendorId}
-                supplyId={panel.item.supplyId}
-                initialData={{
-                  vendorSku: panel.item.vendorSku,
-                  internalSku: panel.item.internalSku,
-                  isPreferred: panel.item.isPreferred,
-                  leadTimeDays: panel.item.leadTimeDays,
-                  moq: panel.item.moq,
-                  cost: panel.item.cost,
-                }}
-                submitLabel="Save changes"
-                onSubmit={handleUpdateLink}
-                onCancel={() => setPanel({ type: "list" })}
-              />
-            </>
+              <div className="mt-4">
+                <ItemVendorLinkForm
+                  key={panel.item.supplyId}
+                  mode="pick-supply"
+                  vendorId={vendorId}
+                  supplyId={panel.item.supplyId}
+                  initialData={{
+                    vendorSku: panel.item.vendorSku,
+                    internalSku: panel.item.internalSku,
+                    isPreferred: panel.item.isPreferred,
+                    leadTimeDays: panel.item.leadTimeDays,
+                    moq: panel.item.moq,
+                    cost: panel.item.cost,
+                  }}
+                  submitLabel="Save changes"
+                  onSubmit={handleUpdateLink}
+                  onCancel={() => setPanel({ type: "list" })}
+                />
+              </div>
+            </div>
           ) : (
             <>
-              <DialogHeader>
+              <DialogHeader className="shrink-0">
                 <DialogTitle>{title}</DialogTitle>
                 {description && (
                   <DialogDescription>{description}</DialogDescription>
@@ -600,7 +606,7 @@ export function LinkedItemsDialog({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="w-fit"
+                  className="w-fit shrink-0"
                   onClick={() => setPanel({ type: "link" })}
                 >
                   <Plus className="mr-1 h-3.5 w-3.5" />
@@ -608,7 +614,7 @@ export function LinkedItemsDialog({
                 </Button>
               )}
 
-              <div className="max-h-[50vh] overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {loading && (
                   <div className="flex items-center justify-center py-8 text-muted-foreground">
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
