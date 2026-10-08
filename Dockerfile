@@ -3,6 +3,8 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 COPY package.json package-lock.json ./
+# Local braces security backport (file: override) must be present for npm ci
+COPY vendor ./vendor
 RUN npm ci
 
 FROM node:20-alpine AS builder
@@ -26,6 +28,7 @@ RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
 COPY --from=builder /app/package.json /app/package-lock.json ./
+COPY --from=builder /app/vendor ./vendor
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
