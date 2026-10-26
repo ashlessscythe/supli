@@ -44,14 +44,14 @@
     "@radix-ui/react-slot": "^1.0.0",
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.17",
-    "@serwist/next": "^9.5.12",
+    "@serwist/next": "^9.5.13",
     "bcrypt": "^6.0.0",
     "braces": "file:vendor/braces-3.0.4.tgz",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.577.0",
-    "next": "^15.5.27",
+    "next": "^15.5.28",
     "next-auth": "^5.0.0-beta.32",
     "next-themes": "^0.4.3",
     "qrcode.react": "^4.2.0",
@@ -60,7 +60,7 @@
     "react-hook-form": "^7.0.0",
     "recharts": "^2.15.4",
     "resend": "^6.17.1",
-    "serwist": "^9.5.12",
+    "serwist": "^9.5.13",
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.0.0",
     "tailwindcss-animate": "^1.0.0",
@@ -75,14 +75,14 @@
     "@types/serviceworker": "^0.0.200",
     "autoprefixer": "^10.0.0",
     "eslint": "^8.0.0",
-    "eslint-config-next": "^15.5.27",
+    "eslint-config-next": "^15.5.28",
     "postcss": "^8.5.18",
     "prettier": "^3.4.2",
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^4.1.11",
+    "vitest": "^4.1.12",
     "yargs": "^17.0.0"
   },
   "overrides": {
@@ -102,6 +102,15 @@
     "sharp": "0.35.5",
     "next": {
       "sharp": "0.35.5"
+    },
+    "@serwist/build": {
+      "zod": "4.6.7"
+    },
+    "@serwist/next": {
+      "zod": "4.6.7"
+    },
+    "@serwist/webpack-plugin": {
+      "zod": "4.6.7"
     }
   }
 }
