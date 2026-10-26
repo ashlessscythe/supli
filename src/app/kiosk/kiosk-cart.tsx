@@ -138,7 +138,7 @@ export function KioskCart(props: KioskCartProps) {
   return (
     <>
       {/* Landscape / wide: always-visible side panel */}
-      <aside className="hidden h-full min-h-0 w-80 shrink-0 flex-col border-l bg-background p-4 md:landscape:flex lg:w-96">
+      <aside className="hidden h-full min-h-0 w-80 shrink-0 flex-col border-l bg-background px-4 pt-4 md:landscape:flex lg:w-96">
         <h2 className="mb-2 shrink-0 text-xl font-semibold">Cart</h2>
         <p className="mb-4 shrink-0 text-sm text-muted-foreground">
           {itemCount} items · {unitCount} units
@@ -149,12 +149,17 @@ export function KioskCart(props: KioskCartProps) {
             {error}
           </p>
         )}
-        <div className="mt-auto shrink-0 pt-4">{checkoutButton}</div>
+        <div
+          data-kiosk-cart-footer
+          className="mt-auto shrink-0 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+        >
+          {checkoutButton}
+        </div>
       </aside>
 
       {/* Portrait / narrow: sticky bottom bar + sheet */}
       {itemCount > 0 && (
-        <div className="fixed inset-x-0 bottom-0 z-40 safe-bottom border-t bg-background md:landscape:hidden">
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background pb-[max(1rem,env(safe-area-inset-bottom))] md:landscape:hidden">
           <div className="flex h-20 items-center gap-3 px-4">
             <div className="min-w-0 flex-1">
               <p className="truncate font-medium">
@@ -198,7 +203,10 @@ export function KioskCart(props: KioskCartProps) {
               {error}
             </p>
           )}
-          <div className="shrink-0 border-t bg-background p-4 safe-bottom">
+          <div
+            data-kiosk-cart-footer
+            className="shrink-0 border-t bg-background px-4 pt-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+          >
             {checkoutButton}
           </div>
         </SheetContent>

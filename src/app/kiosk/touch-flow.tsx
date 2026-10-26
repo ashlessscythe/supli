@@ -282,7 +282,7 @@ export function KioskTouchFlow({
   }
 
   return (
-    <div className="flex h-[100dvh] w-full flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden">
       {idle.showWarning && (
         <IdleWarning
           secondsRemaining={idle.secondsRemaining}
@@ -291,8 +291,8 @@ export function KioskTouchFlow({
       )}
 
       <div className="flex min-h-0 flex-1">
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 shrink-0 border-b bg-background/95 px-3 pb-3 pt-2 backdrop-blur safe-pad">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-30 shrink-0 border-b bg-background/95 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
             <div className="mb-2 flex items-center gap-2">
               <Button
                 type="button"
@@ -383,8 +383,9 @@ export function KioskTouchFlow({
           </header>
 
           <div
+            data-kiosk-supply-grid
             className={cn(
-              "flex-1 overflow-y-auto p-3",
+              "min-h-0 flex-1 overflow-y-auto overscroll-contain p-3",
               itemCount > 0 && "pb-24 md:landscape:pb-3"
             )}
           >

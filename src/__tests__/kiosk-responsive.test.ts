@@ -36,8 +36,30 @@ describe("kiosk responsive layout", () => {
     );
     expect(src).toContain("data-kiosk-cart-lines");
     // Checkout footer is a shrink-0 sibling outside the scroll list.
-    expect(src).toContain("shrink-0 border-t bg-background p-4 safe-bottom");
+    expect(src).toContain("data-kiosk-cart-footer");
     expect(src).toContain("{checkoutButton}");
+  });
+
+  it("cart footers keep safe-area breathing room under Checkout", () => {
+    const src = readFileSync("src/app/kiosk/kiosk-cart.tsx", "utf8");
+    expect(src).toContain(
+      "pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+    );
+    expect(src).toContain(
+      "pb-[max(1rem,env(safe-area-inset-bottom))]"
+    );
+  });
+
+  it("TOUCH mode locks the page to the viewport without document scroll", () => {
+    const client = readFileSync("src/app/kiosk/kiosk-client.tsx", "utf8");
+    const touch = readFileSync("src/app/kiosk/touch-flow.tsx", "utf8");
+    expect(client).toContain('mode === "touch"');
+    expect(client).toContain("h-[100dvh] overflow-hidden");
+    // Nested TOUCH shell fills the locked parent — not a second 100dvh.
+    expect(touch).toContain("h-full min-h-0 w-full flex-col overflow-hidden");
+    expect(touch).not.toContain("h-[100dvh]");
+    expect(touch).toContain("data-kiosk-supply-grid");
+    expect(touch).toContain("min-h-0 flex-1 overflow-y-auto");
   });
 
   it("tiles have min-h-24 and touch-manipulation", () => {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { kioskLogout } from "@/lib/actions/kiosk";
+import { cn } from "@/lib/utils";
 import { KioskModeSelect, type KioskModeChoice } from "./mode-select";
 import { KioskScanFlow } from "./scan-flow";
 import { KioskTouchFlow } from "./touch-flow";
@@ -23,7 +24,16 @@ export function KioskClient({ siteName }: { siteName: string }) {
   }
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-background safe-pad">
+    <div
+      className={cn(
+        "relative flex flex-col bg-background",
+        // TOUCH owns the viewport: fixed dvh + overflow-hidden so safe-area
+        // padding cannot grow the document past the window (no page scrollbar).
+        mode === "touch"
+          ? "h-[100dvh] overflow-hidden"
+          : "min-h-[100dvh] safe-pad"
+      )}
+    >
       <Button
         variant="ghost"
         size="sm"
