@@ -315,9 +315,15 @@ export const stockMovementService = {
     }
   },
 
-  async consumeBulk(userId: string, siteId: string, input: BulkConsumeInput) {
+  async consumeBulk(
+    userId: string,
+    siteId: string,
+    input: BulkConsumeInput,
+    options?: { auditPrefix?: string }
+  ) {
     try {
       const data = bulkConsumeSchema.parse(input);
+      const auditPrefix = options?.auditPrefix ?? "Checked out";
       const mergedItems = mergeBulkConsumeItems(data.items);
       const supplies = await Promise.all(
         mergedItems.map((item) =>
@@ -325,10 +331,11 @@ export const stockMovementService = {
         )
       );
 
-      for (let i = 0; i < mergedItems.length; i++) {
-        if (!supplies[i]) {
-          return failure("Supply not found");
-        }
+      const missing = mergedItems
+        .filter((_, i) => !supplies[i])
+        .map((item) => item.supplyId);
+      if (missing.length > 0) {
+        return failure("Supply not found", { missing });
       }
 
       const locationResult = await resolveCheckoutLocation(
@@ -342,6 +349,11 @@ export const stockMovementService = {
             data.locationId,
             siteId
           );
+          const insufficient: {
+            supplyId: string;
+            name: string;
+            available: number;
+          }[] = [];
           for (let i = 0; i < mergedItems.length; i++) {
             const item = mergedItems[i];
             const supply = supplies[i]!;
@@ -351,12 +363,26 @@ export const stockMovementService = {
             );
             const available = level?.quantity ?? 0;
             if (available < item.quantity) {
-              return failure(
-                `Insufficient stock for ${supply.name} at ${location?.name ?? "this location"} (${available} available)`
-              );
+              insufficient.push({
+                supplyId: item.supplyId,
+                name: supply.name,
+                available,
+              });
             }
           }
+          if (insufficient.length > 0) {
+            const first = insufficient[0];
+            return failure(
+              `Insufficient stock for ${first.name} at ${location?.name ?? "this location"} (${first.available} available)`,
+              { insufficient }
+            );
+          }
         } else {
+          const insufficient: {
+            supplyId: string;
+            name: string;
+            available: number;
+          }[] = [];
           for (let i = 0; i < mergedItems.length; i++) {
             const item = mergedItems[i];
             const supply = supplies[i]!;
@@ -371,10 +397,19 @@ export const stockMovementService = {
               ...activeLevels.map((level) => level.quantity)
             );
             if (maxAvailable < item.quantity) {
-              return failure(
-                `Insufficient stock for ${supply.name} at this location`
-              );
+              insufficient.push({
+                supplyId: item.supplyId,
+                name: supply.name,
+                available: maxAvailable,
+              });
             }
+          }
+          if (insufficient.length > 0) {
+            const first = insufficient[0];
+            return failure(
+              `Insufficient stock for ${first.name} at this location`,
+              { insufficient }
+            );
           }
         }
         return locationResult;
@@ -383,7 +418,7 @@ export const stockMovementService = {
 
       const auditActions = mergedItems.map((item) => {
         const supply = supplies.find((s) => s?.id === item.supplyId);
-        return `Checked out ${item.quantity} ${supply?.name ?? "item"}`;
+        return `${auditPrefix} ${item.quantity} ${supply?.name ?? "item"}`;
       });
 
       const notes = data.notes?.trim() || null;

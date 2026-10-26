@@ -147,7 +147,7 @@ describe("kiosk scan keyboard policy", () => {
 
 describe("kiosk scan field wiring", () => {
   it("uses idle scan focus instead of always opening a text keyboard", () => {
-    const src = readFileSync("src/app/kiosk/kiosk-client.tsx", "utf8");
+    const src = readFileSync("src/app/kiosk/scan-flow.tsx", "utf8");
     const hook = readFileSync("src/hooks/use-kiosk-scan-focus.ts", "utf8");
     expect(src).toContain("useKioskScanFocus");
     expect(src).toContain("virtualKeyboardPolicy");
@@ -157,7 +157,7 @@ describe("kiosk scan field wiring", () => {
   });
 
   it("highlights an unknown barcode and selects it for a rescan", () => {
-    const src = readFileSync("src/app/kiosk/kiosk-client.tsx", "utf8");
+    const src = readFileSync("src/app/kiosk/scan-flow.tsx", "utf8");
     expect(src).toContain("selectScanInputForRetry");
     expect(src).toContain("aria-invalid");
     expect(src).toContain("border-destructive");

@@ -668,8 +668,91 @@ describe("stockMovementService.consumeBulk", () => {
       expect(result.error).toBe(
         "Insufficient stock for Arm unit at this location"
       );
+      expect(result.insufficient).toEqual([
+        { supplyId: supplyB.id, name: supplyB.name, available: 1 },
+      ]);
     }
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns every insufficient item, not just the first", async () => {
+    vi.mocked(supplyRepository.findById).mockImplementation((async (id: string) => {
+      if (id === supplyA.id) return supplyA as never;
+      if (id === supplyB.id) return supplyB as never;
+      return null;
+    }) as never);
+    vi.mocked(prisma.stockLevel.findMany).mockImplementation((async (args: {
+      where: { supplyId: string };
+    }) => {
+      if (args.where.supplyId === supplyA.id) {
+        return [{ quantity: 0 }] as never;
+      }
+      return [{ quantity: 1 }] as never;
+    }) as never);
+
+    const result = await stockMovementService.consumeBulk(userId, SITE_ID, {
+      items: [
+        { supplyId: supplyA.id, quantity: 2 },
+        { supplyId: supplyB.id, quantity: 3 },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.insufficient).toEqual([
+        { supplyId: supplyA.id, name: supplyA.name, available: 0 },
+        { supplyId: supplyB.id, name: supplyB.name, available: 1 },
+      ]);
+    }
+  });
+
+  it("defaults auditPrefix to Checked out for staff checkout", async () => {
+    vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
+      supplyId: supplyB.id,
+      locationId: location.id,
+      quantity: 10,
+    } as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...supplyB,
+      quantity: 9,
+    } as never);
+
+    await stockMovementService.consumeBulk(userId, SITE_ID, {
+      items: [{ supplyId: supplyB.id, quantity: 1 }],
+    });
+
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "Checked out 1 Arm unit",
+      }),
+    });
+  });
+
+  it("accepts a custom auditPrefix for kiosk checkout", async () => {
+    vi.mocked(supplyRepository.findById).mockResolvedValue(supplyB as never);
+    vi.mocked(stockLevelRepository.findAtLocation).mockResolvedValue({
+      supplyId: supplyB.id,
+      locationId: location.id,
+      quantity: 10,
+    } as never);
+    vi.mocked(stockLevelRepository.syncSupplyTotals).mockResolvedValue({
+      ...supplyB,
+      quantity: 9,
+    } as never);
+
+    await stockMovementService.consumeBulk(
+      userId,
+      SITE_ID,
+      { items: [{ supplyId: supplyB.id, quantity: 1 }] },
+      { auditPrefix: "Kiosk consumed" }
+    );
+
+    expect(tx.auditLog.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: "Kiosk consumed 1 Arm unit",
+      }),
+    });
   });
 
   it("alerts admins for each bulk item that ends at or below threshold", async () => {

@@ -27,6 +27,9 @@ const buttonVariants = cva(
         sm: "h-9 min-h-9 rounded-md px-3 text-xs sm:h-8 sm:min-h-8",
         lg: "h-11 min-h-11 rounded-md px-8 sm:h-10 sm:min-h-10",
         icon: "h-10 w-10 min-h-10 min-w-10 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9",
+        // No height tokens — use when the caller sets explicit h-/min-h-
+        // (avoids sm:h-9 squashing custom kiosk touch targets at ≥640px).
+        none: "",
       },
     },
     defaultVariants: {
