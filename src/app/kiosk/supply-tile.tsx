@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type SupplyTileProps = {
@@ -22,9 +21,8 @@ export function SupplyTile({
   const atMax = inCart > 0 && inCart >= onHand;
 
   return (
-    <Button
+    <button
       type="button"
-      variant="outline"
       disabled={out}
       onClick={() => {
         if (out) return;
@@ -34,17 +32,32 @@ export function SupplyTile({
         }
         onAdd();
       }}
+      aria-label={
+        out
+          ? `${name}, out of stock`
+          : inCart > 0
+            ? `${name}, ${inCart} in cart, ${onHand} on hand`
+            : `${name}, ${onHand} on hand`
+      }
       className={cn(
-        "relative flex min-h-24 h-auto w-full flex-col items-start justify-between gap-2 p-4 text-left touch-manipulation select-none",
-        out && "opacity-60"
+        // Plain button — avoid shadcn Button h-10 / whitespace-nowrap clipping.
+        "relative flex min-h-24 w-full flex-col items-start justify-between gap-2 overflow-visible whitespace-normal rounded-md border border-input bg-background p-4 text-left shadow-sm",
+        "touch-manipulation select-none transition-colors",
+        "hover:bg-accent hover:text-accent-foreground",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+        "disabled:pointer-events-none disabled:opacity-60",
+        "active:scale-[0.98] motion-reduce:active:scale-100"
       )}
     >
       {inCart > 0 && (
-        <span className="absolute right-2 top-2 flex h-7 min-w-7 items-center justify-center rounded-md bg-primary px-1.5 text-sm font-semibold text-primary-foreground">
+        <span
+          className="absolute right-2 top-2 z-10 flex h-7 min-w-7 items-center justify-center rounded-md bg-primary px-1.5 text-sm font-semibold text-primary-foreground"
+          aria-hidden
+        >
           {inCart}
         </span>
       )}
-      <span className="line-clamp-2 text-lg font-semibold leading-snug pr-8">
+      <span className="line-clamp-2 w-full whitespace-normal break-words pr-9 text-lg font-semibold leading-snug">
         {name}
       </span>
       <span className="text-sm text-muted-foreground">
@@ -54,6 +67,6 @@ export function SupplyTile({
             ? `${onHand} on hand · max`
             : `${onHand} on hand`}
       </span>
-    </Button>
+    </button>
   );
 }

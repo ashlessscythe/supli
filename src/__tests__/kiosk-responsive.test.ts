@@ -29,6 +29,33 @@ describe("kiosk responsive layout", () => {
     expect(src).toContain("touch-manipulation");
   });
 
+  it("tiles render the supply name prominently without breakpoint height squash", () => {
+    const src = readFileSync("src/app/kiosk/supply-tile.tsx", "utf8");
+    // Name is a real text node (not aria-only) with planned typography.
+    expect(src).toMatch(
+      /line-clamp-2[^"]*text-lg[^"]*font-semibold[^>]*>\s*\{name\}\s*</
+    );
+    // Must not use shadcn Button — its size default applies sm:h-9/sm:min-h-9
+    // which squashes tiles (and hides the name) on tablet landscape (≥640px).
+    expect(src).not.toMatch(/from "@\/components\/ui\/button"/);
+    expect(src).toMatch(/<button\b/);
+    expect(src).not.toMatch(/<Button\b/);
+    expect(src).not.toMatch(/\bsm:h-\d+\b/);
+    expect(src).not.toMatch(/\bsm:min-h-\d+\b/);
+    expect(src).not.toMatch(/\bmd:landscape:h-/);
+    expect(src).not.toMatch(/\bmd:landscape:max-h-/);
+    expect(src).not.toMatch(/\bmd:landscape:hidden\b/);
+    expect(src).toContain("whitespace-normal");
+    expect(src).toContain("p-4");
+  });
+
+  it("supply grid keeps gap-3 so landscape rows do not overlap", () => {
+    const src = readFileSync("src/app/kiosk/touch-flow.tsx", "utf8");
+    expect(src).toContain("gap-3");
+    expect(src).not.toMatch(/auto-rows-\[/);
+    expect(src).not.toMatch(/grid-rows-\[/);
+  });
+
   it("manifest orientation is any", () => {
     const src = readFileSync("src/app/manifest.ts", "utf8");
     expect(src).toContain('orientation: "any"');
