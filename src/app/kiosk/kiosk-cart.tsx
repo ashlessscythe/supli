@@ -61,8 +61,8 @@ function CartLineRow({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
-          className="h-12 w-12 shrink-0 touch-manipulation"
+          size="none"
+          className="h-12 w-12 min-h-12 shrink-0 touch-manipulation"
           onClick={onRemove}
           aria-label={`Remove ${line.name}`}
         >
@@ -124,7 +124,8 @@ export function KioskCart(props: KioskCartProps) {
   const checkoutButton = (
     <Button
       type="button"
-      className="h-14 w-full text-lg touch-manipulation"
+      size="none"
+      className="h-14 min-h-14 w-full text-lg touch-manipulation"
       disabled={!canCheckout}
       onClick={() => {
         setSheetOpen(false);
@@ -168,7 +169,8 @@ export function KioskCart(props: KioskCartProps) {
             </div>
             <Button
               type="button"
-              className="h-14 shrink-0 touch-manipulation"
+              size="none"
+              className="h-14 min-h-14 shrink-0 touch-manipulation"
               onClick={() => setSheetOpen(true)}
             >
               Review & checkout

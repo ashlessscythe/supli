@@ -260,7 +260,8 @@ export function KioskTouchFlow({
         <div className="flex w-full flex-col gap-3">
           <Button
             type="button"
-            className="h-14 text-lg"
+            size="none"
+            className="h-14 min-h-14 text-lg"
             onClick={onSwitchToScan}
           >
             Use SCAN
@@ -268,12 +269,19 @@ export function KioskTouchFlow({
           <Button
             type="button"
             variant="outline"
-            className="h-12"
+            size="none"
+            className="h-12 min-h-12"
             onClick={() => void fetchCatalog()}
           >
             Retry
           </Button>
-          <Button type="button" variant="ghost" className="h-12" onClick={onBack}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="none"
+            className="h-12 min-h-12"
+            onClick={onBack}
+          >
             Back
           </Button>
         </div>
@@ -297,8 +305,8 @@ export function KioskTouchFlow({
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
-                className="h-12 shrink-0 touch-manipulation"
+                size="none"
+                className="h-12 min-h-12 shrink-0 px-3 touch-manipulation"
                 onClick={onBack}
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -322,8 +330,8 @@ export function KioskTouchFlow({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1/2 h-10 w-10 -translate-y-1/2"
+                  size="none"
+                  className="absolute right-1 top-1/2 h-10 w-10 min-h-10 -translate-y-1/2"
                   onClick={() => setQuery("")}
                   aria-label="Clear search"
                 >
@@ -361,7 +369,8 @@ export function KioskTouchFlow({
                   <Button
                     type="button"
                     variant={categoryId == null ? "default" : "outline"}
-                    className="h-11 shrink-0 snap-start px-4 touch-manipulation"
+                    size="none"
+                    className="h-11 min-h-11 shrink-0 snap-start px-4 touch-manipulation"
                     onClick={() => setCategoryId(null)}
                   >
                     All
@@ -371,7 +380,8 @@ export function KioskTouchFlow({
                       key={c.id}
                       type="button"
                       variant={categoryId === c.id ? "default" : "outline"}
-                      className="h-11 shrink-0 snap-start px-4 touch-manipulation"
+                      size="none"
+                      className="h-11 min-h-11 shrink-0 snap-start px-4 touch-manipulation"
                       onClick={() => setCategoryId(c.id)}
                     >
                       {c.name}
@@ -464,7 +474,8 @@ export function KioskTouchFlow({
               />
               <Button
                 type="button"
-                className="h-12 w-full"
+                size="none"
+                className="h-12 min-h-12 w-full"
                 onClick={() => setStepperSupplyId(null)}
               >
                 Done

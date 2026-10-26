@@ -23,7 +23,7 @@ export function QuantityStepper({
   const atMin = value <= min;
   const atMax = max != null && value >= max;
   const btnClass =
-    size === "compact" ? "h-12 w-12 text-xl" : "h-14 w-14 text-xl";
+    size === "compact" ? "h-12 w-12 min-h-12 text-xl" : "h-14 w-14 min-h-14 text-xl";
   const valueClass =
     size === "compact" ? "w-12 text-2xl" : "w-16 text-4xl";
 
@@ -32,7 +32,7 @@ export function QuantityStepper({
       <Button
         type="button"
         variant="outline"
-        size="lg"
+        size="none"
         className={btnClass}
         onClick={() => onChange(Math.max(min, value - 1))}
         disabled={atMin}
@@ -49,7 +49,7 @@ export function QuantityStepper({
       <Button
         type="button"
         variant="outline"
-        size="lg"
+        size="none"
         className={btnClass}
         onClick={() =>
           onChange(max != null ? Math.min(max, value + 1) : value + 1)

@@ -36,9 +36,9 @@ export function KioskClient({ siteName }: { siteName: string }) {
     >
       <Button
         variant="ghost"
-        size="sm"
+        size="none"
         onClick={handleExit}
-        className="absolute right-4 z-50 text-muted-foreground"
+        className="absolute right-4 z-50 h-12 min-h-12 px-3 text-muted-foreground"
         style={{ top: "max(1rem, env(safe-area-inset-top))" }}
       >
         <LogOut className="mr-2 h-4 w-4" />

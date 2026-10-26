@@ -27,7 +27,8 @@ export function IdleWarning({
         </p>
         <Button
           type="button"
-          className="h-16 w-full text-xl touch-manipulation"
+          size="none"
+          className="h-16 min-h-16 w-full text-xl touch-manipulation"
           onClick={onKeepGoing}
         >
           Keep going

@@ -7,6 +7,10 @@ describe("kiosk responsive layout", () => {
     expect(src).toContain("portrait:grid-cols-1 landscape:grid-cols-2");
     expect(src).toContain("min-h-[35dvh]");
     expect(src).toContain("landscape:min-h-[50dvh]");
+    // Plain buttons — shadcn Button sm:h-9 collapses these between ~640–1000px.
+    expect(src).not.toMatch(/from "@\/components\/ui\/button"/);
+    expect(src).toMatch(/<button\b/);
+    expect(src).not.toMatch(/<Button\b/);
   });
 
   it("supply grid uses responsive column classes", () => {

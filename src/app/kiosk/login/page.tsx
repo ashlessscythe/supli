@@ -101,7 +101,8 @@ export default function KioskLoginPage() {
             )}
             <Button
               type="submit"
-              className="w-full h-12 text-lg"
+              size="none"
+              className="h-12 min-h-12 w-full text-lg"
               disabled={loading || !password.trim() || !siteId}
             >
               {loading ? "Unlocking..." : "Unlock"}

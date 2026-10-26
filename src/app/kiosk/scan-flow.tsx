@@ -183,8 +183,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
             <Button
               type="button"
               variant="ghost"
-              size="sm"
-              className="h-12 touch-manipulation"
+              size="none"
+              className="h-12 min-h-12 px-3 touch-manipulation"
               onClick={onBack}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -239,7 +239,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
               )}
               <Button
                 type="submit"
-                className="h-12 w-full text-lg"
+                size="none"
+                className="h-12 min-h-12 w-full text-lg"
                 disabled={!barcode || lookingUp}
               >
                 {lookingUp ? "Checking…" : "Continue"}
@@ -257,7 +258,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
               </p>
               <QuantityStepper value={quantity} onChange={setQuantity} min={1} />
               <Button
-                className="h-14 w-full text-lg"
+                size="none"
+                className="h-14 min-h-14 w-full text-lg"
                 onClick={handleComplete}
                 disabled={loading}
               >
@@ -265,7 +267,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
               </Button>
               <Button
                 variant="ghost"
-                className="h-12 w-full"
+                size="none"
+                className="h-12 min-h-12 w-full"
                 onClick={() => {
                   setStep("scan");
                   setBarcode("");
