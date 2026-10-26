@@ -61,8 +61,28 @@ export const bulkConsumeSchema = z.object({
   notes: z.string().optional(),
 });
 
+export const kioskCheckoutItemSchema = z.object({
+  supplyId: z.string().min(1, "Supply is required"),
+  quantity: z
+    .number()
+    .int()
+    .positive("Quantity must be at least 1")
+    .max(999, "Quantity must be at most 999"),
+});
+
+export const kioskCheckoutSchema = z.object({
+  items: z
+    .array(kioskCheckoutItemSchema)
+    .min(1, "At least one item is required")
+    .max(50, "At most 50 items per checkout"),
+  locationId: z.string().optional(),
+  notes: z.string().optional(),
+  clientCheckoutId: z.string().uuid().optional(),
+});
+
 export type ReceiveStockInput = z.infer<typeof receiveStockSchema>;
 export type AdjustStockInput = z.infer<typeof adjustStockSchema>;
 export type LogVendorReorderInput = z.infer<typeof logVendorReorderSchema>;
 export type UpdateVendorReorderInput = z.infer<typeof updateVendorReorderSchema>;
 export type BulkConsumeInput = z.infer<typeof bulkConsumeSchema>;
+export type KioskCheckoutInput = z.infer<typeof kioskCheckoutSchema>;

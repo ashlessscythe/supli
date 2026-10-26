@@ -49,7 +49,7 @@ describe("resolveKioskScanLookup", () => {
 
 describe("kiosk scan lookup wiring", () => {
   it("looks up the barcode before opening quantity entry", () => {
-    const src = readFileSync("src/app/kiosk/kiosk-client.tsx", "utf8");
+    const src = readFileSync("src/app/kiosk/scan-flow.tsx", "utf8");
     expect(src).toContain("/api/kiosk/lookup");
     expect(src).toContain("resolveKioskScanLookup");
     expect(src).not.toMatch(
