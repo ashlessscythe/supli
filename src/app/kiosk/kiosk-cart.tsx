@@ -82,13 +82,17 @@ function CartLineRow({
   );
 }
 
+/** Presentational line list — parent owns scrolling (needs min-h-0 + overflow). */
 function CartLines({
   cart,
   onSetQty,
   onRemove,
-}: Pick<KioskCartProps, "cart" | "onSetQty" | "onRemove">) {
+  className,
+}: Pick<KioskCartProps, "cart" | "onSetQty" | "onRemove"> & {
+  className?: string;
+}) {
   return (
-    <div className="flex-1 overflow-y-auto overscroll-contain">
+    <div className={className} data-kiosk-cart-lines>
       {cart.lines.length === 0 ? (
         <p className="py-8 text-center text-muted-foreground">Cart is empty</p>
       ) : (
@@ -104,6 +108,9 @@ function CartLines({
     </div>
   );
 }
+
+const cartScrollClassName =
+  "min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]";
 
 export function KioskCart(props: KioskCartProps) {
   const { cart, submitting, error, onCheckout } = props;
@@ -131,18 +138,18 @@ export function KioskCart(props: KioskCartProps) {
   return (
     <>
       {/* Landscape / wide: always-visible side panel */}
-      <aside className="hidden h-full w-80 shrink-0 flex-col border-l bg-background p-4 md:landscape:flex lg:w-96">
-        <h2 className="mb-2 text-xl font-semibold">Cart</h2>
-        <p className="mb-4 text-sm text-muted-foreground">
+      <aside className="hidden h-full min-h-0 w-80 shrink-0 flex-col border-l bg-background p-4 md:landscape:flex lg:w-96">
+        <h2 className="mb-2 shrink-0 text-xl font-semibold">Cart</h2>
+        <p className="mb-4 shrink-0 text-sm text-muted-foreground">
           {itemCount} items · {unitCount} units
         </p>
-        <CartLines {...props} />
+        <CartLines {...props} className={cartScrollClassName} />
         {error && (
-          <p className="mt-2 text-sm text-destructive" role="alert">
+          <p className="mt-2 shrink-0 text-sm text-destructive" role="alert">
             {error}
           </p>
         )}
-        <div className="mt-auto pt-4">{checkoutButton}</div>
+        <div className="mt-auto shrink-0 pt-4">{checkoutButton}</div>
       </aside>
 
       {/* Portrait / narrow: sticky bottom bar + sheet */}
@@ -168,23 +175,30 @@ export function KioskCart(props: KioskCartProps) {
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent
           side="bottom"
-          className="flex max-h-[85dvh] flex-col gap-0 p-0 md:landscape:hidden"
+          // overflow-hidden + max-h so the list flex child (min-h-0) becomes the
+          // scroll container; avoids Radix RemoveScroll treating the sheet as
+          // non-scrollable when content grows unbounded.
+          className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 md:landscape:hidden"
         >
-          <SheetHeader className="border-b p-4 text-left">
+          <SheetHeader className="shrink-0 border-b p-4 text-left">
             <SheetTitle>Cart</SheetTitle>
             <p className="text-sm text-muted-foreground">
               {itemCount} items · {unitCount} units
             </p>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto px-4">
-            <CartLines {...props} />
-          </div>
+          <CartLines
+            {...props}
+            className={cn(cartScrollClassName, "px-4")}
+          />
           {error && (
-            <p className="px-4 text-sm text-destructive" role="alert">
+            <p
+              className="shrink-0 px-4 text-sm text-destructive"
+              role="alert"
+            >
               {error}
             </p>
           )}
-          <div className="sticky bottom-0 border-t bg-background p-4 safe-bottom">
+          <div className="shrink-0 border-t bg-background p-4 safe-bottom">
             {checkoutButton}
           </div>
         </SheetContent>

@@ -23,6 +23,23 @@ describe("kiosk responsive layout", () => {
     expect(src).toContain("md:landscape:hidden");
   });
 
+  it("portrait cart sheet scrolls the line list with Checkout pinned", () => {
+    const src = readFileSync("src/app/kiosk/kiosk-cart.tsx", "utf8");
+    // Sheet shell: capped height flex column; overflow-hidden so the list scrolls.
+    expect(src).toContain("max-h-[85dvh]");
+    expect(src).toMatch(
+      /SheetContent[\s\S]*?className="[^"]*flex max-h-\[85dvh\] flex-col[^"]*overflow-hidden/
+    );
+    // Line list is the scroll container (not nested overflows).
+    expect(src).toContain(
+      "min-h-0 flex-1 overflow-y-auto overscroll-contain [-webkit-overflow-scrolling:touch]"
+    );
+    expect(src).toContain("data-kiosk-cart-lines");
+    // Checkout footer is a shrink-0 sibling outside the scroll list.
+    expect(src).toContain("shrink-0 border-t bg-background p-4 safe-bottom");
+    expect(src).toContain("{checkoutButton}");
+  });
+
   it("tiles have min-h-24 and touch-manipulation", () => {
     const src = readFileSync("src/app/kiosk/supply-tile.tsx", "utf8");
     expect(src).toContain("min-h-24");
