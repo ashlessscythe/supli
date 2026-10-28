@@ -35,21 +35,24 @@ export function KioskClient({ siteName }: { siteName: string }) {
           : "min-h-[100dvh] safe-pad"
       )}
     >
-      <KioskThemeToggle
-        className="absolute left-4 z-50"
+      {/* Theme + Exit share the upper-right chrome so the toggle never
+          overlaps Back / titles that live on the left in SCAN and TOUCH. */}
+      <div
+        className="absolute right-4 z-50 flex items-center gap-1"
         style={{ top: "max(1rem, env(safe-area-inset-top))" }}
-      />
-
-      <Button
-        variant="ghost"
-        size="none"
-        onClick={handleExit}
-        className="absolute right-4 z-50 h-12 min-h-12 px-3 text-muted-foreground"
-        style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+        data-kiosk-chrome
       >
-        <LogOut className="mr-2 h-4 w-4" />
-        Exit
-      </Button>
+        <KioskThemeToggle />
+        <Button
+          variant="ghost"
+          size="none"
+          onClick={handleExit}
+          className="h-12 min-h-12 px-3 text-muted-foreground"
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          Exit
+        </Button>
+      </div>
 
       {mode === "select" && (
         <div className="flex flex-1 flex-col items-center justify-center gap-6 p-4">

@@ -62,7 +62,7 @@ export default function KioskLoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
       <KioskThemeToggle
-        className="absolute left-4 z-50"
+        className="absolute right-4 z-50"
         style={{ top: "max(1rem, env(safe-area-inset-top))" }}
       />
       <Card className="w-full max-w-md">

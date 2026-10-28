@@ -91,6 +91,25 @@ describe("kiosk theme toggle wiring", () => {
     expect(toggle).toContain("e.preventDefault()");
   });
 
+  it("keeps the toggle in the upper-right chrome, away from Back/titles", () => {
+    const login = readFileSync("src/app/kiosk/login/page.tsx", "utf8");
+    const client = readFileSync("src/app/kiosk/kiosk-client.tsx", "utf8");
+    const touch = readFileSync("src/app/kiosk/touch-flow.tsx", "utf8");
+
+    // Authenticated shell: toggle + Exit share a right-side chrome cluster.
+    expect(client).toContain('data-kiosk-chrome');
+    expect(client).toContain("absolute right-4");
+    expect(client).not.toMatch(/KioskThemeToggle[\s\S]*absolute left-4/);
+    expect(client).not.toMatch(/absolute left-4[\s\S]*KioskThemeToggle/);
+
+    // Login: toggle alone on the right (no Exit).
+    expect(login).toContain("absolute right-4");
+    expect(login).not.toMatch(/KioskThemeToggle[\s\S]*absolute left-4/);
+
+    // TOUCH header reserves right padding so title does not run under chrome.
+    expect(touch).toContain("pr-[7.5rem]");
+  });
+
   it("does not put localStorage in mode/scan/touch flow modules", () => {
     // Theme persistence lives in the shared helper + toggle, not mode state.
     for (const file of [
