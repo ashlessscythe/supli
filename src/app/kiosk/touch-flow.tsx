@@ -301,7 +301,8 @@ export function KioskTouchFlow({
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 shrink-0 border-b bg-background/95 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
-            <div className="mb-2 flex items-center gap-2">
+            {/* pr reserves space for absolute theme+Exit chrome (kiosk-client). */}
+            <div className="mb-2 flex items-center gap-2 pr-[7.5rem]">
               <Button
                 type="button"
                 variant="ghost"
@@ -312,7 +313,9 @@ export function KioskTouchFlow({
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
               </Button>
-              <h1 className="truncate text-lg font-semibold">{siteName}</h1>
+              <h1 className="min-w-0 truncate text-lg font-semibold">
+                {siteName}
+              </h1>
             </div>
             <div className="relative">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

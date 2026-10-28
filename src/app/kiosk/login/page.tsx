@@ -11,6 +11,7 @@ import { Lock } from "lucide-react";
 import { kioskLogin } from "@/lib/actions/kiosk";
 import { listActiveSites } from "@/lib/actions/site";
 import { getAppHomeHref } from "@/lib/landing";
+import { KioskThemeToggle } from "../kiosk-theme-toggle";
 
 export default function KioskLoginPage() {
   const router = useRouter();
@@ -59,7 +60,11 @@ export default function KioskLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
+      <KioskThemeToggle
+        className="absolute right-4 z-50"
+        style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+      />
       <Card className="w-full max-w-md">
         <CardHeader className="text-center space-y-2">
           <div className="flex justify-center">
