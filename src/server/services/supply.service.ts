@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { supplyRepository } from "@/server/repositories/supply.repository";
 import { executeWithAudit, executeWithAudits } from "@/server/audit";
 import { notificationService } from "@/server/services/notification.service";
+import { supplyImageService } from "@/server/services/supply-image.service";
 
 const BARCODE_ASSIGN_ATTEMPTS = 8;
 
@@ -316,6 +317,9 @@ export const supplyService = {
         (tx) => supplyRepository.delete(id, siteId, tx).then(() => existing),
         siteId
       );
+
+      // Best-effort: remove orphaned R2 object after the row is gone.
+      await supplyImageService.deleteObjectForKey(existing.imageKey);
 
       return success(existing);
     } catch {

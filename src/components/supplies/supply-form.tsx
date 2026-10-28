@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -18,6 +19,7 @@ import { useSupplies } from "@/hooks/use-supplies";
 import { formatBarcode, generateBarcode } from "@/lib/barcode";
 import { GenerateBarcodeButton } from "./generate-barcode-button";
 import { SupplyVendorLinks } from "./supply-vendor-pricing";
+import { SupplyImageUpload } from "./supply-image-upload";
 
 const supplyFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -40,6 +42,7 @@ interface SupplyInitialData {
   minimumThreshold: number;
   barcode?: string | null;
   internalSku?: string | null;
+  imageKey?: string | null;
 }
 
 interface SupplyFormProps {
@@ -56,6 +59,29 @@ export function SupplyForm({
   onCancel,
 }: SupplyFormProps) {
   const { handleCreateSupply, handleUpdateSupply, isLoading } = useSupplies();
+  const [storageConfigured, setStorageConfigured] = useState(false);
+  const [hasImage, setHasImage] = useState(Boolean(initialData?.imageKey));
+
+  useEffect(() => {
+    setHasImage(Boolean(initialData?.imageKey));
+  }, [initialData?.id, initialData?.imageKey]);
+
+  useEffect(() => {
+    if (!isAdmin || !initialData?.id) return;
+    let cancelled = false;
+    void fetch("/api/storage/status")
+      .then(async (res) => {
+        if (!res.ok) return;
+        const data = (await res.json()) as { configured?: boolean };
+        if (!cancelled) setStorageConfigured(Boolean(data.configured));
+      })
+      .catch(() => {
+        if (!cancelled) setStorageConfigured(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAdmin, initialData?.id]);
 
   const form = useForm<SupplyFormData>({
     resolver: zodResolver(supplyFormSchema),
@@ -240,6 +266,15 @@ export function SupplyForm({
           )}
         </form>
       </Form>
+
+      {isAdmin && initialData && (
+        <SupplyImageUpload
+          supplyId={initialData.id}
+          hasImage={hasImage}
+          storageConfigured={storageConfigured}
+          onChanged={setHasImage}
+        />
+      )}
 
       {/* Outside the supply <form> so ItemVendorLinkForm is not nested */}
       {isAdmin && initialData && (

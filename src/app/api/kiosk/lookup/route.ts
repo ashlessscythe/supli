@@ -25,5 +25,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Item not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ name: supply.name, barcode: supply.barcode });
+  return NextResponse.json({
+    id: supply.id,
+    name: supply.name,
+    barcode: supply.barcode,
+    hasImage: Boolean(supply.imageKey),
+  });
 }

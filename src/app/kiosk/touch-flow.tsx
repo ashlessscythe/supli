@@ -46,6 +46,7 @@ type CatalogSupply = {
   onHand: number;
   itemTypeId: string | null;
   usageScore: number;
+  hasImage?: boolean;
 };
 
 type KioskTouchFlowProps = {
@@ -413,9 +414,11 @@ export function KioskTouchFlow({
                 {filtered.map((s) => (
                   <SupplyTile
                     key={s.id}
+                    supplyId={s.id}
                     name={s.name}
                     onHand={s.onHand}
                     inCart={qtyInCart(cart, s.id)}
+                    hasImage={Boolean(s.hasImage)}
                     onAdd={() =>
                       dispatch({
                         type: "add",

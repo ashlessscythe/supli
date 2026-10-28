@@ -47,6 +47,7 @@ describe("GET /api/kiosk/lookup", () => {
       id: "supply-1",
       name: "Nitrile gloves",
       barcode: "SUPABC",
+      imageKey: "sites/site-1/supplies/supply-1/a.webp",
     });
 
     const response = await GET(createRequest("sup-abc"));
@@ -57,7 +58,13 @@ describe("GET /api/kiosk/lookup", () => {
       "SUPABC",
       "site-1"
     );
-    expect(json).toEqual({ name: "Nitrile gloves", barcode: "SUPABC" });
+    expect(json).toEqual({
+      id: "supply-1",
+      name: "Nitrile gloves",
+      barcode: "SUPABC",
+      hasImage: true,
+    });
+    expect(json).not.toHaveProperty("imageKey");
   });
 
   it("returns 404 when the barcode does not match a supply", async () => {

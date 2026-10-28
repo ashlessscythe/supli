@@ -68,7 +68,7 @@ Searchable activity trail for stock receipts, inbound orders, leftover request a
 
 | Area | What you get |
 |------|----------------|
-| **Inventory** | CRUD for supplies; barcode & SKU; QR from item detail; min thresholds; vendors & activity; search |
+| **Inventory** | CRUD for supplies; optional private R2 item images; barcode & SKU; QR from item detail; min thresholds; vendors & activity; search |
 | **Inbound** | Receive stock (with photo/document attachments), log corporate POs, track open orders; admin approve/deny leftover requests |
 | **History** | Search past POs, receipts, and consumptions by text, type, status, and date |
 | **Kiosk** | PIN-gated barcode scan to consume stock (stock movement ledger) |
@@ -244,7 +244,16 @@ See [`.env.example`](.env.example):
 - `RESEND_API_KEY` / `EMAIL_FROM` — email (optional; without keys, messages are logged and skipped)
 - `SUPERADMIN_EMAIL` / `SUPERADMIN_INITIAL_PASSWORD` — optional bootstrap
 - `SERVER_ACTIONS_ALLOWED_ORIGINS` — extra hostnames behind reverse proxies
-- `STORAGE_*` — legacy file path (attachments default to Postgres blobs)
+- `STORAGE_*` — legacy file path (inbound attachments default to Postgres blobs)
+- `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET` — optional Cloudflare R2 for **private** supply images (see `.env.example` for CORS). Omit to run without image uploads.
+- `R2_ENDPOINT` — optional S3-compatible endpoint override (e.g. local MinIO)
+
+### Supply images (Cloudflare R2)
+
+- The Neon/Postgres DB stores only the **object key** (plus content type, size, `imageUpdatedAt`) — never a URL.
+- Admins upload via a **presigned PUT** (browser → R2 directly) after a server-side role check.
+- Images are shown through a stable same-origin route (`GET /api/supplies/:id/image`) that **302-redirects** to a short-lived signed GET. Cached pages and the PWA never embed expired R2 URLs; the service worker uses `NetworkOnly` for this route.
+- Without R2 env vars the app still starts: upload UI is hidden and theme-aware placeholders render.
 
 Onsite guide: [docs/onsite.md](docs/onsite.md).
 

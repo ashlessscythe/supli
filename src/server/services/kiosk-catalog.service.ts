@@ -20,6 +20,8 @@ export type KioskCatalogSupply = {
   onHand: number;
   itemTypeId: string | null;
   usageScore: number;
+  /** True when an R2 object key is stored — clients use /api/supplies/:id/image. */
+  hasImage: boolean;
 };
 
 export type KioskCatalog = {
@@ -49,6 +51,7 @@ export async function getKioskCatalog(siteId: string): Promise<KioskCatalog> {
         internalSku: true,
         quantity: true,
         itemTypeId: true,
+        imageKey: true,
         itemType: { select: { id: true, name: true } },
       },
     }),
@@ -94,6 +97,7 @@ export async function getKioskCatalog(siteId: string): Promise<KioskCatalog> {
     onHand: row.quantity,
     itemTypeId: row.itemTypeId,
     usageScore: usageScoreFor(row.id, usage),
+    hasImage: Boolean(row.imageKey),
   }));
 
   return { categories, supplies };
