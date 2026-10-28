@@ -184,7 +184,7 @@ describe("GET /api/supplies/:id/image", () => {
     expect(response.status).toBe(401);
   });
 
-  it("redirects to a signed URL for site session users", async () => {
+  it("proxies bytes from a signed URL for site session users", async () => {
     vi.mocked(requireSiteContext).mockResolvedValue(adminCtx as never);
     vi.mocked(supplyImageService.getSignedViewUrl).mockResolvedValue({
       success: true,
@@ -193,14 +193,24 @@ describe("GET /api/supplies/:id/image", () => {
         contentType: "image/webp",
       },
     });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { "Content-Type": "image/webp", "Content-Length": "3" },
+        })
+      );
 
     const response = await imageGet(
       new Request("http://localhost/api/supplies/s1/image"),
       { params: params("s1") }
     );
 
-    expect(response.status).toBe(302);
-    expect(response.headers.get("Location")).toBe("https://signed.example/obj");
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/webp");
+    expect(fetchMock).toHaveBeenCalledWith("https://signed.example/obj");
+    fetchMock.mockRestore();
   });
 
   it("allows kiosk sessions for the same site", async () => {
@@ -215,16 +225,25 @@ describe("GET /api/supplies/:id/image", () => {
       success: true,
       data: { url: "https://signed.example/kiosk", contentType: "image/webp" },
     });
+    const fetchMock = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(new Uint8Array([9]), {
+          status: 200,
+          headers: { "Content-Type": "image/webp" },
+        })
+      );
 
     const response = await imageGet(
       new Request("http://localhost/api/supplies/s1/image"),
       { params: params("s1") }
     );
 
-    expect(response.status).toBe(302);
+    expect(response.status).toBe(200);
     expect(supplyImageService.getSignedViewUrl).toHaveBeenCalledWith(
       "site-1",
       "s1"
     );
+    fetchMock.mockRestore();
   });
 });

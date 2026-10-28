@@ -252,7 +252,7 @@ See [`.env.example`](.env.example):
 
 - The Neon/Postgres DB stores only the **object key** (plus content type, size, `imageUpdatedAt`) — never a URL.
 - Admins upload via a **presigned PUT** (browser → R2 directly) after a server-side role check.
-- Images are shown through a stable same-origin route (`GET /api/supplies/:id/image`) that **302-redirects** to a short-lived signed GET. Cached pages and the PWA never embed expired R2 URLs; the service worker uses `NetworkOnly` for this route.
+- Images are shown through a stable same-origin route (`GET /api/supplies/:id/image`) that **proxies** a short-lived signed GET server-side. Cached pages and the PWA never embed expired R2 URLs; the service worker uses `NetworkOnly` for this route.
 - Without R2 env vars the app still starts: upload UI is hidden and theme-aware placeholders render.
 
 Onsite guide: [docs/onsite.md](docs/onsite.md).
