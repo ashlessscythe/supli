@@ -8,6 +8,7 @@ import { kioskLogout } from "@/lib/actions/kiosk";
 import { cn } from "@/lib/utils";
 import { KioskModeSelect, type KioskModeChoice } from "./mode-select";
 import { KioskScanFlow } from "./scan-flow";
+import { KioskThemeToggle } from "./kiosk-theme-toggle";
 import { KioskTouchFlow } from "./touch-flow";
 
 export type KioskMode = "select" | KioskModeChoice;
@@ -34,6 +35,11 @@ export function KioskClient({ siteName }: { siteName: string }) {
           : "min-h-[100dvh] safe-pad"
       )}
     >
+      <KioskThemeToggle
+        className="absolute left-4 z-50"
+        style={{ top: "max(1rem, env(safe-area-inset-top))" }}
+      />
+
       <Button
         variant="ghost"
         size="none"
