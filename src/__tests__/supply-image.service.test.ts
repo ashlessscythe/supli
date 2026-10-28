@@ -77,10 +77,10 @@ describe("supplyImageService", () => {
       expect(createPresignedPutUrl).toHaveBeenCalledWith(
         expect.objectContaining({
           contentType: "image/webp",
-          contentLength: 2048,
           key: result.data.key,
         })
       );
+      expect(result.data.headers).toEqual({ "Content-Type": "image/webp" });
     }
   });
 

@@ -16,9 +16,9 @@ import {
 export type SupplyImagePresign = {
   uploadUrl: string;
   key: string;
+  /** Only headers the browser should send on the PUT (matches R2 CORS). */
   headers: {
     "Content-Type": string;
-    "Content-Length": string;
   };
   expiresIn: number;
 };
@@ -85,14 +85,12 @@ export const supplyImageService = {
       const uploadUrl = await createPresignedPutUrl({
         key,
         contentType: input.contentType,
-        contentLength: input.contentLength,
       });
       return success({
         uploadUrl,
         key,
         headers: {
           "Content-Type": input.contentType,
-          "Content-Length": String(input.contentLength),
         },
         expiresIn: PRESIGNED_PUT_EXPIRES_SECONDS,
       });

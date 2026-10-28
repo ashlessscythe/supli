@@ -73,6 +73,9 @@ export function getR2Client(config?: R2Config): S3Client {
       secretAccessKey: resolved.secretAccessKey,
     },
     forcePathStyle: Boolean(resolved.endpoint),
+    // Avoid x-amz-checksum-* on browser PUTs — bucket CORS only allows Content-Type.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
   cachedConfigKey = key;
   return cachedClient;
@@ -87,10 +90,15 @@ export function resetR2ClientForTests(): void {
 export const PRESIGNED_PUT_EXPIRES_SECONDS = 60 * 5; // 5 minutes
 export const PRESIGNED_GET_EXPIRES_SECONDS = 60 * 15; // 15 minutes
 
+/**
+ * Presigned browser PUT. Signs **Content-Type only** (plus host) so the
+ * client can upload with a single CORS-allowed header. Size is enforced
+ * server-side on presign + confirm — Content-Length is not signed, because
+ * browsers set it automatically and Tony's R2 CORS allows Content-Type only.
+ */
 export async function createPresignedPutUrl(input: {
   key: string;
   contentType: string;
-  contentLength: number;
   expiresIn?: number;
 }): Promise<string> {
   const config = getR2Config();
@@ -102,10 +110,11 @@ export async function createPresignedPutUrl(input: {
     Bucket: config.bucket,
     Key: input.key,
     ContentType: input.contentType,
-    ContentLength: input.contentLength,
   });
   return getSignedUrl(client, command, {
     expiresIn: input.expiresIn ?? PRESIGNED_PUT_EXPIRES_SECONDS,
+    // Keep content-type in SignedHeaders so the PUT cannot change MIME type.
+    signableHeaders: new Set(["content-type"]),
   });
 }
 

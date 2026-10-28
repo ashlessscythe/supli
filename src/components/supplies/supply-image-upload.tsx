@@ -94,11 +94,13 @@ export function SupplyImageUpload({
         throw new Error(presign.error ?? "Could not start upload");
       }
 
+      // Only Content-Type — matches R2 CORS AllowedHeaders. Browsers set
+      // Content-Length from the body; do not send other signed/amz headers.
       const putRes = await fetch(presign.uploadUrl, {
         method: "PUT",
         headers: {
-          "Content-Type": prepared.contentType,
-          "Content-Length": String(prepared.contentLength),
+          "Content-Type":
+            presign.headers?.["Content-Type"] ?? prepared.contentType,
         },
         body: prepared.blob,
       });

@@ -102,7 +102,6 @@ describe("supply image admin routes", () => {
         key: "sites/site-1/supplies/s1/a.webp",
         headers: {
           "Content-Type": "image/webp",
-          "Content-Length": "1000",
         },
         expiresIn: 300,
       },
