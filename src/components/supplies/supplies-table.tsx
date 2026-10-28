@@ -48,6 +48,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { Supply } from "@/types";
+import { SupplyImage } from "@/components/supplies/supply-image";
 
 interface LocationOption {
   id: string;
@@ -318,6 +319,7 @@ export function SuppliesTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[56px]">Image</TableHead>
               <SortableHead label="Name" sortField="name" />
               <TableHead>Description</TableHead>
               <TableHead>Barcode</TableHead>
@@ -338,7 +340,7 @@ export function SuppliesTable({
             {paginated.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="h-24 text-center text-muted-foreground"
                 >
                   No supplies found.
@@ -351,6 +353,14 @@ export function SuppliesTable({
                   className="cursor-pointer"
                   onClick={() => setDetailSupplyId(supply.id)}
                 >
+                  <TableCell className="w-[56px]">
+                    <SupplyImage
+                      supplyId={supply.id}
+                      hasImage={Boolean(supply.imageKey)}
+                      alt=""
+                      frameClassName="h-10 w-10 rounded-md"
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{supply.name}</TableCell>
                   <TableCell>{supply.description}</TableCell>
                   <TableCell className="font-mono text-sm text-muted-foreground">
@@ -391,8 +401,14 @@ export function SuppliesTable({
               className="cursor-pointer rounded-md border p-4 space-y-3 transition-colors hover:bg-accent/30"
               onClick={() => setDetailSupplyId(supply.id)}
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <SupplyImage
+                  supplyId={supply.id}
+                  hasImage={Boolean(supply.imageKey)}
+                  alt=""
+                  frameClassName="h-14 w-14 shrink-0 rounded-md"
+                />
+                <div className="min-w-0 flex-1">
                   <p className="font-medium break-words">{supply.name}</p>
                   {supply.description && (
                     <p className="text-sm text-muted-foreground break-words">

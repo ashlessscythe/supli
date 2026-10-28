@@ -158,7 +158,12 @@ export const supplyRepository = {
   findByBarcode(barcode: string, siteId: string) {
     return prisma.supply.findFirst({
       where: { barcode, siteId },
-      select: { id: true, name: true, barcode: true },
+      select: {
+        id: true,
+        name: true,
+        barcode: true,
+        imageKey: true,
+      },
     });
   },
 };

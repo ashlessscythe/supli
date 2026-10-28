@@ -23,7 +23,10 @@ const serwist = new Serwist({
         sameOrigin &&
         (pathname.startsWith("/api/auth") ||
           pathname.startsWith("/api/admin") ||
-          pathname.startsWith("/api/kiosk")),
+          pathname.startsWith("/api/kiosk") ||
+          pathname.startsWith("/api/storage") ||
+          // Never cache signed-image redirects — expiry vs SW cache.
+          /^\/api\/supplies\/[^/]+\/image(?:\/|$)/.test(pathname)),
       handler: new NetworkOnly(),
     },
     ...defaultCache,

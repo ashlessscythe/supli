@@ -26,6 +26,7 @@ import { enqueueOfflineMutation } from "@/lib/offline-queue";
 import { haptic } from "@/lib/haptics";
 import { KIOSK_DONE_SCREEN_MS } from "@/lib/kiosk-constants";
 import { cn } from "@/lib/utils";
+import { useKioskShowImages } from "@/hooks/use-kiosk-show-images";
 import { IdleWarning } from "./idle-warning";
 import { KioskCart } from "./kiosk-cart";
 import { SupplyTile } from "./supply-tile";
@@ -46,6 +47,7 @@ type CatalogSupply = {
   onHand: number;
   itemTypeId: string | null;
   usageScore: number;
+  hasImage?: boolean;
 };
 
 type KioskTouchFlowProps = {
@@ -74,6 +76,7 @@ export function KioskTouchFlow({
   const [doneCount, setDoneCount] = useState<number | null>(null);
   const [stepperSupplyId, setStepperSupplyId] = useState<string | null>(null);
   const [narrowPortrait, setNarrowPortrait] = useState(false);
+  const { showImages } = useKioskShowImages();
 
   const fetchCatalog = useCallback(async () => {
     setLoading(true);
@@ -301,8 +304,9 @@ export function KioskTouchFlow({
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 shrink-0 border-b bg-background/95 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur">
-            {/* pr reserves space for absolute theme+Exit chrome (kiosk-client). */}
-            <div className="mb-2 flex items-center gap-2 pr-[7.5rem]">
+            {/* pr reserves space for absolute Images+Theme+Exit chrome
+                (kiosk-client). Wider than theme-only so Back/title never collide. */}
+            <div className="mb-2 flex items-center gap-2 pr-[12.5rem] sm:pr-[14.5rem]">
               <Button
                 type="button"
                 variant="ghost"
@@ -413,9 +417,12 @@ export function KioskTouchFlow({
                 {filtered.map((s) => (
                   <SupplyTile
                     key={s.id}
+                    supplyId={s.id}
                     name={s.name}
                     onHand={s.onHand}
                     inCart={qtyInCart(cart, s.id)}
+                    hasImage={Boolean(s.hasImage)}
+                    showImage={showImages}
                     onAdd={() =>
                       dispatch({
                         type: "add",

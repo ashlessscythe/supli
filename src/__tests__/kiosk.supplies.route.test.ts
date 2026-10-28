@@ -36,7 +36,7 @@ describe("GET /api/kiosk/supplies", () => {
     expect(getKioskCatalog).not.toHaveBeenCalled();
   });
 
-  it("returns site-fenced catalog shape without description or image fields", async () => {
+  it("returns site-fenced catalog shape with hasImage flag only (no keys/URLs)", async () => {
     vi.mocked(isKioskAuthenticated).mockResolvedValue(true);
     vi.mocked(getKioskSite).mockResolvedValue({
       id: "site-1",
@@ -54,6 +54,7 @@ describe("GET /api/kiosk/supplies", () => {
           onHand: 12,
           itemTypeId: "cat-1",
           usageScore: 4,
+          hasImage: true,
         },
       ],
     });
@@ -74,10 +75,11 @@ describe("GET /api/kiosk/supplies", () => {
           onHand: 12,
           itemTypeId: "cat-1",
           usageScore: 4,
+          hasImage: true,
         },
       ],
     });
     expect(JSON.stringify(json)).not.toMatch(/description/i);
-    expect(JSON.stringify(json)).not.toMatch(/image/i);
+    expect(JSON.stringify(json)).not.toMatch(/imageKey|r2\.cloudflare|https?:\/\//i);
   });
 });

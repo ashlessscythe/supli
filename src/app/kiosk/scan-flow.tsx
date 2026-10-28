@@ -15,8 +15,10 @@ import { resolveKioskScanLookup } from "@/lib/kiosk-scan-lookup";
 import { enqueueOfflineMutation } from "@/lib/offline-queue";
 import { KIOSK_DONE_SCREEN_MS } from "@/lib/kiosk-constants";
 import { cn } from "@/lib/utils";
+import { useKioskShowImages } from "@/hooks/use-kiosk-show-images";
 import { QuantityStepper } from "./quantity-stepper";
 import { IdleWarning } from "./idle-warning";
+import { SupplyImage } from "@/components/supplies/supply-image";
 
 type Step = "scan" | "quantity" | "complete";
 
@@ -34,14 +36,19 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
   const [lookingUp, setLookingUp] = useState(false);
   const [lastItem, setLastItem] = useState<string | null>(null);
   const [itemName, setItemName] = useState<string | null>(null);
+  const [itemId, setItemId] = useState<string | null>(null);
+  const [itemHasImage, setItemHasImage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanFocus = useKioskScanFocus(inputRef, step === "scan");
+  const { showImages } = useKioskShowImages();
 
   const idle = useKioskIdleReset(step === "quantity", () => {
     setStep("scan");
     setBarcode("");
     setQuantity(1);
     setItemName(null);
+    setItemId(null);
+    setItemHasImage(false);
     setError(null);
     onBack();
   });
@@ -55,6 +62,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
     setBarcode("");
     setQuantity(1);
     setItemName(null);
+    setItemId(null);
+    setItemHasImage(false);
     setStep("scan");
     setLastItem(null);
     setError(null);
@@ -72,6 +81,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
       if (!online) {
         const skipped = resolveKioskScanLookup({ online: false });
         setItemName(skipped.itemName);
+        setItemId(null);
+        setItemHasImage(false);
         setStep("quantity");
         return;
       }
@@ -80,7 +91,9 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
         `/api/kiosk/lookup?barcode=${encodeURIComponent(barcode.trim())}`
       );
       const data = (await res.json().catch(() => ({}))) as {
+        id?: string;
         name?: string;
+        hasImage?: boolean;
         error?: string;
       };
       const result = resolveKioskScanLookup({
@@ -97,6 +110,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
       }
 
       setItemName(result.itemName);
+      setItemId(typeof data.id === "string" ? data.id : null);
+      setItemHasImage(Boolean(data.hasImage));
       setStep("quantity");
     } catch {
       const skipped = resolveKioskScanLookup({
@@ -104,6 +119,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
         lookupFailedNetwork: true,
       });
       setItemName(skipped.itemName);
+      setItemId(null);
+      setItemHasImage(false);
       setStep("quantity");
     } finally {
       setLookingUp(false);
@@ -250,6 +267,16 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
 
           {step === "quantity" && (
             <div className="space-y-4">
+              {showImages && itemId && (
+                <div className="mx-auto w-40 overflow-hidden rounded-md border border-border">
+                  <SupplyImage
+                    supplyId={itemId}
+                    hasImage={itemHasImage}
+                    alt={itemName ?? ""}
+                    frameClassName="aspect-square w-full"
+                  />
+                </div>
+              )}
               {itemName && (
                 <p className="text-center text-xl font-semibold">{itemName}</p>
               )}
@@ -274,6 +301,8 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
                   setBarcode("");
                   setQuantity(1);
                   setItemName(null);
+                  setItemId(null);
+                  setItemHasImage(false);
                   setError(null);
                 }}
               >

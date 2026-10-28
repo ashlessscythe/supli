@@ -13,6 +13,8 @@ theme preference, optional `siteId` (required for non-superadmin).
 ### Supply
 Inventory items with optional barcode, internal SKU, and item type.
 Uniques for barcode/SKU are scoped per site.
+Optional private image metadata: `imageKey` (R2 object key only),
+`imageContentType`, `imageSize`, `imageUpdatedAt` — never store a public URL.
 
 ### Location
 Warehouses, supply cages, tool rooms, and more. Name unique per site.

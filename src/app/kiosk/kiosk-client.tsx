@@ -7,6 +7,7 @@ import { LogOut } from "lucide-react";
 import { kioskLogout } from "@/lib/actions/kiosk";
 import { cn } from "@/lib/utils";
 import { KioskModeSelect, type KioskModeChoice } from "./mode-select";
+import { KioskImagesToggle } from "./kiosk-images-toggle";
 import { KioskScanFlow } from "./scan-flow";
 import { KioskThemeToggle } from "./kiosk-theme-toggle";
 import { KioskTouchFlow } from "./touch-flow";
@@ -35,13 +36,14 @@ export function KioskClient({ siteName }: { siteName: string }) {
           : "min-h-[100dvh] safe-pad"
       )}
     >
-      {/* Theme + Exit share the upper-right chrome so the toggle never
-          overlaps Back / titles that live on the left in SCAN and TOUCH. */}
+      {/* Images + Theme + Exit share the upper-right chrome so controls never
+          overlap Back / titles that live on the left in SCAN and TOUCH. */}
       <div
-        className="absolute right-4 z-50 flex items-center gap-1"
+        className="absolute right-4 z-50 flex items-center gap-0.5"
         style={{ top: "max(1rem, env(safe-area-inset-top))" }}
         data-kiosk-chrome
       >
+        <KioskImagesToggle />
         <KioskThemeToggle />
         <Button
           variant="ghost"

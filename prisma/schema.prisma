@@ -88,6 +88,11 @@ model Supply {
   minimumThreshold Int          @default(0)
   barcode          String?
   internalSku      String?
+  /// Private R2 object key only — never store a URL here.
+  imageKey         String?
+  imageContentType String?
+  imageSize        Int?
+  imageUpdatedAt   DateTime?
   itemTypeId       String?
   itemType         ItemType?    @relation(fields: [itemTypeId], references: [id])
   requests         Request[]
