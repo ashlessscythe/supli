@@ -49,6 +49,11 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Cursor Simple Browser (and some tooling) opens http://127.0.0.1:3000 while
+  // `next dev` treats localhost as the default origin. Without this, Next 15
+  // warns (and will eventually block) cross-origin /_next/* asset requests,
+  // which presents as a fully unstyled page.
+  allowedDevOrigins: ["127.0.0.1"],
   experimental: {
     serverActions: {
       // Cloudflare/Koyeb proxy: browser Origin is the public domain while
