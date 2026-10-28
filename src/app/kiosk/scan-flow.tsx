@@ -15,6 +15,7 @@ import { resolveKioskScanLookup } from "@/lib/kiosk-scan-lookup";
 import { enqueueOfflineMutation } from "@/lib/offline-queue";
 import { KIOSK_DONE_SCREEN_MS } from "@/lib/kiosk-constants";
 import { cn } from "@/lib/utils";
+import { useKioskShowImages } from "@/hooks/use-kiosk-show-images";
 import { QuantityStepper } from "./quantity-stepper";
 import { IdleWarning } from "./idle-warning";
 import { SupplyImage } from "@/components/supplies/supply-image";
@@ -39,6 +40,7 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
   const [itemHasImage, setItemHasImage] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const scanFocus = useKioskScanFocus(inputRef, step === "scan");
+  const { showImages } = useKioskShowImages();
 
   const idle = useKioskIdleReset(step === "quantity", () => {
     setStep("scan");
@@ -265,7 +267,7 @@ export function KioskScanFlow({ siteName, onBack }: KioskScanFlowProps) {
 
           {step === "quantity" && (
             <div className="space-y-4">
-              {itemId && (
+              {showImages && itemId && (
                 <div className="mx-auto w-40 overflow-hidden rounded-md border border-border">
                   <SupplyImage
                     supplyId={itemId}

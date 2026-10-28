@@ -106,8 +106,9 @@ describe("kiosk theme toggle wiring", () => {
     expect(login).toContain("absolute right-4");
     expect(login).not.toMatch(/KioskThemeToggle[\s\S]*absolute left-4/);
 
-    // TOUCH header reserves right padding so title does not run under chrome.
-    expect(touch).toContain("pr-[7.5rem]");
+    // TOUCH header reserves right padding so title does not run under chrome
+    // (wider after Images + Theme + Exit share the cluster).
+    expect(touch).toMatch(/pr-\[12\.5rem\]/);
   });
 
   it("does not put localStorage in mode/scan/touch flow modules", () => {

@@ -9,6 +9,8 @@ type SupplyTileProps = {
   onHand: number;
   inCart: number;
   hasImage?: boolean;
+  /** When false, compact text-only tile (pre-image layout). */
+  showImage?: boolean;
   onAdd: () => void;
   onOpenStepper?: () => void;
 };
@@ -19,6 +21,7 @@ export function SupplyTile({
   onHand,
   inCart,
   hasImage = false,
+  showImage = true,
   onAdd,
   onOpenStepper,
 }: SupplyTileProps) {
@@ -46,7 +49,10 @@ export function SupplyTile({
       }
       className={cn(
         // Plain button — avoid shadcn Button h-10 / whitespace-nowrap clipping.
-        "relative flex min-h-24 w-full flex-col items-stretch gap-2 overflow-visible whitespace-normal rounded-md border border-input bg-background p-4 text-left shadow-sm",
+        "relative flex min-h-24 w-full overflow-visible whitespace-normal rounded-md border border-input bg-background p-4 text-left shadow-sm",
+        showImage
+          ? "flex-col items-stretch gap-2"
+          : "flex-col items-start justify-between gap-2",
         "touch-manipulation select-none transition-colors",
         "hover:bg-accent hover:text-accent-foreground",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
@@ -62,12 +68,14 @@ export function SupplyTile({
           {inCart}
         </span>
       )}
-      <SupplyImage
-        supplyId={supplyId}
-        hasImage={hasImage}
-        alt=""
-        frameClassName="aspect-[4/3] w-full rounded-md"
-      />
+      {showImage && (
+        <SupplyImage
+          supplyId={supplyId}
+          hasImage={hasImage}
+          alt=""
+          frameClassName="aspect-[4/3] w-full rounded-md"
+        />
+      )}
       <span className="line-clamp-2 w-full whitespace-normal break-words pr-9 text-lg font-semibold leading-snug">
         {name}
       </span>
